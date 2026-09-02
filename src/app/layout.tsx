@@ -1,0 +1,52 @@
+import type { Metadata } from "next";
+import { Instrument_Sans } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
+import "./globals.css";
+
+const instrumentSans = Instrument_Sans({
+  subsets: ["latin"],
+  variable: "--font-instrument-sans",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "Quill — Offline Notes",
+  description: "A fast, offline-first notes app with a split editor, hand-written markdown parser, and warm paper aesthetic.",
+  icons: {
+    icon: "/favicon.svg",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html
+      lang="en"
+      className={cn(
+        "h-full antialiased font-sans",
+        instrumentSans.variable
+      )}
+      suppressHydrationWarning
+    >
+      <body className="h-full w-full overflow-hidden bg-background text-foreground font-sans">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <TooltipProvider>
+            {children}
+            <Toaster position="bottom-right" />
+          </TooltipProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
