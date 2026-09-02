@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Download, Moon, Sun, Laptop, Command, Pin, PinOff } from "lucide-react";
+import { Download, Moon, Sun, Laptop, Command, Pin, PinOff, PanelLeft, PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -24,6 +24,8 @@ interface HeaderProps {
   saveStatus: SaveStatus;
   onOpenCommandPalette?: () => void;
   onTogglePin?: (id: string) => void;
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
 }
 
 export function Header({
@@ -32,6 +34,8 @@ export function Header({
   saveStatus,
   onOpenCommandPalette,
   onTogglePin,
+  onToggleSidebar,
+  isSidebarOpen,
 }: HeaderProps) {
   const { theme, setTheme } = useTheme();
 
@@ -42,9 +46,22 @@ export function Header({
   };
 
   return (
-    <header className="w-full h-12 border-b border-border/70 px-4 sm:px-6 flex items-center justify-between bg-background/80 backdrop-blur-xs select-none font-sans">
-      {/* Left: Logo & Quick Command Palette Trigger */}
-      <div className="flex items-center gap-3">
+    <header className="w-full h-12 border-b border-border/70 px-3 sm:px-6 flex items-center justify-between bg-background/80 backdrop-blur-xs select-none font-sans shrink-0">
+      {/* Left: Sidebar Toggle, Logo & Quick Command Palette Trigger */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        {onToggleSidebar && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={onToggleSidebar}
+            className="text-muted-foreground hover:text-foreground shrink-0"
+            aria-label="Toggle notes list"
+            title="Toggle notes list"
+          >
+            <PanelLeft className="size-4" />
+          </Button>
+        )}
+
         <QuillLogo />
 
         {onOpenCommandPalette && (
@@ -52,12 +69,12 @@ export function Header({
             variant="outline"
             size="xs"
             onClick={onOpenCommandPalette}
-            className="hidden sm:inline-flex items-center gap-2 h-7 px-2 text-xs font-sans text-muted-foreground hover:text-foreground bg-background/60 border-border/60"
+            className="items-center gap-1.5 h-7 px-2 text-xs font-sans text-muted-foreground hover:text-foreground bg-background/60 border-border/60 shrink-0"
             title="Open Command Palette (Ctrl+K)"
           >
             <Command className="size-3" />
-            <span className="text-[11px]">Command</span>
-            <kbd className="font-mono text-[9.5px] px-1 py-0.2 rounded-xs bg-muted border border-border/60 text-muted-foreground">
+            <span className="hidden sm:inline text-[11px]">Command</span>
+            <kbd className="hidden sm:inline-block font-mono text-[9.5px] px-1 py-0.2 rounded-xs bg-muted border border-border/60 text-muted-foreground">
               ⌘K
             </kbd>
           </Button>
@@ -65,13 +82,14 @@ export function Header({
       </div>
 
       {/* Right: Word count, status, pin, export, theme */}
-      <div className="flex items-center gap-2.5 text-xs tracking-wider">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 text-xs tracking-wider shrink-0">
         <Badge
           variant="outline"
-          className="gap-1.5 font-mono text-[10.5px] px-2 py-0.5 border border-border tracking-wider"
+          className="gap-1 sm:gap-1.5 font-mono text-[9.5px] sm:text-[10.5px] px-1.5 sm:px-2 py-0.5 border border-border tracking-wider"
         >
           <span>
-            {wordCount} {wordCount === 1 ? "WORD" : "WORDS"}
+            {wordCount} <span className="hidden xs:inline">{wordCount === 1 ? "WORD" : "WORDS"}</span>
+            <span className="xs:hidden">W</span>
           </span>
           <span className="opacity-40">·</span>
           <span
@@ -81,7 +99,17 @@ export function Header({
                 : "text-muted-foreground"
             }
           >
-            {saveStatus === "saving" ? "SAVING..." : "AUTOSAVED"}
+            {saveStatus === "saving" ? (
+              <>
+                <span className="hidden xs:inline">SAVING...</span>
+                <span className="xs:hidden">SAVING</span>
+              </>
+            ) : (
+              <>
+                <span className="hidden xs:inline">AUTOSAVED</span>
+                <span className="xs:hidden">SAVED</span>
+              </>
+            )}
           </span>
         </Badge>
 

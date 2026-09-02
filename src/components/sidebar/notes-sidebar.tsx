@@ -97,17 +97,17 @@ export function NotesSidebar({
   };
 
   return (
-    <aside className="w-64 sm:w-72 border-r border-border/70 flex flex-col h-full bg-background/50 select-none shrink-0 relative font-sans">
+    <aside className="w-72 sm:w-80 max-w-[85vw] border-r border-border/70 flex flex-col h-full bg-background shadow-2xl lg:shadow-none select-none shrink-0 relative font-sans">
       {/* Sidebar Header */}
-      <div className="p-4 flex items-center justify-between border-b border-border/40">
+      <div className="p-3.5 sm:p-4 flex items-center justify-between border-b border-border/40">
         <div className="flex items-center gap-1.5">
           {onToggleCollapse && (
             <Button
               variant="ghost"
               size="icon-xs"
               onClick={onToggleCollapse}
-              className="text-muted-foreground/60 hover:text-foreground hidden lg:inline-flex"
-              title="Collapse sidebar"
+              className="text-muted-foreground/60 hover:text-foreground inline-flex"
+              title="Close sidebar"
             >
               <PanelLeftClose className="size-3.5" />
             </Button>

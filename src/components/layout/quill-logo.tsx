@@ -42,10 +42,12 @@ export function QuillIcon({ className = "size-5" }: { className?: string }) {
 
 export function QuillLogo() {
   return (
-    <div className="flex items-center gap-2 select-none font-sans">
-      <QuillIcon className="size-5" />
-      <span className="font-sans text-base tracking-tight text-foreground font-semibold">
-        Quill <span className="text-xs text-muted-foreground font-normal tracking-normal mx-0.5">—</span> <span className="text-sm font-normal text-muted-foreground">offline notes</span>
+    <div className="flex items-center gap-2 select-none font-sans shrink-0">
+      <QuillIcon className="size-5 shrink-0" />
+      <span className="font-sans text-sm sm:text-base tracking-tight text-foreground font-semibold flex items-center">
+        Quill
+        <span className="hidden md:inline text-xs text-muted-foreground font-normal tracking-normal mx-1">—</span>
+        <span className="hidden md:inline text-xs font-normal text-muted-foreground">offline notes</span>
       </span>
     </div>
   );

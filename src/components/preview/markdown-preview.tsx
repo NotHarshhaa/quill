@@ -19,14 +19,14 @@ export function MarkdownPreview({ content, onToggleTask }: MarkdownPreviewProps)
     <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative font-sans">
       <Corners size="sm" offset="border" weight="thin" light />
       {/* Preview Header Bar */}
-      <div className="h-10 px-6 border-b border-border/70 flex items-center justify-between select-none bg-background/50">
+      <div className="h-10 px-3 sm:px-6 border-b border-border/70 flex items-center justify-between select-none bg-background/50">
         <Badge variant="outline" className="text-[10px] tracking-widest font-mono font-semibold px-1.5 py-0.5 border border-border">
-          PREVIEW · RENDERED
+          <span className="hidden sm:inline">PREVIEW · </span>RENDERED
         </Badge>
       </div>
 
       {/* Rendered Preview Content */}
-      <div className="flex-1 p-6 sm:p-8 overflow-y-auto">
+      <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         {!content.trim() ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/50">
             <FileText className="size-8 mb-2 opacity-30" />

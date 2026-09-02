@@ -12,9 +12,11 @@ import { countWords } from "@/lib/utils";
 import { toggleTaskInMarkdown } from "@/lib/markdown";
 import { notesRepository } from "@/lib/storage/notesRepository";
 import { Note } from "@/lib/storage/schema";
-import { Edit3, Eye, PanelLeftOpen } from "lucide-react";
+import { Edit3, Eye, Columns, PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+
+type ViewMode = "editor" | "split" | "preview";
 
 export default function QuillPage() {
   const {
@@ -39,13 +41,29 @@ export default function QuillPage() {
 
   // Local editor content for immediate keystroke feedback
   const [localContent, setLocalContent] = useState<string>("");
-  const [mobileTab, setMobileTab] = useState<"editor" | "preview">("editor");
+  const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   // Hidden file inputs for .md import and JSON restore
   const markdownInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
+
+  // Responsive defaults on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (window.innerWidth < 768) {
+        setViewMode("editor");
+        setIsSidebarOpen(false);
+      } else if (window.innerWidth < 1024) {
+        setViewMode("split");
+        setIsSidebarOpen(false);
+      } else {
+        setViewMode("split");
+        setIsSidebarOpen(true);
+      }
+    }
+  }, []);
 
   // Sync local editor content when active note switches
   useEffect(() => {
@@ -81,6 +99,14 @@ export default function QuillPage() {
 
   const handleEditorChange = (newContent: string) => {
     setLocalContent(newContent);
+  };
+
+  // Close sidebar drawer on mobile/tablet after selecting note
+  const handleSelectNote = (id: string) => {
+    selectNote(id);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
   };
 
   // Interactive Checklist: toggle [ ] <-> [x] in preview
@@ -185,11 +211,22 @@ export default function QuillPage() {
         saveStatus={saveStatus}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         onTogglePin={togglePinNote}
+        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+        isSidebarOpen={isSidebarOpen}
       />
 
       {/* Main Workspace */}
       <div className="flex-1 flex min-h-0 relative">
-        {/* Expand sidebar button when collapsed */}
+        {/* Mobile / Tablet Drawer Backdrop Overlay */}
+        {isSidebarOpen && (
+          <div
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden fixed inset-0 z-30 bg-black/45 backdrop-blur-xs animate-in fade-in-50 duration-200"
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Expand sidebar button when collapsed on desktop */}
         {!isSidebarOpen && (
           <div className="hidden lg:block absolute left-2 top-2 z-20">
             <Button
@@ -204,17 +241,22 @@ export default function QuillPage() {
           </div>
         )}
 
-        {/* Sidebar */}
+        {/* Sidebar: persistent on desktop, slide-over drawer on mobile/tablet */}
         <div
-          className={`h-full transition-all duration-200 ease-in-out ${
-            isSidebarOpen ? "block" : "hidden"
+          className={`h-full z-40 transition-transform duration-200 ease-in-out fixed inset-y-0 left-0 lg:static lg:inset-auto lg:translate-x-0 ${
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:hidden"
           }`}
         >
           <NotesSidebar
             notes={notes}
             activeNoteId={activeNoteId}
-            onSelectNote={selectNote}
-            onCreateNote={createNote}
+            onSelectNote={handleSelectNote}
+            onCreateNote={() => {
+              createNote();
+              if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                setIsSidebarOpen(false);
+              }
+            }}
             onDeleteNote={deleteNote}
             onTogglePin={togglePinNote}
             searchQuery={searchQuery}
@@ -230,32 +272,46 @@ export default function QuillPage() {
           />
         </div>
 
-        {/* Mobile View Toggle Bar */}
-        <div className="md:hidden absolute top-2 right-2 z-30 flex items-center bg-muted/80 backdrop-blur-xs p-1 border border-border gap-1">
+        {/* Mobile & Tablet Mode Selector */}
+        <div className="lg:hidden absolute top-2 right-2.5 z-20 flex items-center bg-card/90 backdrop-blur-md p-0.5 border border-border/80 shadow-xs gap-0.5">
           <Button
             size="xs"
-            variant={mobileTab === "editor" ? "default" : "ghost"}
-            onClick={() => setMobileTab("editor")}
+            variant={viewMode === "editor" ? "default" : "ghost"}
+            onClick={() => setViewMode("editor")}
+            className="h-6 px-2 text-[11px] font-sans"
+            title="Write mode"
           >
-            <Edit3 />
+            <Edit3 className="size-3 mr-1" />
             <span>Write</span>
           </Button>
           <Button
             size="xs"
-            variant={mobileTab === "preview" ? "default" : "ghost"}
-            onClick={() => setMobileTab("preview")}
+            variant={viewMode === "split" ? "default" : "ghost"}
+            onClick={() => setViewMode("split")}
+            className="hidden md:inline-flex h-6 px-2 text-[11px] font-sans"
+            title="Split mode"
           >
-            <Eye />
+            <Columns className="size-3 mr-1" />
+            <span>Split</span>
+          </Button>
+          <Button
+            size="xs"
+            variant={viewMode === "preview" ? "default" : "ghost"}
+            onClick={() => setViewMode("preview")}
+            className="h-6 px-2 text-[11px] font-sans"
+            title="Preview mode"
+          >
+            <Eye className="size-3 mr-1" />
             <span>Preview</span>
           </Button>
         </div>
 
-        {/* Editor & Preview Split Panes */}
+        {/* Editor & Preview Panes */}
         <div className="flex-1 flex h-full min-w-0">
           {/* Editor Pane */}
           <div
             className={`h-full flex-1 min-w-0 ${
-              mobileTab === "editor" ? "flex" : "hidden md:flex"
+              viewMode === "editor" || viewMode === "split" ? "flex" : "hidden"
             }`}
           >
             <MarkdownEditor
@@ -267,7 +323,7 @@ export default function QuillPage() {
           {/* Preview Pane with Interactive Checklists */}
           <div
             className={`h-full flex-1 min-w-0 ${
-              mobileTab === "preview" ? "flex" : "hidden md:flex"
+              viewMode === "preview" || viewMode === "split" ? "flex" : "hidden"
             }`}
           >
             <MarkdownPreview
