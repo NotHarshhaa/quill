@@ -11,7 +11,7 @@ export type BlockNode =
   | { type: "paragraph"; children: InlineNode[] }
   | { type: "blockquote"; children: BlockNode[] }
   | { type: "code_block"; language?: string; code: string }
-  | { type: "list"; ordered: boolean; items: { children: InlineNode[]; checked?: boolean }[] }
+  | { type: "list"; ordered: boolean; items: { children: InlineNode[]; checked?: boolean; taskIndex?: number }[] }
   | { type: "thematic_break" };
 
 export type MarkdownDocument = BlockNode[];

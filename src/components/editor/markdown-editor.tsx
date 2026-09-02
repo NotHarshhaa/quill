@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import { Bold, Italic, Code, List, Quote, Heading1, Heading2 } from "lucide-react";
+import { Bold, Italic, Code, List, ListTodo, Quote, Heading1, Heading2 } from "lucide-react";
 import { Corners } from "@/components/frame";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -116,6 +116,15 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
             title="List"
           >
             <List className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => insertSnippet("- [ ] ", "", "task")}
+            className="text-muted-foreground hover:text-foreground"
+            title="Checklist (- [ ])"
+          >
+            <ListTodo className="size-3.5" />
           </Button>
           <Button
             variant="ghost"

@@ -9,10 +9,14 @@ Warm paper aesthetic. Type on the left, watch it render on the right.
 ## Features
 
 - **Split editor + live preview** — type markdown, see it rendered instantly, side by side
-- **Hand-written markdown parser** — headings, bold, italic, lists (ordered/unordered), inline code + code blocks, blockquotes
+- **Hand-written markdown parser** — headings, bold, italic, lists (ordered/unordered), inline code + code blocks, blockquotes, and interactive task lists
+- **Interactive Checklists (`- [ ]` / `- [x]`)** — clickable checkboxes in preview that toggle markdown text live in the editor
+- **Command Palette (`Cmd + K` / `Ctrl + K`)** — quick note switcher with fuzzy search and fast keyboard-driven actions
+- **Pinned Notes & Dynamic Tagging** — pin high-priority notes to top and filter by `#hashtags` auto-extracted from markdown content
+- **Import & Bulk Backup/Restore** — load external `.md` / `.txt` files and export/restore full JSON snapshots
 - **Offline-first** — all notes persist to `localStorage`, no network calls, works with no connection
 - **Autosave** — debounced save-as-you-type, no save button needed
-- **Notes sidebar** — create, switch between, rename, and delete notes
+- **Notes sidebar** — create, switch between, rename, pin, tag filter, and delete notes
 - **Warm paper aesthetic** — cream/parchment palette, soft shadows, serif touches for a physical-notebook feel
 
 ---

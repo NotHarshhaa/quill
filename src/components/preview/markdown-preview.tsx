@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 
 interface MarkdownPreviewProps {
   content: string;
+  onToggleTask?: (taskIndex: number) => void;
 }
 
-export function MarkdownPreview({ content }: MarkdownPreviewProps) {
+export function MarkdownPreview({ content, onToggleTask }: MarkdownPreviewProps) {
   const ast = useMarkdownPreview(content);
 
   return (
@@ -34,7 +35,7 @@ export function MarkdownPreview({ content }: MarkdownPreviewProps) {
         ) : (
           <div className="max-w-2xl mx-auto font-sans">
             {ast.map((block, idx) => (
-              <RenderBlock key={idx} block={block} />
+              <RenderBlock key={idx} block={block} onToggleTask={onToggleTask} />
             ))}
           </div>
         )}

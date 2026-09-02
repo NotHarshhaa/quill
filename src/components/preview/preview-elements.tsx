@@ -51,7 +51,13 @@ export function RenderInline({ node }: { node: InlineNode }): React.ReactNode {
   }
 }
 
-export function RenderBlock({ block }: { block: BlockNode }): React.ReactNode {
+export function RenderBlock({
+  block,
+  onToggleTask,
+}: {
+  block: BlockNode;
+  onToggleTask?: (taskIndex: number) => void;
+}): React.ReactNode {
   switch (block.type) {
     case "heading": {
       const headingText = (
@@ -109,7 +115,7 @@ export function RenderBlock({ block }: { block: BlockNode }): React.ReactNode {
       return (
         <blockquote className="border-l-2 border-primary/40 pl-4 my-4 italic text-foreground/80 font-sans">
           {block.children.map((child, i) => (
-            <RenderBlock key={i} block={child} />
+            <RenderBlock key={i} block={child} onToggleTask={onToggleTask} />
           ))}
         </blockquote>
       );
@@ -139,20 +145,37 @@ export function RenderBlock({ block }: { block: BlockNode }): React.ReactNode {
           }
         >
           {block.items.map((item, idx) => (
-            <li key={idx} className="flex items-baseline gap-2">
+            <li key={idx} className="flex items-baseline gap-2 group/task">
               {item.checked !== undefined ? (
                 <span className="inline-flex items-center select-none pt-0.5">
                   <input
                     type="checkbox"
                     checked={item.checked}
-                    readOnly
-                    className="rounded border-border text-primary focus:ring-0 cursor-default"
+                    onChange={() => {
+                      if (item.taskIndex !== undefined && onToggleTask) {
+                        onToggleTask(item.taskIndex);
+                      }
+                    }}
+                    className="size-3.5 rounded-xs border-border/80 accent-primary text-primary cursor-pointer transition-transform active:scale-90 hover:border-foreground/60"
                   />
                 </span>
               ) : !block.ordered ? (
                 <span className="text-muted-foreground select-none">•</span>
               ) : null}
-              <span className={item.checked ? "line-through text-muted-foreground" : "text-foreground/90"}>
+              <span
+                onClick={() => {
+                  if (item.checked !== undefined && item.taskIndex !== undefined && onToggleTask) {
+                    onToggleTask(item.taskIndex);
+                  }
+                }}
+                className={
+                  item.checked !== undefined
+                    ? item.checked
+                      ? "line-through text-muted-foreground/70 transition-colors cursor-pointer select-none"
+                      : "text-foreground/90 transition-colors cursor-pointer select-none"
+                    : "text-foreground/90"
+                }
+              >
                 {item.children.map((child, i) => (
                   <RenderInline key={i} node={child} />
                 ))}

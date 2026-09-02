@@ -4,6 +4,8 @@ export interface Note {
   content: string;
   createdAt: number;
   updatedAt: number;
+  isPinned?: boolean;
+  tags?: string[];
 }
 
 export const STORAGE_KEY = "quill_notes_data_v1";
@@ -15,34 +17,55 @@ export const INITIAL_NOTES: Note[] = [
     title: "Welcome to Quill",
     content: `# Welcome to Quill
 
-Everything you type is rendered *live* into beautiful typography with zero remote servers.`,
+Everything you type is rendered *live* into warm paper typography with zero remote servers.
+
+## Quick Start
+- [x] Create your first thought
+- [ ] Try toggling this checklist in the preview
+- [ ] Press **Ctrl+K** (or **⌘K**) for the Command Palette
+- [ ] Pin your favorite notes to the top
+
+Tag your thoughts naturally with #guide or #productivity anywhere in the text.`,
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
     updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 3,
+    isPinned: true,
+    tags: ["guide", "productivity"],
   },
   {
     id: "groceries-note",
-    title: "Groceries",
-    content: `# Groceries
+    title: "Market Checklist",
+    content: `# Market Checklist
 
-- sourdough loaf
-- churned butter
-- sea salt flakes
-- earl grey tea`,
+Fresh artisan ingredients for Sunday brunch:
+
+- [x] sourdough loaf
+- [x] churned salted butter
+- [ ] sea salt flakes
+- [ ] earl grey tea
+- [ ] organic clover honey
+
+#groceries #recipes`,
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
     updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
+    isPinned: false,
+    tags: ["groceries", "recipes"],
   },
   {
     id: "ideas-note",
-    title: "Ideas",
-    content: `# Someday
+    title: "Ideas & Projects",
+    content: `# Someday Ideas
 
 ## Big
-A reading lamp that dims as your tea cools.
+A reading lamp that gently dims as your tea cools.
 
 ## Small
-A notebook with **no** last page.`,
+A physical notebook with **no** last page.
+
+#ideas #creative`,
     createdAt: Date.now() - 1000 * 60 * 60 * 4,
     updatedAt: Date.now() - 1000 * 60 * 20,
+    isPinned: false,
+    tags: ["ideas", "creative"],
   },
   {
     id: "untitled-note",

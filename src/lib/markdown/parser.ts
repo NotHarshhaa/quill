@@ -5,6 +5,7 @@ export function parseMarkdown(markdown: string): MarkdownDocument {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const blocks: BlockNode[] = [];
   let index = 0;
+  let taskCounter = 0;
 
   while (index < lines.length) {
     const line = lines[index];
@@ -77,7 +78,7 @@ export function parseMarkdown(markdown: string): MarkdownDocument {
 
     if (unorderedMatch || orderedMatch) {
       const isOrdered = Boolean(orderedMatch);
-      const items: { children: ReturnType<typeof parseInline>; checked?: boolean }[] = [];
+      const items: { children: ReturnType<typeof parseInline>; checked?: boolean; taskIndex?: number }[] = [];
 
       while (index < lines.length) {
         const curLine = lines[index];
@@ -88,16 +89,19 @@ export function parseMarkdown(markdown: string): MarkdownDocument {
           const content = (isOrdered ? oMatch![3] : uMatch![3]).trim();
           // Check for task item [ ] or [x]
           let checked: boolean | undefined = undefined;
+          let taskIndex: number | undefined = undefined;
           let text = content;
-          const taskMatch = content.match(/^\[([ xX])\]\s+(.*)$/);
+          const taskMatch = content.match(/^\[([ xX])\](?:\s+(.*))?$/);
           if (taskMatch) {
             checked = taskMatch[1].toLowerCase() === "x";
-            text = taskMatch[2];
+            taskIndex = taskCounter++;
+            text = taskMatch[2] || "";
           }
 
           items.push({
             children: parseInline(text),
             checked,
+            taskIndex,
           });
           index++;
         } else if (curLine.trim() === "") {
@@ -152,4 +156,28 @@ export function parseMarkdown(markdown: string): MarkdownDocument {
   }
 
   return blocks;
+}
+
+/**
+ * Toggles a checklist item's state [ ] <-> [x] by its 0-based sequential task index
+ */
+export function toggleTaskInMarkdown(markdown: string, targetTaskIndex: number): string {
+  const lines = markdown.split("\n");
+  let currentTaskIdx = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(/^([ \t]*[-*+][ \t]+\[)([ xX])(\](?:[ \t]+.*)?)$/);
+    if (match) {
+      if (currentTaskIdx === targetTaskIndex) {
+        const isChecked = match[2].toLowerCase() === "x";
+        const newChar = isChecked ? " " : "x";
+        lines[i] = `${match[1]}${newChar}${match[3]}`;
+        return lines.join("\n");
+      }
+      currentTaskIdx++;
+    }
+  }
+
+  return markdown;
 }

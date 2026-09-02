@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Download, Moon, Sun, Laptop } from "lucide-react";
+import { Download, Moon, Sun, Laptop, Command, Pin, PinOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -22,9 +22,17 @@ interface HeaderProps {
   activeNote?: Note;
   wordCount: number;
   saveStatus: SaveStatus;
+  onOpenCommandPalette?: () => void;
+  onTogglePin?: (id: string) => void;
 }
 
-export function Header({ activeNote, wordCount, saveStatus }: HeaderProps) {
+export function Header({
+  activeNote,
+  wordCount,
+  saveStatus,
+  onOpenCommandPalette,
+  onTogglePin,
+}: HeaderProps) {
   const { theme, setTheme } = useTheme();
 
   const handleExport = () => {
@@ -35,11 +43,29 @@ export function Header({ activeNote, wordCount, saveStatus }: HeaderProps) {
 
   return (
     <header className="w-full h-12 border-b border-border/70 px-4 sm:px-6 flex items-center justify-between bg-background/80 backdrop-blur-xs select-none font-sans">
-      {/* Left: Logo */}
-      <QuillLogo />
+      {/* Left: Logo & Quick Command Palette Trigger */}
+      <div className="flex items-center gap-3">
+        <QuillLogo />
 
-      {/* Right: Word count, status, export, theme */}
-      <div className="flex items-center gap-3 text-xs tracking-wider">
+        {onOpenCommandPalette && (
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={onOpenCommandPalette}
+            className="hidden sm:inline-flex items-center gap-2 h-7 px-2 text-xs font-sans text-muted-foreground hover:text-foreground bg-background/60 border-border/60"
+            title="Open Command Palette (Ctrl+K)"
+          >
+            <Command className="size-3" />
+            <span className="text-[11px]">Command</span>
+            <kbd className="font-mono text-[9.5px] px-1 py-0.2 rounded-xs bg-muted border border-border/60 text-muted-foreground">
+              ⌘K
+            </kbd>
+          </Button>
+        )}
+      </div>
+
+      {/* Right: Word count, status, pin, export, theme */}
+      <div className="flex items-center gap-2.5 text-xs tracking-wider">
         <Badge
           variant="outline"
           className="gap-1.5 font-mono text-[10.5px] px-2 py-0.5 border border-border tracking-wider"
@@ -62,6 +88,34 @@ export function Header({ activeNote, wordCount, saveStatus }: HeaderProps) {
         <Separator orientation="vertical" className="h-3.5" />
 
         <TooltipProvider>
+          {/* Toggle Pin on Active Note */}
+          {activeNote && onTogglePin && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => onTogglePin(activeNote.id)}
+                  className={
+                    activeNote.isPinned
+                      ? "text-amber-600 dark:text-amber-400 hover:text-amber-500"
+                      : "text-muted-foreground hover:text-foreground"
+                  }
+                  aria-label={activeNote.isPinned ? "Unpin Note" : "Pin Note"}
+                >
+                  {activeNote.isPinned ? (
+                    <Pin className="size-3.5 fill-current" />
+                  ) : (
+                    <Pin className="size-3.5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="font-sans">
+                <p>{activeNote.isPinned ? "Unpin note from top" : "Pin note to top"}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
           {/* Download note */}
           <Tooltip>
             <TooltipTrigger asChild>
