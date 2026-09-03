@@ -22,6 +22,7 @@ import { KnowledgeGraphModal } from "@/components/graph/knowledge-graph-modal";
 import { TableOfContents } from "@/components/toc/table-of-contents";
 import { WritingInsightsModal } from "@/components/analytics/writing-insights-modal";
 import { WelcomeModal, SHOW_WELCOME_KEY } from "@/components/welcome/welcome-modal";
+import { AppUpdateNotifier } from "@/components/update/app-update-notifier";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -621,6 +622,9 @@ export default function QuillPage() {
           }
         }}
       />
+
+      {/* In-App Update Notifier (Only active in native mobile app) */}
+      <AppUpdateNotifier />
     </div>
   );
 }
