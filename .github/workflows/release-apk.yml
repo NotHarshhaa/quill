@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -57,6 +59,9 @@ jobs:
           cp android/app/build/outputs/apk/debug/app-debug.apk release-assets/quill-$VERSION_TAG.apk
           echo "APK generated at release-assets/quill-$VERSION_TAG.apk"
 
+      - name: Generate Categorized Release Notes
+        run: python3 .github/scripts/generate-release-notes.py RELEASE_NOTES.md
+
       - name: Upload APK to Workflow Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -68,5 +73,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*.apk
+          body_path: RELEASE_NOTES.md
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
