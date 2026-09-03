@@ -35,6 +35,24 @@ Built with a custom zero-dependency Markdown parser—no external markdown libra
   - **Bulk Import**: Drag or select multiple `.md`, `.markdown`, or `.txt` files with automatic title derivation and tag extraction.
   - **Full Backup & Restore**: Export complete JSON snapshots and restore them with schema validation at any time.
 
+- 📊 **Markdown Tables with Alignment (`| col1 | col2 |`)**  
+  Render ledger-style data tables with left, center, or right column alignments (`:---`, `:---:`, `---:`) and blueprint corner accents.
+
+- 💡 **Callout & Alert Blocks (`> [!NOTE]`, `> [!TIP]`, etc.)**  
+  GitHub-style colored callout cards with icons for `NOTE`, `TIP`, `WARNING`, `IMPORTANT`, and `CAUTION`.
+
+- 🗑️ **Soft Delete & Trash Can**  
+  Deleted notes are protected in a dedicated Trash view. Restore them anytime with 1 click or permanently purge when you're sure.
+
+- ⏳ **Local Version History & Snapshots**  
+  Automatic periodic snapshot timeline for every note. Inspect past revisions side-by-side with live preview and restore any snapshot in one click.
+
+- 🖨️ **Print & PDF Export**  
+  One-click print button formatted with an optimized `@media print` paper stylesheet—headers, toolbars, and editor panes are stripped cleanly for crisp PDF exports.
+
+- 📱 **Installable Offline PWA**  
+  Includes a web app manifest with standalone display configuration so you can install Quill to your desktop or mobile home screen.
+
 - 🎨 **Warm Paper & Blueprint Aesthetic**  
   Crafted parchment palette (`#f7f1e3`-inspired cream tones), subtle sepia borders, serif typographic details, and blueprint-style corner brackets (`Corners`, `Frame`). Full support for **Light**, **Dark**, and **System** themes.
 
@@ -108,6 +126,8 @@ Quill's hand-written parser translates standard Markdown directly into React com
 | **Inline Code** | `` `code` `` | Monospace code chip |
 | **Code Blocks** | ```` ```ts \n console.log("hi"); \n ``` ```` | Syntax-styled code container with language tag |
 | **Blockquotes** | `> Inspiring quote` | Indented callout with accent bar |
+| **Callout Alerts** | `> [!NOTE] Offline First` | Themed alert container with icon and blueprint corner ticks |
+| **Tables** | `| A | B |\n| :--- | :---: |\n| 1 | 2 |` | Ledger-style data table with column alignments |
 | **Unordered Lists** | `- item` or `* item` or `+ item` | Bullet list |
 | **Ordered Lists** | `1. first`, `2. second` | Numbered list |
 | **Checklists** | `- [ ] todo` / `- [x] done` | **Interactive, clickable checkbox** |

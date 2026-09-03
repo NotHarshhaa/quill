@@ -14,6 +14,8 @@ import {
   Sun,
   Moon,
   Laptop,
+  History,
+  Printer,
 } from "lucide-react";
 import { Corners } from "@/components/frame";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -33,6 +35,8 @@ interface CommandPaletteProps {
   onImportMarkdown: () => void;
   onBackupNotes: () => void;
   onRestoreBackup: () => void;
+  onOpenHistory?: () => void;
+  onPrintNote?: () => void;
 }
 
 type ActionItem = {
@@ -65,6 +69,8 @@ export function CommandPalette({
   onImportMarkdown,
   onBackupNotes,
   onRestoreBackup,
+  onOpenHistory,
+  onPrintNote,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -141,6 +147,34 @@ export function CommandPalette({
         },
       },
     ];
+
+    if (onOpenHistory) {
+      list.push({
+        id: "action-history",
+        type: "action",
+        title: "Version History & Snapshots",
+        subtitle: "View and restore previous revisions of this note",
+        icon: History,
+        handler: () => {
+          onOpenHistory();
+          onClose();
+        },
+      });
+    }
+
+    if (onPrintNote) {
+      list.push({
+        id: "action-print",
+        type: "action",
+        title: "Print / Export as PDF",
+        subtitle: "Open print preview for active note",
+        icon: Printer,
+        handler: () => {
+          onPrintNote();
+          onClose();
+        },
+      });
+    }
 
     if (activeNote) {
       list.unshift({

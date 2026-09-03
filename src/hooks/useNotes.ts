@@ -29,7 +29,10 @@ export function useNotes() {
     setIsLoaded(true);
   }, []);
 
-  const activeNote = notes.find((n) => n.id === activeNoteId) || notes[0];
+  const activeNotes = useMemo(() => notes.filter((n) => !n.isDeleted), [notes]);
+  const trashedNotes = useMemo(() => notes.filter((n) => n.isDeleted), [notes]);
+
+  const activeNote = activeNotes.find((n) => n.id === activeNoteId) || activeNotes[0];
 
   const handleSelectNote = useCallback((id: string) => {
     setActiveNoteId(id);
@@ -45,6 +48,8 @@ export function useNotes() {
       updatedAt: Date.now(),
       isPinned: initialData?.isPinned ?? false,
       tags: initialData?.tags || (initialData?.content ? extractTags(initialData.content) : []),
+      isDeleted: false,
+      revisions: [],
     };
 
     setNotes((prev) => {
@@ -57,7 +62,7 @@ export function useNotes() {
     return newNote;
   }, []);
 
-  const updateNote = useCallback((id: string, partial: Partial<Pick<Note, "title" | "content" | "isPinned">>) => {
+  const updateNote = useCallback((id: string, partial: Partial<Pick<Note, "title" | "content" | "isPinned">>, recordRevision = false) => {
     setNotes((prev) => {
       const updated = prev.map((note) => {
         if (note.id !== id) return note;
@@ -74,12 +79,19 @@ export function useNotes() {
         const nextContent = partial.content !== undefined ? partial.content : note.content;
         const nextTags = extractTags(nextContent);
 
+        let nextRevisions = note.revisions || [];
+        if (recordRevision && partial.content !== undefined && partial.content !== note.content) {
+          const words = nextContent.trim().split(/\s+/).filter(Boolean).length;
+          nextRevisions = notesRepository.createRevision(nextContent, words, nextRevisions);
+        }
+
         return {
           ...note,
           ...partial,
           title: derivedTitle,
           tags: nextTags,
           updatedAt: Date.now(),
+          revisions: nextRevisions,
         };
       });
       notesRepository.saveNotes(updated);
@@ -95,20 +107,65 @@ export function useNotes() {
     });
   }, []);
 
-  const deleteNote = useCallback((id: string) => {
+  // Soft delete: move note to Trash
+  const moveToTrash = useCallback((id: string) => {
     setNotes((prev) => {
-      const filtered = prev.filter((n) => n.id !== id);
-      const toPersist = filtered.length > 0 ? filtered : [];
-      notesRepository.saveNotes(toPersist);
+      const updated = prev.map((n) =>
+        n.id === id ? { ...n, isDeleted: true, deletedAt: Date.now(), isPinned: false } : n
+      );
+      notesRepository.saveNotes(updated);
 
       if (activeNoteId === id) {
-        const nextActive = toPersist[0]?.id || "";
+        const remaining = updated.filter((n) => !n.isDeleted && n.id !== id);
+        const nextActive = remaining[0]?.id || "";
+        setActiveNoteId(nextActive);
+        notesRepository.saveActiveNoteId(nextActive);
+      }
+      return updated;
+    });
+  }, [activeNoteId]);
+
+  // Restore note from Trash
+  const restoreFromTrash = useCallback((id: string) => {
+    setNotes((prev) => {
+      const updated = prev.map((n) =>
+        n.id === id ? { ...n, isDeleted: false, deletedAt: undefined } : n
+      );
+      notesRepository.saveNotes(updated);
+      setActiveNoteId(id);
+      notesRepository.saveActiveNoteId(id);
+      return updated;
+    });
+  }, []);
+
+  // Permanently delete a single note
+  const purgeNote = useCallback((id: string) => {
+    setNotes((prev) => {
+      const filtered = prev.filter((n) => n.id !== id);
+      notesRepository.saveNotes(filtered);
+      if (activeNoteId === id) {
+        const remaining = filtered.filter((n) => !n.isDeleted);
+        const nextActive = remaining[0]?.id || "";
         setActiveNoteId(nextActive);
         notesRepository.saveActiveNoteId(nextActive);
       }
       return filtered;
     });
   }, [activeNoteId]);
+
+  // Empty all trashed notes
+  const emptyTrash = useCallback(() => {
+    setNotes((prev) => {
+      const filtered = prev.filter((n) => !n.isDeleted);
+      notesRepository.saveNotes(filtered);
+      return filtered;
+    });
+  }, []);
+
+  // Restore a revision to the note's active content
+  const restoreRevision = useCallback((noteId: string, revisionContent: string) => {
+    updateNote(noteId, { content: revisionContent }, true);
+  }, [updateNote]);
 
   const importNotes = useCallback((newNotes: Note[]) => {
     if (newNotes.length === 0) return;
@@ -128,30 +185,28 @@ export function useNotes() {
     if (restoredNotes.length === 0) return;
     setNotes(restoredNotes);
     notesRepository.saveNotes(restoredNotes);
-    if (restoredNotes[0]) {
-      setActiveNoteId(restoredNotes[0].id);
-      notesRepository.saveActiveNoteId(restoredNotes[0].id);
+    const active = restoredNotes.find((n) => !n.isDeleted) || restoredNotes[0];
+    if (active) {
+      setActiveNoteId(active.id);
+      notesRepository.saveActiveNoteId(active.id);
     }
   }, []);
 
-  // Compute all unique tags across notes
+  // Compute all unique tags across active notes
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
-    notes.forEach((n) => {
+    activeNotes.forEach((n) => {
       if (Array.isArray(n.tags)) {
         n.tags.forEach((t) => tagSet.add(t));
       }
       extractTags(n.content).forEach((t) => tagSet.add(t));
     });
     return Array.from(tagSet).sort();
-  }, [notes]);
+  }, [activeNotes]);
 
-  // Filter and sort notes:
-  // 1. Match search query (title or content)
-  // 2. Match selected tag (if any)
-  // 3. Sort: pinned first, then by updatedAt descending
+  // Filter and sort active notes
   const filteredNotes = useMemo(() => {
-    return notes
+    return activeNotes
       .filter((n) => {
         // Tag filter
         if (selectedTag) {
@@ -175,12 +230,14 @@ export function useNotes() {
         if (!a.isPinned && b.isPinned) return 1;
         return (b.updatedAt || 0) - (a.updatedAt || 0);
       });
-  }, [notes, searchQuery, selectedTag]);
+  }, [activeNotes, searchQuery, selectedTag]);
 
   return {
     notes: filteredNotes,
-    allRawNotes: notes,
-    allNotesCount: notes.length,
+    allRawNotes: activeNotes,
+    trashedNotes,
+    trashCount: trashedNotes.length,
+    allNotesCount: activeNotes.length,
     activeNote,
     activeNoteId,
     isLoaded,
@@ -193,7 +250,11 @@ export function useNotes() {
     createNote,
     updateNote,
     togglePinNote,
-    deleteNote,
+    deleteNote: moveToTrash,
+    restoreFromTrash,
+    purgeNote,
+    emptyTrash,
+    restoreRevision,
     importNotes,
     restoreBackup,
   };

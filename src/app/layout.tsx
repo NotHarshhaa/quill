@@ -15,8 +15,15 @@ const instrumentSans = Instrument_Sans({
 export const metadata: Metadata = {
   title: "Quill — Offline Notes",
   description: "A fast, offline-first notes app with a split editor, hand-written markdown parser, and warm paper aesthetic.",
+  manifest: "/manifest.json",
   icons: {
     icon: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Quill",
   },
 };
 

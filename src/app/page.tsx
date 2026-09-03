@@ -15,6 +15,7 @@ import { Note } from "@/lib/storage/schema";
 import { PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Corners } from "@/components/frame";
+import { VersionHistoryDialog } from "@/components/history/version-history-dialog";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -23,6 +24,7 @@ export default function QuillPage() {
   const {
     notes,
     allRawNotes,
+    trashedNotes,
     activeNote,
     activeNoteId,
     isLoaded,
@@ -36,6 +38,10 @@ export default function QuillPage() {
     updateNote,
     togglePinNote,
     deleteNote,
+    restoreFromTrash,
+    purgeNote,
+    emptyTrash,
+    restoreRevision,
     importNotes,
     restoreBackup,
   } = useNotes();
@@ -45,6 +51,7 @@ export default function QuillPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Hidden file inputs for .md import and JSON restore
   const markdownInputRef = useRef<HTMLInputElement>(null);
@@ -87,12 +94,12 @@ export default function QuillPage() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, []);
 
-  // Debounced autosave to repository
+  // Debounced autosave to repository + periodic revision snapshots
   const { status: saveStatus } = useAutosave(
     localContent,
     (content) => {
       if (activeNote) {
-        updateNote(activeNote.id, { content });
+        updateNote(activeNote.id, { content }, true);
       }
     },
     350
@@ -216,6 +223,8 @@ export default function QuillPage() {
         isSidebarOpen={isSidebarOpen}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        onOpenHistory={() => setIsHistoryOpen(true)}
+        onPrintNote={() => window.print()}
       />
 
       {/* Main Workspace */}
@@ -253,6 +262,7 @@ export default function QuillPage() {
         >
           <NotesSidebar
             notes={notes}
+            trashedNotes={trashedNotes}
             activeNoteId={activeNoteId}
             onSelectNote={handleSelectNote}
             onCreateNote={() => {
@@ -262,6 +272,9 @@ export default function QuillPage() {
               }
             }}
             onDeleteNote={deleteNote}
+            onRestoreFromTrash={restoreFromTrash}
+            onPurgeNote={purgeNote}
+            onEmptyTrash={emptyTrash}
             onTogglePin={togglePinNote}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -280,7 +293,7 @@ export default function QuillPage() {
         <div className="flex-1 flex h-full min-w-0">
           {/* Editor Pane */}
           <div
-            className={`h-full flex-1 min-w-0 ${
+            className={`editor-pane h-full flex-1 min-w-0 ${
               viewMode === "editor" || viewMode === "split" ? "flex" : "hidden"
             }`}
           >
@@ -292,7 +305,7 @@ export default function QuillPage() {
 
           {/* Preview Pane with Interactive Checklists */}
           <div
-            className={`h-full flex-1 min-w-0 ${
+            className={`preview-pane h-full flex-1 min-w-0 ${
               viewMode === "preview" || viewMode === "split" ? "flex" : "hidden"
             }`}
           >
@@ -313,6 +326,8 @@ export default function QuillPage() {
         onSelectNote={selectNote}
         onCreateNote={createNote}
         onTogglePin={togglePinNote}
+        onOpenHistory={() => setIsHistoryOpen(true)}
+        onPrintNote={() => window.print()}
         onExportNote={() => {
           if (activeNote) {
             notesRepository.exportNote(activeNote);
@@ -322,6 +337,18 @@ export default function QuillPage() {
         onImportMarkdown={() => markdownInputRef.current?.click()}
         onBackupNotes={handleBackupNotes}
         onRestoreBackup={() => jsonInputRef.current?.click()}
+      />
+
+      {/* Version History Dialog */}
+      <VersionHistoryDialog
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        activeNote={activeNote}
+        onRestoreRevision={(noteId, content) => {
+          restoreRevision(noteId, content);
+          setLocalContent(content);
+          toast.success("Snapshot restored successfully");
+        }}
       />
     </div>
   );

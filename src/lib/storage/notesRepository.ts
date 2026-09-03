@@ -19,6 +19,9 @@ export const notesRepository = {
           updatedAt: typeof n?.updatedAt === "number" ? n.updatedAt : Date.now(),
           isPinned: Boolean(n?.isPinned),
           tags: Array.isArray(n?.tags) ? n.tags : [],
+          isDeleted: Boolean(n?.isDeleted),
+          deletedAt: typeof n?.deletedAt === "number" ? n.deletedAt : undefined,
+          revisions: Array.isArray(n?.revisions) ? n.revisions : [],
         }));
       }
       return INITIAL_NOTES;
@@ -115,6 +118,9 @@ export const notesRepository = {
           updatedAt: typeof n.updatedAt === "number" ? n.updatedAt : Date.now(),
           isPinned: Boolean(n.isPinned),
           tags: Array.isArray(n.tags) ? n.tags.filter((t: any) => typeof t === "string") : [],
+          isDeleted: Boolean(n.isDeleted),
+          deletedAt: typeof n.deletedAt === "number" ? n.deletedAt : undefined,
+          revisions: Array.isArray(n.revisions) ? n.revisions : [],
         }));
 
       if (validNotes.length === 0) {
@@ -150,6 +156,22 @@ export const notesRepository = {
       updatedAt: Date.now(),
       isPinned: false,
       tags,
+      isDeleted: false,
+      revisions: [],
     };
-  }
+  },
+
+  createRevision(content: string, wordCount: number, prevRevisions: Note["revisions"] = []): NonNullable<Note["revisions"]> {
+    const list = prevRevisions || [];
+    if (list.length > 0 && list[0].content === content) {
+      return list;
+    }
+    const newRev = {
+      id: `rev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      content,
+      savedAt: Date.now(),
+      wordCount,
+    };
+    return [newRev, ...list].slice(0, 15);
+  },
 };

@@ -1,5 +1,7 @@
 import React from "react";
-import { BlockNode, InlineNode } from "@/lib/markdown/types";
+import { BlockNode, InlineNode, TableAlignment } from "@/lib/markdown/types";
+import { Corners } from "@/components/frame";
+import { Info, Lightbulb, AlertTriangle, ShieldAlert, Flame } from "lucide-react";
 
 export function RenderInline({ node }: { node: InlineNode }): React.ReactNode {
   switch (node.type) {
@@ -119,6 +121,115 @@ export function RenderBlock({
           ))}
         </blockquote>
       );
+
+    case "callout": {
+      const config = {
+        note: {
+          icon: Info,
+          title: "Note",
+          border: "border-blue-500/50 dark:border-blue-400/50",
+          bg: "bg-blue-500/5 dark:bg-blue-950/20",
+          text: "text-blue-700 dark:text-blue-300",
+        },
+        tip: {
+          icon: Lightbulb,
+          title: "Tip",
+          border: "border-emerald-500/50 dark:border-emerald-400/50",
+          bg: "bg-emerald-500/5 dark:bg-emerald-950/20",
+          text: "text-emerald-700 dark:text-emerald-300",
+        },
+        warning: {
+          icon: AlertTriangle,
+          title: "Warning",
+          border: "border-amber-500/50 dark:border-amber-400/50",
+          bg: "bg-amber-500/5 dark:bg-amber-950/20",
+          text: "text-amber-700 dark:text-amber-300",
+        },
+        important: {
+          icon: ShieldAlert,
+          title: "Important",
+          border: "border-purple-500/50 dark:border-purple-400/50",
+          bg: "bg-purple-500/5 dark:bg-purple-950/20",
+          text: "text-purple-700 dark:text-purple-300",
+        },
+        caution: {
+          icon: Flame,
+          title: "Caution",
+          border: "border-rose-500/50 dark:border-rose-400/50",
+          bg: "bg-rose-500/5 dark:bg-rose-950/20",
+          text: "text-rose-700 dark:text-rose-300",
+        },
+      }[block.variant];
+
+      const IconComponent = config.icon;
+      return (
+        <div className={`relative my-4 border ${config.border} ${config.bg} p-3.5 sm:p-4 shadow-xs font-sans`}>
+          <Corners size="sm" offset="border" weight="thin" light />
+          <div className="flex items-center gap-1.5 font-mono text-xs font-semibold uppercase tracking-wider mb-2 select-none">
+            <IconComponent className={`size-4 ${config.text}`} />
+            <span className={config.text}>{block.title || config.title}</span>
+          </div>
+          <div className="text-[15px] leading-relaxed text-foreground/90 space-y-1">
+            {block.children.map((child, i) => (
+              <RenderBlock key={i} block={child} onToggleTask={onToggleTask} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    case "table": {
+      const getAlignClass = (align: TableAlignment) => {
+        if (align === "center") return "text-center";
+        if (align === "right") return "text-right";
+        return "text-left";
+      };
+
+      return (
+        <div className="relative my-6 overflow-x-auto border border-border/80 bg-card/60 shadow-xs">
+          <Corners size="sm" offset="border" weight="thin" light />
+          <table className="w-full text-left text-sm font-sans border-collapse">
+            <thead>
+              <tr className="border-b border-border bg-muted/60 font-mono text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                {block.headers.map((head, idx) => (
+                  <th
+                    key={idx}
+                    className={`px-3.5 py-2.5 font-medium border-r border-border/60 last:border-r-0 ${getAlignClass(
+                      head.align
+                    )}`}
+                  >
+                    {head.children.map((child, i) => (
+                      <RenderInline key={i} node={child} />
+                    ))}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, rowIdx) => (
+                <tr
+                  key={rowIdx}
+                  className="border-b border-border/40 last:border-b-0 hover:bg-muted/20 transition-colors"
+                >
+                  {row.map((cell, cellIdx) => (
+                    <td
+                      key={cellIdx}
+                      className={`px-3.5 py-2 border-r border-border/40 last:border-r-0 ${getAlignClass(
+                        cell.align
+                      )}`}
+                    >
+                      {cell.children.map((child, i) => (
+                        <RenderInline key={i} node={child} />
+                      ))}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
 
     case "code_block":
       return (

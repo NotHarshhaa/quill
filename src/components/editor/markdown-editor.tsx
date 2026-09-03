@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import { Bold, Italic, Code, List, ListTodo, Quote, Heading1, Heading2 } from "lucide-react";
+import { Bold, Italic, Code, List, ListTodo, Quote, Heading1, Heading2, Table } from "lucide-react";
 import { Corners } from "@/components/frame";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -145,6 +145,15 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
             title="Inline Code"
           >
             <Code className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => insertSnippet("\n| Column 1 | Column 2 |\n| :--- | :--- |\n| Row 1 | Data |\n| Row 2 | Data |\n", "", "")}
+            className="text-muted-foreground hover:text-foreground"
+            title="Table"
+          >
+            <Table className="size-3.5" />
           </Button>
         </div>
       </div>

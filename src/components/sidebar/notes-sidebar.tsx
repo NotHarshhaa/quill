@@ -14,6 +14,7 @@ import {
   Upload,
   Archive,
   Command,
+  RotateCcw,
 } from "lucide-react";
 import { Note } from "@/lib/storage/schema";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,10 @@ interface NotesSidebarProps {
   onRestoreBackup?: () => void;
   onOpenCommandPalette?: () => void;
   onToggleCollapse?: () => void;
+  trashedNotes?: Note[];
+  onRestoreFromTrash?: (id: string) => void;
+  onPurgeNote?: (id: string) => void;
+  onEmptyTrash?: () => void;
 }
 
 function getSnippet(content: string): string {
@@ -85,14 +90,27 @@ export function NotesSidebar({
   onRestoreBackup,
   onOpenCommandPalette,
   onToggleCollapse,
+  trashedNotes = [],
+  onRestoreFromTrash,
+  onPurgeNote,
+  onEmptyTrash,
 }: NotesSidebarProps) {
+  const [activeTab, setActiveTab] = useState<"notes" | "trash">("notes");
   const [deletingNote, setDeletingNote] = useState<Note | null>(null);
+  const [purgingNote, setPurgingNote] = useState<Note | null>(null);
   const [showSearch, setShowSearch] = useState(false);
 
   const confirmDelete = () => {
     if (deletingNote) {
       onDeleteNote(deletingNote.id);
       setDeletingNote(null);
+    }
+  };
+
+  const confirmPurge = () => {
+    if (purgingNote && onPurgeNote) {
+      onPurgeNote(purgingNote.id);
+      setPurgingNote(null);
     }
   };
 
@@ -171,7 +189,10 @@ export function NotesSidebar({
         <Button
           size="xs"
           variant="default"
-          onClick={onCreateNote}
+          onClick={() => {
+            setActiveTab("notes");
+            onCreateNote();
+          }}
           className="relative border border-primary/40 shadow-xs rounded-none"
         >
           <Corners size="sm" offset="border" weight="thin" light />
@@ -180,8 +201,52 @@ export function NotesSidebar({
         </Button>
       </div>
 
+      {/* View Tabs: Active Notes vs Trash */}
+      <div className="px-3 py-1.5 border-b border-border/30 flex items-center justify-between text-xs bg-muted/10 select-none">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setActiveTab("notes")}
+            className={cn(
+              "px-2 py-0.5 text-xs font-sans transition-colors border",
+              activeTab === "notes"
+                ? "bg-card text-foreground font-semibold border-border/80 shadow-xs"
+                : "bg-transparent text-muted-foreground hover:text-foreground border-transparent"
+            )}
+          >
+            All Notes ({notes.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("trash")}
+            className={cn(
+              "px-2 py-0.5 text-xs font-sans transition-colors border flex items-center gap-1",
+              activeTab === "trash"
+                ? "bg-card text-foreground font-semibold border-border/80 shadow-xs"
+                : "bg-transparent text-muted-foreground hover:text-foreground border-transparent"
+            )}
+          >
+            <Trash2 className="size-3" />
+            <span>Trash</span>
+            {trashedNotes.length > 0 && (
+              <span className="text-[10px] font-mono px-1 bg-destructive/15 text-destructive font-semibold">
+                {trashedNotes.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {activeTab === "trash" && trashedNotes.length > 0 && onEmptyTrash && (
+          <button
+            onClick={onEmptyTrash}
+            className="text-[11px] text-destructive hover:underline font-sans"
+            title="Permanently remove all trashed notes"
+          >
+            Empty All
+          </button>
+        )}
+      </div>
+
       {/* Search Input when toggled */}
-      {showSearch && (
+      {showSearch && activeTab === "notes" && (
         <div className="px-3 py-2 border-b border-border/40 animate-in fade-in-50 duration-150">
           <div className="relative">
             <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground/60" />
@@ -208,7 +273,7 @@ export function NotesSidebar({
       )}
 
       {/* Tag Filtering Bar */}
-      {allTags.length > 0 && onSelectTag && (
+      {allTags.length > 0 && onSelectTag && activeTab === "notes" && (
         <div className="px-3 py-2 border-b border-border/30 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
           <button
             onClick={() => onSelectTag(null)}
@@ -241,10 +306,58 @@ export function NotesSidebar({
         </div>
       )}
 
-      {/* Notes List wrapped in shadcn ScrollArea */}
+      {/* Notes / Trash List wrapped in ScrollArea */}
       <ScrollArea className="flex-1 px-3 py-2">
         <div className="space-y-1.5">
-          {notes.length === 0 ? (
+          {activeTab === "trash" ? (
+            trashedNotes.length === 0 ? (
+              <div className="py-12 text-center text-xs text-muted-foreground px-4 font-sans">
+                <Trash2 className="size-6 mx-auto mb-2 opacity-30" />
+                Trash is empty.
+              </div>
+            ) : (
+              trashedNotes.map((note) => {
+                const snippet = getSnippet(note.content);
+                return (
+                  <div
+                    key={note.id}
+                    className="p-2.5 bg-card/60 border border-border/70 shadow-xs space-y-1 relative"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold text-foreground truncate max-w-[140px]">
+                        {note.title || "Untitled"}
+                      </h4>
+                      <div className="flex items-center gap-1">
+                        {onRestoreFromTrash && (
+                          <Button
+                            variant="outline"
+                            size="icon-xs"
+                            onClick={() => onRestoreFromTrash(note.id)}
+                            title="Restore note"
+                            className="size-6 text-foreground hover:text-primary"
+                          >
+                            <RotateCcw className="size-3" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => setPurgingNote(note)}
+                          title="Permanently delete"
+                          className="size-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/75 truncate font-sans">
+                      {snippet}
+                    </p>
+                  </div>
+                );
+              })
+            )
+          ) : notes.length === 0 ? (
             <div className="py-12 text-center text-xs text-muted-foreground px-4 font-sans">
               <FileText className="size-6 mx-auto mb-2 opacity-30" />
               {selectedTag
@@ -351,23 +464,24 @@ export function NotesSidebar({
         </div>
       </ScrollArea>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Move to Trash Confirmation Dialog */}
       <Dialog
         open={Boolean(deletingNote)}
         onOpenChange={(open) => !open && setDeletingNote(null)}
       >
-        <DialogContent className="font-sans">
+        <DialogContent className="font-sans border border-border bg-background shadow-2xl rounded-none">
+          <Corners size="sm" offset="border" weight="thin" light />
           <DialogHeader>
-            <DialogTitle className="font-sans font-semibold">Delete Note</DialogTitle>
+            <DialogTitle className="font-sans font-semibold">Move to Trash?</DialogTitle>
             <DialogDescription className="font-sans">
-              Are you sure you want to delete &ldquo;{deletingNote?.title || "Untitled"}&rdquo;?
-              This action cannot be undone.
+              Move &ldquo;{deletingNote?.title || "Untitled"}&rdquo; to Trash? You can restore it anytime from the Trash tab.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0 font-sans">
             <Button
               variant="outline"
               size="sm"
+              className="rounded-none"
               onClick={() => setDeletingNote(null)}
             >
               Cancel
@@ -375,9 +489,44 @@ export function NotesSidebar({
             <Button
               variant="destructive"
               size="sm"
+              className="rounded-none"
               onClick={confirmDelete}
             >
-              Delete
+              Move to Trash
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Permanently Delete Confirmation Dialog */}
+      <Dialog
+        open={Boolean(purgingNote)}
+        onOpenChange={(open) => !open && setPurgingNote(null)}
+      >
+        <DialogContent className="font-sans border border-border bg-background shadow-2xl rounded-none">
+          <Corners size="sm" offset="border" weight="thin" light />
+          <DialogHeader>
+            <DialogTitle className="font-sans font-semibold text-destructive">Delete Permanently?</DialogTitle>
+            <DialogDescription className="font-sans">
+              Are you sure you want to permanently delete &ldquo;{purgingNote?.title || "Untitled"}&rdquo;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 font-sans">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-none"
+              onClick={() => setPurgingNote(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="rounded-none"
+              onClick={confirmPurge}
+            >
+              Delete Forever
             </Button>
           </DialogFooter>
         </DialogContent>

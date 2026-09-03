@@ -1,5 +1,33 @@
 import { parseInline } from "./inline";
-import { BlockNode, MarkdownDocument } from "./types";
+import { BlockNode, CalloutVariant, MarkdownDocument, TableAlignment } from "./types";
+
+function isTableDelimiter(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.includes("-")) return false;
+  const stripped = trimmed.replace(/^\|/, "").replace(/\|$/, "");
+  const parts = stripped.split("|");
+  if (parts.length < 1) return false;
+  return parts.every((part) => /^(\s*:?-{2,}:?\s*)$/.test(part));
+}
+
+function parseTableRow(line: string): string[] {
+  let trimmed = line.trim();
+  if (trimmed.startsWith("|")) trimmed = trimmed.slice(1);
+  if (trimmed.endsWith("|")) trimmed = trimmed.slice(0, -1);
+  return trimmed.split("|").map((cell) => cell.trim());
+}
+
+function parseTableAlignments(delimiterLine: string): TableAlignment[] {
+  const cells = parseTableRow(delimiterLine);
+  return cells.map((cell) => {
+    const left = cell.startsWith(":");
+    const right = cell.endsWith(":");
+    if (left && right) return "center";
+    if (right) return "right";
+    if (left) return "left";
+    return "default";
+  });
+}
 
 export function parseMarkdown(markdown: string): MarkdownDocument {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
@@ -58,21 +86,65 @@ export function parseMarkdown(markdown: string): MarkdownDocument {
       continue;
     }
 
-    // 5. Blockquote: > text
+    // 5. Blockquote & Callouts: > text or > [!NOTE]
     if (trimmed.startsWith(">")) {
       const quoteLines: string[] = [];
       while (index < lines.length && lines[index].trim().startsWith(">")) {
         quoteLines.push(lines[index].trim().replace(/^>\s?/, ""));
         index++;
       }
+
+      const calloutMatch = quoteLines[0]?.match(/^\[!(NOTE|TIP|WARNING|IMPORTANT|CAUTION)\](?:\s+(.*))?$/i);
+      if (calloutMatch) {
+        const variant = calloutMatch[1].toLowerCase() as CalloutVariant;
+        const title = calloutMatch[2]?.trim() || undefined;
+        blocks.push({
+          type: "callout",
+          variant,
+          title,
+          children: parseMarkdown(quoteLines.slice(1).join("\n")),
+        });
+      } else {
+        blocks.push({
+          type: "blockquote",
+          children: parseMarkdown(quoteLines.join("\n")),
+        });
+      }
+      continue;
+    }
+
+    // 6. Table: | Header 1 | Header 2 |
+    if (line.includes("|") && index + 1 < lines.length && isTableDelimiter(lines[index + 1])) {
+      const rawHeaders = parseTableRow(line);
+      const alignments = parseTableAlignments(lines[index + 1]);
+      index += 2; // skip header and delimiter lines
+
+      const rows: { children: ReturnType<typeof parseInline>; align: TableAlignment }[][] = [];
+      while (index < lines.length) {
+        const curLine = lines[index];
+        const curTrim = curLine.trim();
+        if (!curTrim || !curTrim.includes("|")) break;
+        const rawCells = parseTableRow(curLine);
+        const rowCells = rawHeaders.map((_, colIdx) => ({
+          children: parseInline(rawCells[colIdx] || ""),
+          align: alignments[colIdx] || "default",
+        }));
+        rows.push(rowCells);
+        index++;
+      }
+
       blocks.push({
-        type: "blockquote",
-        children: parseMarkdown(quoteLines.join("\n")),
+        type: "table",
+        headers: rawHeaders.map((h, colIdx) => ({
+          children: parseInline(h),
+          align: alignments[colIdx] || "default",
+        })),
+        rows,
       });
       continue;
     }
 
-    // 6. Lists: unordered or ordered
+    // 7. Lists: unordered or ordered
     const unorderedMatch = line.match(/^(\s*)([-*+])\s+(.*)$/);
     const orderedMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
 
@@ -139,7 +211,8 @@ export function parseMarkdown(markdown: string): MarkdownDocument {
         /^(\*{3,}|-{3,}|_{3,})$/.test(curTrimmed) ||
         cur.match(/^#{1,6}\s+/) ||
         curTrimmed.startsWith(">") ||
-        cur.match(/^(\s*)([-*+]|\d+\.)\s+/)
+        cur.match(/^(\s*)([-*+]|\d+\.)\s+/) ||
+        (cur.includes("|") && index + 1 < lines.length && isTableDelimiter(lines[index + 1]))
       ) {
         break;
       }

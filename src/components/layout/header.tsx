@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Download, Moon, Sun, Laptop, Command, Pin, PanelLeft, Edit3, Eye, Columns } from "lucide-react";
+import { Download, Moon, Sun, Laptop, Command, Pin, PanelLeft, Edit3, Eye, Columns, History, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -31,6 +31,8 @@ interface HeaderProps {
   isSidebarOpen?: boolean;
   viewMode?: ViewMode;
   onViewModeChange?: (mode: ViewMode) => void;
+  onOpenHistory?: () => void;
+  onPrintNote?: () => void;
 }
 
 export function Header({
@@ -43,6 +45,8 @@ export function Header({
   isSidebarOpen,
   viewMode,
   onViewModeChange,
+  onOpenHistory,
+  onPrintNote,
 }: HeaderProps) {
   const { theme, setTheme } = useTheme();
 
@@ -189,6 +193,46 @@ export function Header({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="font-sans">
                   <p>{activeNote.isPinned ? "Unpin note from top" : "Pin note to top"}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Version history */}
+            {onOpenHistory && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onOpenHistory}
+                    className="text-muted-foreground hover:text-foreground rounded-none"
+                    aria-label="Version History"
+                  >
+                    <History className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans">
+                  <p>Version history & snapshots</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Print / PDF Export */}
+            {onPrintNote && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onPrintNote}
+                    className="text-muted-foreground hover:text-foreground rounded-none"
+                    aria-label="Print or Save PDF"
+                  >
+                    <Printer className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans">
+                  <p>Print or Export as PDF</p>
                 </TooltipContent>
               </Tooltip>
             )}

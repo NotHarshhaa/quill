@@ -1,0 +1,17 @@
+{
+  "name": "Quill — Offline Notes",
+  "short_name": "Quill",
+  "description": "A fast, offline-first notes app with a split editor, hand-written markdown parser, and warm paper aesthetic.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

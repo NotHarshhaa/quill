@@ -187,3 +187,47 @@
 ::-webkit-scrollbar-thumb:hover {
   background: color-mix(in oklch, var(--foreground) 30%, transparent);
 }
+
+/* Print & PDF Export Stylesheet */
+@media print {
+  header,
+  aside,
+  .no-print,
+  button,
+  [data-slot="button"],
+  input[type="checkbox"] {
+    display: none !important;
+  }
+
+  body,
+  html,
+  #root,
+  main {
+    background: #ffffff !important;
+    color: #111111 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Show only preview pane */
+  .preview-pane,
+  [data-slot="preview-pane"] {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  /* Hide editor in print */
+  .editor-pane,
+  [data-slot="editor-pane"] {
+    display: none !important;
+  }
+
+  /* Page styling */
+  @page {
+    margin: 20mm;
+    size: auto;
+  }
+}
