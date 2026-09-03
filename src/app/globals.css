@@ -133,14 +133,20 @@
   html {
     font-family: var(--font-sans);
     @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    touch-action: pan-x pan-y;
   }
 
   body {
     background-color: var(--background);
     color: var(--foreground);
     min-height: 100vh;
+    min-height: 100dvh;
+    overscroll-behavior: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
     @apply bg-background text-foreground;
   }
 
