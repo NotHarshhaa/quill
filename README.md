@@ -4,10 +4,12 @@
 [![React 19](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
+[![Android APK](https://img.shields.io/badge/Android-APK%20Available-3DDC84?style=flat-square&logo=android&logoColor=white)](https://github.com/NotHarshhaa/quill/releases/latest)
+[![GitHub Release](https://img.shields.io/github/v/release/NotHarshhaa/quill?style=flat-square&label=Latest%20Release&color=amber)](https://github.com/NotHarshhaa/quill/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-amber.svg?style=flat-square)](./LICENSE)
 [![Offline First](https://img.shields.io/badge/Storage-100%25%20Offline%20First-success?style=flat-square)](#offline-first--privacy)
 
-> A fast, elegant, offline-first Markdown notebook featuring a split editor, live-rendered preview, interactive checklists, and a tactile warm paper aesthetic.
+> A fast, elegant, offline-first Markdown notebook featuring a split editor, live-rendered preview, interactive checklists, and a tactile warm paper aesthetic. Available as both a web application and a native Android APK.
 
 Built with a custom zero-dependency Markdown parser—no external markdown libraries, no remote servers, no account registration. Everything stays in your browser.
 
@@ -71,8 +73,8 @@ Built with a custom zero-dependency Markdown parser—no external markdown libra
 - 🖨️ **Print & PDF Export**  
   One-click print button formatted with an optimized `@media print` paper stylesheet—headers, toolbars, and editor panes are stripped cleanly for crisp PDF exports.
 
-- 📱 **Installable Offline PWA**  
-  Includes a web app manifest with standalone display configuration so you can install Quill to your desktop or mobile home screen.
+- 📱 **Native Android App (APK) & Offline PWA**  
+  Available as a standalone Android APK with sticky immersive fullscreen mode, edge-to-edge rendering, display cutout support, and background GitHub release update checks. Also installable as an offline Progressive Web App (PWA) on desktop and iOS.
 
 - 🎨 **Warm Paper & Blueprint Aesthetic**  
   Crafted parchment palette (`#f7f1e3`-inspired cream tones), subtle sepia borders, serif typographic details, and blueprint-style corner brackets (`Corners`, `Frame`). Full support for **Light**, **Dark**, and **System** themes.
@@ -82,7 +84,38 @@ Built with a custom zero-dependency Markdown parser—no external markdown libra
 
 ---
 
-## 🚀 Quick Start
+## 📱 Android App (APK)
+
+Quill is packaged as a high-performance native Android application with an immersive fullscreen writing canvas and zero runtime permissions.
+
+[![Download Android APK](https://img.shields.io/badge/Download-Android%20APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/NotHarshhaa/quill/releases/latest)
+
+### 🌟 Native App Highlights
+- **Immersive Fullscreen Experience**: True sticky immersive fullscreen—no browser URL bar, no system action bar, and no unwanted chrome.
+- **Edge-to-Edge & Notch Support**: Smooth layout behind camera cutouts (`LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES`) with native safe-area insets.
+- **In-App Update Notifier**: Automatically detects newer GitHub Releases (`NotHarshhaa/quill`) and provides a blueprint update notification to install new versions with one tap *(only active inside the native app)*.
+- **100% Offline Sandbox**: All notes, images (via IndexedDB), and audio synthesizers run entirely locally on your device with no remote servers or cloud accounts.
+- **Zero Invasive Permissions**: Operates completely without prompting for Camera, Microphone, Location, or Storage permissions.
+
+### 📥 Sideload Installation Guide
+1. Go to the [**Latest GitHub Releases**](https://github.com/NotHarshhaa/quill/releases/latest).
+2. Download the `quill-vX.X.X.apk` file directly to your phone.
+3. Tap the file in your notification panel or Downloads folder to install.
+4. *If prompted:* Allow your browser or file manager to *"Install unknown apps"*.
+5. *Google Play Protect Notice:* Since the APK is signed with an independent developer key, Google Play Protect may display a scan prompt. Tap **"More details"** → **"Install anyway"**.
+
+### 🛠️ Local Android Build
+```bash
+# Compile web assets and sync to Capacitor Android project
+npm run build:apk
+
+# Open the native project in Android Studio
+npm run cap:open
+```
+
+---
+
+## 🚀 Web Quick Start
 
 ### Prerequisites
 
