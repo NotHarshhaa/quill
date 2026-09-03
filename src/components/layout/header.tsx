@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Download, Moon, Sun, Laptop, Command, Pin, PanelLeft, Edit3, Eye, Columns, History, Printer, Maximize2, Target } from "lucide-react";
+import { Download, Moon, Sun, Laptop, Command, Pin, PanelLeft, Edit3, Eye, Columns, History, Printer, Maximize2, Target, MoreHorizontal, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -12,6 +12,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -184,8 +187,8 @@ export function Header({
 
         <Separator orientation="vertical" className="h-3.5 hidden sm:block" />
 
-        {/* Right Action Buttons with Blueprint Corners */}
-        <div className="relative flex items-center bg-card/80 p-0.5 border border-border/80 shadow-xs gap-0.5 shrink-0 select-none">
+        {/* Desktop Action Buttons with Blueprint Corners */}
+        <div className="relative hidden sm:flex items-center bg-card/80 p-0.5 border border-border/80 shadow-xs gap-0.5 shrink-0 select-none">
           <Corners size="sm" offset="border" weight="thin" light />
           <TooltipProvider>
             {/* Toggle Pin on Active Note */}
@@ -308,7 +311,7 @@ export function Header({
                     variant="ghost"
                     size="icon-xs"
                     onClick={onPrintNote}
-                    className="text-muted-foreground hover:text-foreground rounded-none"
+                    className="hidden sm:inline-flex text-muted-foreground hover:text-foreground rounded-none"
                     aria-label="Print or Save PDF"
                   >
                     <Printer className="size-3.5" />
@@ -327,7 +330,7 @@ export function Header({
                   variant="ghost"
                   size="icon-xs"
                   onClick={handleExport}
-                  className="text-muted-foreground hover:text-foreground rounded-none"
+                  className="hidden sm:inline-flex text-muted-foreground hover:text-foreground rounded-none"
                   aria-label="Export Markdown"
                 >
                   <Download className="size-3.5" />
@@ -371,6 +374,135 @@ export function Header({
               </DropdownMenuContent>
             </DropdownMenu>
           </TooltipProvider>
+        </div>
+
+        {/* Mobile Dropdown Menu with Matching Blueprint Corners */}
+        <div className="relative flex sm:hidden items-center bg-card/80 p-0.5 border border-border/80 shadow-xs shrink-0 select-none">
+          <Corners size="sm" offset="border" weight="thin" light />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="h-7 w-7 rounded-none text-muted-foreground hover:text-foreground relative"
+                aria-label="Menu"
+              >
+                <Menu className="size-3.5" />
+                {activeNote?.isPinned && (
+                  <span className="absolute top-1 right-1 size-1.5 rounded-full bg-amber-500 ring-1 ring-background" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-56 font-sans text-xs rounded-none border border-border/80 bg-card/95 shadow-md p-1"
+            >
+              {/* Note Title Header */}
+              {activeNote && (
+                <div className="px-2 py-1.5 font-mono text-[10px] text-muted-foreground uppercase tracking-wider border-b border-border/50 truncate mb-1">
+                  {activeNote.title || "Untitled Note"}
+                </div>
+              )}
+
+              {/* Pin Note */}
+              {activeNote && onTogglePin && (
+                <DropdownMenuItem
+                  onClick={() => onTogglePin(activeNote.id)}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Pin
+                    className={`size-3.5 ${
+                      activeNote.isPinned ? "text-amber-600 fill-current" : "text-muted-foreground"
+                    }`}
+                  />
+                  <span>{activeNote.isPinned ? "Unpin Note" : "Pin Note to Top"}</span>
+                </DropdownMenuItem>
+              )}
+
+              {/* Zen Focus Mode */}
+              {onToggleZen && (
+                <DropdownMenuItem onClick={onToggleZen} className="gap-2 cursor-pointer">
+                  <Maximize2 className="size-3.5 text-muted-foreground" />
+                  <span>Zen Focus Mode</span>
+                </DropdownMenuItem>
+              )}
+
+              {/* Writing Goal Submenu */}
+              {onSetWritingGoal && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
+                    <Target className={`size-3.5 ${writingGoal > 0 ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className="flex-1">Writing Goal</span>
+                    {writingGoal > 0 && (
+                      <span className="text-[10px] font-mono text-primary font-semibold">
+                        {writingGoal}w
+                      </span>
+                    )}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="font-sans text-xs rounded-none border border-border/80 bg-card/95">
+                    <DropdownMenuItem onClick={() => onSetWritingGoal(0)}>
+                      None (Free Write)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onSetWritingGoal(250)}>
+                      250 words (Quick Note)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onSetWritingGoal(500)}>
+                      500 words (Standard Reflection)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onSetWritingGoal(1000)}>
+                      1,000 words (Deep Essay)
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+
+              {/* Version History */}
+              {onOpenHistory && (
+                <DropdownMenuItem onClick={onOpenHistory} className="gap-2 cursor-pointer">
+                  <History className="size-3.5 text-muted-foreground" />
+                  <span>Version History</span>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuSeparator className="my-1 border-border/50" />
+
+              {/* Print / PDF Export */}
+              {onPrintNote && (
+                <DropdownMenuItem onClick={onPrintNote} className="gap-2 cursor-pointer">
+                  <Printer className="size-3.5 text-muted-foreground" />
+                  <span>Print or PDF</span>
+                </DropdownMenuItem>
+              )}
+
+              {/* Download note */}
+              <DropdownMenuItem onClick={handleExport} className="gap-2 cursor-pointer">
+                <Download className="size-3.5 text-muted-foreground" />
+                <span>Export Markdown (.md)</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="my-1 border-border/50" />
+
+              {/* Theme Submenu */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
+                  <Sun className="size-3.5 text-muted-foreground dark:hidden" />
+                  <Moon className="size-3.5 text-muted-foreground hidden dark:block" />
+                  <span>Theme</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="font-sans text-xs rounded-none border border-border/80 bg-card/95">
+                  <DropdownMenuItem onClick={() => setTheme("light")}>
+                    <Sun className="mr-2 size-3.5" /> Light
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("dark")}>
+                    <Moon className="mr-2 size-3.5" /> Dark
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme("system")}>
+                    <Laptop className="mr-2 size-3.5" /> System
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

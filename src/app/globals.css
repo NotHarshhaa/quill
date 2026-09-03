@@ -188,6 +188,35 @@
   background: color-mix(in oklch, var(--foreground) 30%, transparent);
 }
 
+/* Sleek horizontal toolbar side scrollbar */
+.horizontal-toolbar-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 35%, transparent) color-mix(in oklch, var(--foreground) 8%, transparent);
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.horizontal-toolbar-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+
+.horizontal-toolbar-scroll::-webkit-scrollbar-track {
+  background: color-mix(in oklch, var(--foreground) 8%, transparent);
+  border-radius: 9999px;
+  margin: 0 4px;
+}
+
+.horizontal-toolbar-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--foreground) 35%, transparent);
+  border-radius: 9999px;
+}
+
+.horizontal-toolbar-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--foreground) 55%, transparent);
+}
+
 /* Print & PDF Export Stylesheet */
 @media print {
   header,
