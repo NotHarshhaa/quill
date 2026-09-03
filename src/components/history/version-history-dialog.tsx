@@ -6,7 +6,7 @@ import { Corners } from "@/components/frame";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { History, RotateCcw, Clock, FileText } from "lucide-react";
+import { History, RotateCcw, Clock, FileText, X } from "lucide-react";
 import { useMarkdownPreview } from "@/hooks/useMarkdownPreview";
 import { RenderBlock } from "@/components/preview/preview-elements";
 
@@ -46,31 +46,46 @@ export function VersionHistoryDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl h-[75vh] flex flex-col p-0 gap-0 border border-border bg-background shadow-2xl rounded-none font-sans overflow-hidden">
+      <DialogContent
+        showCloseButton={false}
+        className="w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-3xl h-[80vh] flex flex-col p-0 gap-0 border border-border bg-background shadow-2xl rounded-none font-sans overflow-hidden"
+      >
         <Corners size="sm" offset="border" weight="thin" light />
 
         {/* Dialog Header */}
-        <div className="h-12 px-4 sm:px-6 border-b border-border flex items-center justify-between bg-muted/40 select-none shrink-0">
-          <div className="flex items-center gap-2">
-            <History className="size-4 text-muted-foreground" />
-            <DialogTitle className="text-sm font-semibold text-foreground font-sans">
+        <div className="h-12 px-3 sm:px-5 border-b border-border flex items-center justify-between bg-muted/40 select-none shrink-0 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <History className="size-4 text-muted-foreground shrink-0" />
+            <DialogTitle className="text-sm font-semibold text-foreground font-sans truncate">
               Version History
             </DialogTitle>
-            <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 border border-border rounded-none">
+            <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 border border-border rounded-none shrink-0">
               {revisions.length} {revisions.length === 1 ? "SNAPSHOT" : "SNAPSHOTS"}
             </Badge>
           </div>
-          {selectedRevision && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {selectedRevision && (
+              <Button
+                size="xs"
+                variant="default"
+                onClick={handleRestore}
+                className="gap-1.5 font-sans rounded-none h-7 px-2.5 sm:px-3 text-xs"
+              >
+                <RotateCcw className="size-3" />
+                <span className="hidden xs:inline">Restore Snapshot</span>
+                <span className="xs:hidden">Restore</span>
+              </Button>
+            )}
             <Button
-              size="xs"
-              variant="default"
-              onClick={handleRestore}
-              className="gap-1.5 font-sans rounded-none h-7 px-3 text-xs"
+              size="icon-xs"
+              variant="ghost"
+              onClick={onClose}
+              className="h-7 w-7 rounded-none text-muted-foreground hover:text-foreground"
+              aria-label="Close dialog"
             >
-              <RotateCcw className="size-3" />
-              <span>Restore This Version</span>
+              <X className="size-4" />
             </Button>
-          )}
+          </div>
         </div>
 
         {/* Main Content Area */}

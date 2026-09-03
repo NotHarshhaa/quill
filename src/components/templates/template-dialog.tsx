@@ -6,7 +6,7 @@ import { Corners } from "@/components/frame";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Sun, Compass, Calendar, FileText, Check, Sparkles } from "lucide-react";
+import { Users, Sun, Compass, Calendar, FileText, Check, Sparkles, X } from "lucide-react";
 
 interface TemplateDialogProps {
   isOpen: boolean;
@@ -41,29 +41,43 @@ export function TemplateDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl h-[70vh] flex flex-col p-0 gap-0 border border-border bg-background shadow-2xl rounded-none font-sans overflow-hidden">
+      <DialogContent
+        showCloseButton={false}
+        className="w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-3xl h-[75vh] flex flex-col p-0 gap-0 border border-border bg-background shadow-2xl rounded-none font-sans overflow-hidden"
+      >
         <Corners size="sm" offset="border" weight="thin" light />
 
         {/* Dialog Header */}
-        <div className="h-12 px-4 sm:px-6 border-b border-border flex items-center justify-between bg-muted/40 select-none shrink-0">
-          <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-primary" />
-            <DialogTitle className="text-sm font-semibold text-foreground font-sans">
+        <div className="h-12 px-3 sm:px-5 border-b border-border flex items-center justify-between bg-muted/40 select-none shrink-0 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Sparkles className="size-4 text-primary shrink-0" />
+            <DialogTitle className="text-sm font-semibold text-foreground font-sans truncate">
               Choose Note Template
             </DialogTitle>
-            <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 border border-border rounded-none">
+            <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 border border-border rounded-none shrink-0">
               {NOTE_TEMPLATES.length} TEMPLATES
             </Badge>
           </div>
-          <Button
-            size="xs"
-            variant="default"
-            onClick={handleApply}
-            className="gap-1.5 font-sans rounded-none h-7 px-3 text-xs"
-          >
-            <Check className="size-3" />
-            <span>Use Template</span>
-          </Button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              size="xs"
+              variant="default"
+              onClick={handleApply}
+              className="gap-1.5 font-sans rounded-none h-7 px-3 text-xs"
+            >
+              <Check className="size-3" />
+              <span>Use Template</span>
+            </Button>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              onClick={onClose}
+              className="h-7 w-7 rounded-none text-muted-foreground hover:text-foreground"
+              aria-label="Close dialog"
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Template List & Preview Split */}

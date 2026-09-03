@@ -22,6 +22,7 @@ import {
   Network,
   ListTree,
   BarChart3,
+  X,
 } from "lucide-react";
 import { Corners } from "@/components/frame";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -393,15 +394,16 @@ export function CommandPalette({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="p-0 max-w-xl overflow-hidden border-border/80 bg-background/95 backdrop-blur-md shadow-2xl rounded-none font-sans"
+        showCloseButton={false}
+        className="p-0 w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-xl md:max-w-2xl overflow-hidden border border-border/80 bg-background/95 backdrop-blur-md shadow-2xl rounded-none font-sans gap-0 max-h-[85vh] flex flex-col"
         aria-describedby={undefined}
       >
         <DialogTitle className="sr-only">Command Palette</DialogTitle>
-        <div className="relative">
+        <div className="relative flex flex-col h-full w-full overflow-hidden">
           <Corners size="sm" offset="border" weight="thin" light />
 
-          {/* Search Header Bar */}
-          <div className="flex items-center px-4 py-3 border-b border-border/60 gap-3">
+          {/* Search Header Bar with integrated Close and ESC */}
+          <div className="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border/60 gap-2 sm:gap-3 shrink-0 bg-background/50">
             <Search className="size-4 text-muted-foreground/70 shrink-0" />
             <input
               ref={inputRef}
@@ -410,17 +412,31 @@ export function CommandPalette({
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type to search notes or run actions..."
-              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none font-sans"
+              className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none font-sans"
             />
-            <Badge variant="outline" className="font-mono text-[10px] tracking-wider px-1.5 py-0.5">
-              ESC
-            </Badge>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Badge
+                variant="outline"
+                className="hidden sm:inline-flex font-mono text-[9.5px] tracking-wider px-1.5 py-0.5 text-muted-foreground"
+              >
+                ESC
+              </Badge>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                aria-label="Close command palette"
+                title="Close (Esc)"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
           </div>
 
           {/* Results List */}
           <div
             ref={listRef}
-            className="max-h-84 overflow-y-auto p-2 divide-y divide-border/20 font-sans"
+            className="flex-1 min-h-0 max-h-[55vh] overflow-y-auto p-1.5 sm:p-2 divide-y divide-border/20 font-sans"
           >
             {filteredItems.length === 0 ? (
               <div className="py-10 text-center text-xs text-muted-foreground font-sans">
@@ -441,17 +457,17 @@ export function CommandPalette({
                       onClick={() => executeItem(item)}
                       onMouseEnter={() => setSelectedIndex(idx)}
                       className={cn(
-                        "flex items-center justify-between px-3 py-2.5 cursor-pointer text-xs transition-colors rounded-none",
+                        "flex items-center justify-between px-2.5 sm:px-3 py-2 sm:py-2.5 cursor-pointer text-xs transition-colors rounded-none gap-2",
                         isSelected
                           ? "bg-muted/80 text-foreground"
                           : "text-foreground/80 hover:bg-muted/40"
                       )}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                         <FileText className="size-3.5 text-muted-foreground/60 shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium text-foreground truncate text-[13px]">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-medium text-foreground truncate text-[12.5px] sm:text-[13px]">
                               {note.title || "Untitled"}
                             </span>
                             {note.isPinned && (
@@ -460,15 +476,15 @@ export function CommandPalette({
                             {isActive && (
                               <Badge
                                 variant="outline"
-                                className="text-[9px] px-1 py-0 font-mono text-muted-foreground border-border/60 shrink-0"
+                                className="text-[8.5px] sm:text-[9px] px-1 py-0 font-mono text-muted-foreground border-border/60 shrink-0"
                               >
                                 CURRENT
                               </Badge>
                             )}
                           </div>
                           {note.content && (
-                            <p className="text-[11px] text-muted-foreground truncate max-w-sm mt-0.5">
-                              {note.content.replace(/^[#\s\-*\[\]xX]+/gm, "").slice(0, 60)}
+                            <p className="text-[10.5px] sm:text-[11px] text-muted-foreground truncate mt-0.5 max-w-[220px] sm:max-w-md">
+                              {note.content.replace(/^[#\s\-*\[\]xX]+/gm, "").slice(0, 70)}
                             </p>
                           )}
                         </div>
@@ -476,11 +492,11 @@ export function CommandPalette({
 
                       {/* Note tags */}
                       {note.tags && note.tags.length > 0 && (
-                        <div className="hidden sm:flex items-center gap-1 shrink-0 ml-2">
+                        <div className="hidden sm:flex items-center gap-1 shrink-0">
                           {note.tags.slice(0, 2).map((t) => (
                             <span
                               key={t}
-                              className="text-[10px] font-mono text-muted-foreground bg-muted/60 px-1.5 py-0.5 border border-border/50"
+                              className="text-[9.5px] font-mono text-muted-foreground bg-muted/60 px-1.5 py-0.5 border border-border/50 max-w-20 truncate"
                             >
                               #{t}
                             </span>
@@ -500,22 +516,22 @@ export function CommandPalette({
                     onClick={() => executeItem(item)}
                     onMouseEnter={() => setSelectedIndex(idx)}
                     className={cn(
-                      "flex items-center justify-between px-3 py-2.5 cursor-pointer text-xs transition-colors rounded-none",
+                      "flex items-center justify-between px-2.5 sm:px-3 py-2 sm:py-2.5 cursor-pointer text-xs transition-colors rounded-none gap-2",
                       isSelected
                         ? "bg-muted/80 text-foreground"
                         : "text-foreground/80 hover:bg-muted/40"
                     )}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                       <div className="size-6 flex items-center justify-center rounded-xs bg-muted/70 border border-border/60 shrink-0">
                         <ActionIcon className="size-3 text-foreground" />
                       </div>
-                      <div className="min-w-0">
-                        <div className="font-medium text-[13px] text-foreground">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-[12.5px] sm:text-[13px] text-foreground truncate">
                           {item.title}
                         </div>
                         {item.subtitle && (
-                          <div className="text-[11px] text-muted-foreground truncate">
+                          <div className="text-[10.5px] sm:text-[11px] text-muted-foreground truncate">
                             {item.subtitle}
                           </div>
                         )}
@@ -525,7 +541,7 @@ export function CommandPalette({
                     {item.shortcut && (
                       <Badge
                         variant="outline"
-                        className="font-mono text-[9.5px] px-1.5 py-0.5 text-muted-foreground border-border/60 shrink-0"
+                        className="font-mono text-[9px] sm:text-[9.5px] px-1.5 py-0.5 text-muted-foreground border-border/60 shrink-0"
                       >
                         {item.shortcut}
                       </Badge>
@@ -537,8 +553,8 @@ export function CommandPalette({
           </div>
 
           {/* Footer Shortcuts Guide */}
-          <div className="px-4 py-2 bg-muted/30 border-t border-border/50 flex items-center justify-between text-[10.5px] text-muted-foreground font-mono">
-            <div className="flex items-center gap-3">
+          <div className="px-3 sm:px-4 py-2 bg-muted/30 border-t border-border/50 flex items-center justify-between text-[10px] sm:text-[10.5px] text-muted-foreground font-mono gap-2 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               <span>
                 <kbd className="font-semibold text-foreground">↑↓</kbd> navigate
               </span>
@@ -549,7 +565,9 @@ export function CommandPalette({
                 <kbd className="font-semibold text-foreground">esc</kbd> close
               </span>
             </div>
-            <span className="text-[10px] tracking-wider uppercase">Quill Command</span>
+            <span className="text-[9.5px] sm:text-[10px] tracking-wider uppercase shrink-0 hidden xs:inline">
+              Quill Command
+            </span>
           </div>
         </div>
       </DialogContent>
