@@ -3,16 +3,23 @@
 import React from "react";
 import { useMarkdownPreview } from "@/hooks/useMarkdownPreview";
 import { RenderBlock } from "./preview-elements";
-import { FileText } from "lucide-react";
+import { FileText, Link2 } from "lucide-react";
 import { Corners } from "@/components/frame";
 import { Badge } from "@/components/ui/badge";
 
 interface MarkdownPreviewProps {
   content: string;
   onToggleTask?: (taskIndex: number) => void;
+  onNavigateWikiLink?: (target: string) => void;
+  backlinks?: { id: string; title: string }[];
 }
 
-export function MarkdownPreview({ content, onToggleTask }: MarkdownPreviewProps) {
+export function MarkdownPreview({
+  content,
+  onToggleTask,
+  onNavigateWikiLink,
+  backlinks = [],
+}: MarkdownPreviewProps) {
   const ast = useMarkdownPreview(content);
 
   return (
@@ -34,10 +41,41 @@ export function MarkdownPreview({ content, onToggleTask }: MarkdownPreviewProps)
             <p className="font-sans italic text-sm">Empty page. Type markdown on the left to see live preview.</p>
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto font-sans">
+          <div className="max-w-2xl mx-auto font-sans pb-12">
             {ast.map((block, idx) => (
-              <RenderBlock key={idx} block={block} onToggleTask={onToggleTask} />
+              <RenderBlock
+                key={idx}
+                block={block}
+                onToggleTask={onToggleTask}
+                onNavigateWikiLink={onNavigateWikiLink}
+              />
             ))}
+
+            {/* Linked Mentions / Backlinks Section */}
+            {backlinks.length > 0 && (
+              <div className="mt-14 pt-6 border-t border-border/60 relative font-sans">
+                <div className="flex items-center gap-1.5 mb-3 text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground select-none">
+                  <Link2 className="size-3.5 text-primary" />
+                  <span>Linked Mentions ({backlinks.length})</span>
+                </div>
+                <p className="text-xs text-muted-foreground/80 mb-3 font-sans">
+                  The following notes reference this document via <code className="text-foreground text-[11px]">[[{`...`}]]</code>:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {backlinks.map((link) => (
+                    <button
+                      key={link.id}
+                      onClick={() => onNavigateWikiLink?.(link.title)}
+                      className="relative text-xs px-2.5 py-1.5 bg-card/80 border border-border/80 hover:border-primary/60 text-foreground transition-all shadow-xs flex items-center gap-1.5 cursor-pointer rounded-none"
+                    >
+                      <Corners size="sm" offset="border" weight="thin" light />
+                      <FileText className="size-3 text-muted-foreground" />
+                      <span className="font-medium">{link.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

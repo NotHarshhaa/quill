@@ -16,6 +16,9 @@ import {
   Laptop,
   History,
   Printer,
+  Maximize2,
+  Sparkles,
+  Copy,
 } from "lucide-react";
 import { Corners } from "@/components/frame";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -37,6 +40,9 @@ interface CommandPaletteProps {
   onRestoreBackup: () => void;
   onOpenHistory?: () => void;
   onPrintNote?: () => void;
+  onOpenTemplates?: () => void;
+  onToggleZen?: () => void;
+  onDuplicateActiveNote?: () => void;
 }
 
 type ActionItem = {
@@ -71,6 +77,9 @@ export function CommandPalette({
   onRestoreBackup,
   onOpenHistory,
   onPrintNote,
+  onOpenTemplates,
+  onToggleZen,
+  onDuplicateActiveNote,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -171,6 +180,49 @@ export function CommandPalette({
         icon: Printer,
         handler: () => {
           onPrintNote();
+          onClose();
+        },
+      });
+    }
+
+    if (onToggleZen) {
+      list.push({
+        id: "action-zen",
+        type: "action",
+        title: "Toggle Zen Focus Mode",
+        subtitle: "Fullscreen distraction-free writing desk",
+        icon: Maximize2,
+        shortcut: "Ctrl+Shift+F",
+        handler: () => {
+          onToggleZen();
+          onClose();
+        },
+      });
+    }
+
+    if (onOpenTemplates) {
+      list.push({
+        id: "action-templates",
+        type: "action",
+        title: "New Note from Template...",
+        subtitle: "Start from Meeting, Daily Journal, Spec, or Review",
+        icon: Sparkles,
+        handler: () => {
+          onOpenTemplates();
+          onClose();
+        },
+      });
+    }
+
+    if (activeNote && onDuplicateActiveNote) {
+      list.push({
+        id: "action-duplicate",
+        type: "action",
+        title: "Duplicate Active Note",
+        subtitle: `Create a copy of "${activeNote.title || "Untitled"}"`,
+        icon: Copy,
+        handler: () => {
+          onDuplicateActiveNote();
           onClose();
         },
       });

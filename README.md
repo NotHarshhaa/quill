@@ -35,6 +35,27 @@ Built with a custom zero-dependency Markdown parser—no external markdown libra
   - **Bulk Import**: Drag or select multiple `.md`, `.markdown`, or `.txt` files with automatic title derivation and tag extraction.
   - **Full Backup & Restore**: Export complete JSON snapshots and restore them with schema validation at any time.
 
+- 🧘 **Zen / Distraction-Free Focus Mode (`Ctrl+Shift+F` / `⌘Shift+F`)**  
+  Immersive writing canvas that eliminates headers, sidebars, and toolbars for distraction-free writing, complete with a floating status pill and `<Esc>` quick exit.
+
+- 📜 **Typewriter Scrolling Mode**  
+  Keep your cursor vertically centered on the screen while typing so your gaze never drops to the bottom of the display.
+
+- 🎯 **Session Writing Goals & Reading Time**  
+  Set target session word counts (250, 500, 1000 words) with real-time percentage progress and estimated reading time (`~X min read`).
+
+- 🔗 **Bi-Directional Wiki-Links (`[[Note Title]]` or `[[Title|Label]]`)**  
+  Link your notes into a personal knowledge web. Click any wiki-link in the preview to jump directly to that note (or auto-create it if it doesn't exist yet).
+
+- 🌐 **Backlinks & Linked Mentions**  
+  Every note automatically indexes and displays incoming references at the bottom of the preview pane with one-click navigation chips.
+
+- 📋 **Curated Starter Templates**  
+  Spin up structured notes in seconds with built-in templates for **Meeting Notes**, **Daily Journal**, **Project Blueprints**, and **Weekly Reviews**.
+
+- 📑 **1-Click Note Duplication**  
+  Clone any note, its tags, and markdown content instantly from the sidebar or Command Palette.
+
 - 📊 **Markdown Tables with Alignment (`| col1 | col2 |`)**  
   Render ledger-style data tables with left, center, or right column alignments (`:---`, `:---:`, `---:`) and blueprint corner accents.
 

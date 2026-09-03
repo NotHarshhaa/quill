@@ -3,7 +3,13 @@ import { BlockNode, InlineNode, TableAlignment } from "@/lib/markdown/types";
 import { Corners } from "@/components/frame";
 import { Info, Lightbulb, AlertTriangle, ShieldAlert, Flame } from "lucide-react";
 
-export function RenderInline({ node }: { node: InlineNode }): React.ReactNode {
+export function RenderInline({
+  node,
+  onNavigateWikiLink,
+}: {
+  node: InlineNode;
+  onNavigateWikiLink?: (target: string) => void;
+}): React.ReactNode {
   switch (node.type) {
     case "text":
       return node.value;
@@ -11,7 +17,7 @@ export function RenderInline({ node }: { node: InlineNode }): React.ReactNode {
       return (
         <strong className="font-semibold text-foreground">
           {node.children.map((child, i) => (
-            <RenderInline key={i} node={child} />
+            <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
           ))}
         </strong>
       );
@@ -19,7 +25,7 @@ export function RenderInline({ node }: { node: InlineNode }): React.ReactNode {
       return (
         <em className="italic">
           {node.children.map((child, i) => (
-            <RenderInline key={i} node={child} />
+            <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
           ))}
         </em>
       );
@@ -27,7 +33,7 @@ export function RenderInline({ node }: { node: InlineNode }): React.ReactNode {
       return (
         <del className="line-through text-muted-foreground">
           {node.children.map((child, i) => (
-            <RenderInline key={i} node={child} />
+            <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
           ))}
         </del>
       );
@@ -46,9 +52,19 @@ export function RenderInline({ node }: { node: InlineNode }): React.ReactNode {
           className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground transition-colors"
         >
           {node.children.map((child, i) => (
-            <RenderInline key={i} node={child} />
+            <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
           ))}
         </a>
+      );
+    case "wikilink":
+      return (
+        <span
+          onClick={() => onNavigateWikiLink?.(node.target)}
+          className="inline-flex items-baseline px-1.5 py-0.2 mx-0.5 border-b border-dashed border-primary text-primary font-medium hover:border-solid hover:bg-primary/10 transition-colors cursor-pointer select-none"
+          title={`Jump to note "${node.target}"`}
+        >
+          [[{node.label}]]
+        </span>
       );
   }
 }
@@ -56,16 +72,18 @@ export function RenderInline({ node }: { node: InlineNode }): React.ReactNode {
 export function RenderBlock({
   block,
   onToggleTask,
+  onNavigateWikiLink,
 }: {
   block: BlockNode;
   onToggleTask?: (taskIndex: number) => void;
+  onNavigateWikiLink?: (target: string) => void;
 }): React.ReactNode {
   switch (block.type) {
     case "heading": {
       const headingText = (
         <>
           {block.children.map((child, i) => (
-            <RenderInline key={i} node={child} />
+            <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
           ))}
         </>
       );
@@ -108,7 +126,7 @@ export function RenderBlock({
       return (
         <p className="font-sans text-[15px] leading-relaxed text-foreground/90 my-3 sm:text-[16px]">
           {block.children.map((child, i) => (
-            <RenderInline key={i} node={child} />
+            <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
           ))}
         </p>
       );
@@ -117,7 +135,7 @@ export function RenderBlock({
       return (
         <blockquote className="border-l-2 border-primary/40 pl-4 my-4 italic text-foreground/80 font-sans">
           {block.children.map((child, i) => (
-            <RenderBlock key={i} block={child} onToggleTask={onToggleTask} />
+            <RenderBlock key={i} block={child} onToggleTask={onToggleTask} onNavigateWikiLink={onNavigateWikiLink} />
           ))}
         </blockquote>
       );
@@ -171,7 +189,7 @@ export function RenderBlock({
           </div>
           <div className="text-[15px] leading-relaxed text-foreground/90 space-y-1">
             {block.children.map((child, i) => (
-              <RenderBlock key={i} block={child} onToggleTask={onToggleTask} />
+              <RenderBlock key={i} block={child} onToggleTask={onToggleTask} onNavigateWikiLink={onNavigateWikiLink} />
             ))}
           </div>
         </div>
@@ -199,7 +217,7 @@ export function RenderBlock({
                     )}`}
                   >
                     {head.children.map((child, i) => (
-                      <RenderInline key={i} node={child} />
+                      <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
                     ))}
                   </th>
                 ))}
@@ -219,7 +237,7 @@ export function RenderBlock({
                       )}`}
                     >
                       {cell.children.map((child, i) => (
-                        <RenderInline key={i} node={child} />
+                        <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
                       ))}
                     </td>
                   ))}
@@ -288,7 +306,7 @@ export function RenderBlock({
                 }
               >
                 {item.children.map((child, i) => (
-                  <RenderInline key={i} node={child} />
+                  <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
                 ))}
               </span>
             </li>

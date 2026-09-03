@@ -192,6 +192,69 @@ export function useNotes() {
     }
   }, []);
 
+  // Duplicate an existing note
+  const duplicateNote = useCallback((id: string) => {
+    const original = notes.find((n) => n.id === id);
+    if (!original) return;
+    const duplicated: Note = {
+      id: `note-${Date.now()}`,
+      title: `${original.title || "Untitled"} (Copy)`,
+      content: original.content,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isPinned: false,
+      tags: original.tags ? [...original.tags] : [],
+      isDeleted: false,
+      revisions: [],
+    };
+    setNotes((prev) => {
+      const updated = [duplicated, ...prev];
+      notesRepository.saveNotes(updated);
+      return updated;
+    });
+    setActiveNoteId(duplicated.id);
+    notesRepository.saveActiveNoteId(duplicated.id);
+    return duplicated;
+  }, [notes]);
+
+  // Create a note from template
+  const createNoteFromTemplate = useCallback((template: { title?: string; defaultTitle?: string; content: string; tags?: string[] }) => {
+    return createNote({
+      title: template.defaultTitle || template.title || "Untitled",
+      content: template.content,
+      tags: template.tags || [],
+    });
+  }, [createNote]);
+
+  // Navigate to or auto-create a note referenced via [[Wiki Link]]
+  const navigateOrCreateWikiLink = useCallback((targetTitle: string) => {
+    const trimmed = targetTitle.trim();
+    if (!trimmed) return;
+    const existing = activeNotes.find(
+      (n) => (n.title || "").toLowerCase() === trimmed.toLowerCase() || n.id === trimmed
+    );
+    if (existing) {
+      handleSelectNote(existing.id);
+      return existing;
+    }
+    return createNote({
+      title: trimmed,
+      content: `# ${trimmed}\n\n`,
+    });
+  }, [activeNotes, handleSelectNote, createNote]);
+
+  // Compute backlinks for the active note (notes that link to this one via [[Title]])
+  const backlinks = useMemo(() => {
+    if (!activeNote || !activeNote.title) return [];
+    const safeTitle = activeNote.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const titleRegex = new RegExp(`\\[\\[${safeTitle}(?:\\|[^\\]]+)?\\]\\]`, "i");
+    const idRegex = new RegExp(`\\[\\[${activeNote.id}(?:\\|[^\\]]+)?\\]\\]`, "i");
+
+    return activeNotes
+      .filter((n) => n.id !== activeNote.id && (titleRegex.test(n.content) || idRegex.test(n.content)))
+      .map((n) => ({ id: n.id, title: n.title || "Untitled" }));
+  }, [activeNote, activeNotes]);
+
   // Compute all unique tags across active notes
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -240,6 +303,7 @@ export function useNotes() {
     allNotesCount: activeNotes.length,
     activeNote,
     activeNoteId,
+    backlinks,
     isLoaded,
     searchQuery,
     setSearchQuery,
@@ -248,6 +312,9 @@ export function useNotes() {
     allTags,
     selectNote: handleSelectNote,
     createNote,
+    createNoteFromTemplate,
+    duplicateNote,
+    navigateOrCreateWikiLink,
     updateNote,
     togglePinNote,
     deleteNote: moveToTrash,

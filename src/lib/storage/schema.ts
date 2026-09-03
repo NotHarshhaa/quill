@@ -36,16 +36,20 @@ Everything you type is rendered *live* into warm paper typography with zero remo
 - [x] Create your first thought
 - [ ] Try toggling this checklist in the preview
 - [ ] Press **Ctrl+K** (or **⌘K**) for the Command Palette
-- [ ] Pin your favorite notes to the top
+- [ ] Jump across notes with Wiki-links: [[Market Checklist]] or [[Ideas & Projects]]
+- [ ] Enter Zen Mode with **Ctrl+Shift+F** for distraction-free writing
 
 ## Feature Ledger
 | Feature | Capabilities | Status |
 | :--- | :--- | :---: |
-| Tables | Ledger-style columns with alignment | Active |
-| Callouts | [!NOTE], [!TIP], [!WARNING], [!CAUTION] | Active |
-| Trash Can | Soft delete with 1-click restore | Active |
-| Version History | Timestamped snapshot timeline | Active |
-| Print & PDF | Clean printer stylesheet | Active |
+| Wiki-Links | \`[[Note Title]]\` bi-directional linking | Active |
+| Linked Mentions | Dynamic backlinks at bottom of preview | Active |
+| Zen Focus Desk | Fullscreen canvas with floating stats | Active |
+| Typewriter Scroll | Active line auto-centering | Active |
+| Session Goals | Configurable word count target tracker | Active |
+| Tables & Callouts | Ledger-style pipes and GitHub alerts | Active |
+| Version History | 15 periodic snapshots with 1-click restore | Active |
+| Trash Can | Soft delete with permanent purge option | Active |
 
 Tag your thoughts naturally with #guide or #productivity anywhere in the text.`,
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 3,

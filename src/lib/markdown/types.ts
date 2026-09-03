@@ -4,7 +4,8 @@ export type InlineNode =
   | { type: "italic"; children: InlineNode[] }
   | { type: "strike"; children: InlineNode[] }
   | { type: "code"; value: string }
-  | { type: "link"; href: string; children: InlineNode[] };
+  | { type: "link"; href: string; children: InlineNode[] }
+  | { type: "wikilink"; target: string; label: string };
 
 export type TableAlignment = "left" | "center" | "right" | "default";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Download, Moon, Sun, Laptop, Command, Pin, PanelLeft, Edit3, Eye, Columns, History, Printer } from "lucide-react";
+import { Download, Moon, Sun, Laptop, Command, Pin, PanelLeft, Edit3, Eye, Columns, History, Printer, Maximize2, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -11,6 +11,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -33,6 +34,9 @@ interface HeaderProps {
   onViewModeChange?: (mode: ViewMode) => void;
   onOpenHistory?: () => void;
   onPrintNote?: () => void;
+  onToggleZen?: () => void;
+  writingGoal?: number;
+  onSetWritingGoal?: (goal: number) => void;
 }
 
 export function Header({
@@ -47,6 +51,9 @@ export function Header({
   onViewModeChange,
   onOpenHistory,
   onPrintNote,
+  onToggleZen,
+  writingGoal = 0,
+  onSetWritingGoal,
 }: HeaderProps) {
   const { theme, setTheme } = useTheme();
 
@@ -141,6 +148,18 @@ export function Header({
             {wordCount} <span className="hidden xs:inline">{wordCount === 1 ? "WORD" : "WORDS"}</span>
             <span className="xs:hidden">W</span>
           </span>
+          <span className="opacity-40 hidden md:inline">·</span>
+          <span className="hidden md:inline text-muted-foreground/80">
+            ~{Math.max(1, Math.ceil(wordCount / 200))} MIN READ
+          </span>
+          {writingGoal > 0 && (
+            <>
+              <span className="opacity-40">·</span>
+              <span className="text-primary font-semibold">
+                GOAL: {Math.min(100, Math.round((wordCount / writingGoal) * 100))}%
+              </span>
+            </>
+          )}
           <span className="opacity-40">·</span>
           <span
             className={
@@ -193,6 +212,70 @@ export function Header({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="font-sans">
                   <p>{activeNote.isPinned ? "Unpin note from top" : "Pin note to top"}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Session Writing Goal Menu */}
+            {onSetWritingGoal && (
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        className={
+                          writingGoal > 0
+                            ? "text-primary hover:text-primary rounded-none"
+                            : "text-muted-foreground hover:text-foreground rounded-none"
+                        }
+                        aria-label="Set Writing Goal"
+                      >
+                        <Target className="size-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans">
+                    <p>{writingGoal > 0 ? `Goal: ${writingGoal} words` : "Set session word goal"}</p>
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="font-sans text-xs">
+                  <div className="px-2 py-1.5 font-semibold text-[11px] text-muted-foreground font-mono uppercase">
+                    Session Word Goal
+                  </div>
+                  <DropdownMenuItem onClick={() => onSetWritingGoal(0)}>
+                    None (Free Write)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onSetWritingGoal(250)}>
+                    250 words (Quick Note)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onSetWritingGoal(500)}>
+                    500 words (Standard Reflection)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onSetWritingGoal(1000)}>
+                    1,000 words (Deep Essay)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* Zen Mode Button */}
+            {onToggleZen && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onToggleZen}
+                    className="text-muted-foreground hover:text-foreground rounded-none"
+                    aria-label="Zen Focus Mode"
+                  >
+                    <Maximize2 className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans">
+                  <p>Zen focus mode (Ctrl+Shift+F)</p>
                 </TooltipContent>
               </Tooltip>
             )}

@@ -45,7 +45,25 @@ export function parseInline(text: string): InlineNode[] {
       }
     }
 
-    // 4. Links: [text](href)
+    // 4. Wiki-links: [[Target Note]] or [[Target Note|Custom Label]]
+    if (text.startsWith("[[", index)) {
+      const closing = text.indexOf("]]", index + 2);
+      if (closing !== -1) {
+        const raw = text.slice(index + 2, closing).trim();
+        if (raw) {
+          const [target, label] = raw.includes("|") ? raw.split("|") : [raw, raw];
+          nodes.push({
+            type: "wikilink",
+            target: target.trim(),
+            label: (label || target).trim(),
+          });
+          index = closing + 2;
+          continue;
+        }
+      }
+    }
+
+    // 5. Standard Links: [text](href)
     if (text[index] === "[") {
       const closingBracket = text.indexOf("]", index + 1);
       if (

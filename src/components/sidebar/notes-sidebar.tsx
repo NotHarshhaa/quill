@@ -15,6 +15,8 @@ import {
   Archive,
   Command,
   RotateCcw,
+  Copy,
+  Sparkles,
 } from "lucide-react";
 import { Note } from "@/lib/storage/schema";
 import { cn } from "@/lib/utils";
@@ -60,6 +62,8 @@ interface NotesSidebarProps {
   onRestoreFromTrash?: (id: string) => void;
   onPurgeNote?: (id: string) => void;
   onEmptyTrash?: () => void;
+  onDuplicateNote?: (id: string) => void;
+  onOpenTemplates?: () => void;
 }
 
 function getSnippet(content: string): string {
@@ -94,6 +98,8 @@ export function NotesSidebar({
   onRestoreFromTrash,
   onPurgeNote,
   onEmptyTrash,
+  onDuplicateNote,
+  onOpenTemplates,
 }: NotesSidebarProps) {
   const [activeTab, setActiveTab] = useState<"notes" | "trash">("notes");
   const [deletingNote, setDeletingNote] = useState<Note | null>(null);
@@ -186,19 +192,36 @@ export function NotesSidebar({
           </DropdownMenu>
         </div>
 
-        <Button
-          size="xs"
-          variant="default"
-          onClick={() => {
-            setActiveTab("notes");
-            onCreateNote();
-          }}
-          className="relative border border-primary/40 shadow-xs rounded-none"
-        >
-          <Corners size="sm" offset="border" weight="thin" light />
-          <Plus className="size-3.5" />
-          <span>New</span>
-        </Button>
+        {/* New Note & Template Action Group */}
+        <div className="flex items-center gap-1.5">
+          {onOpenTemplates && (
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={onOpenTemplates}
+              className="relative border border-border shadow-xs rounded-none gap-1 px-2 h-7"
+              title="New from Template..."
+            >
+              <Corners size="sm" offset="border" weight="thin" light />
+              <Sparkles className="size-3 text-primary" />
+              <span className="hidden xs:inline text-[11px]">Template</span>
+            </Button>
+          )}
+
+          <Button
+            size="xs"
+            variant="default"
+            onClick={() => {
+              setActiveTab("notes");
+              onCreateNote();
+            }}
+            className="relative border border-primary/40 shadow-xs rounded-none h-7 px-2.5"
+          >
+            <Corners size="sm" offset="border" weight="thin" light />
+            <Plus className="size-3.5" />
+            <span>New</span>
+          </Button>
+        </div>
       </div>
 
       {/* View Tabs: Active Notes vs Trash */}
@@ -416,6 +439,21 @@ export function NotesSidebar({
                           ) : (
                             <Pin className="size-3" />
                           )}
+                        </Button>
+                      )}
+
+                      {onDuplicateNote && (
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDuplicateNote(note.id);
+                          }}
+                          title="Duplicate note"
+                          className="size-6 text-muted-foreground hover:text-foreground"
+                        >
+                          <Copy className="size-3" />
                         </Button>
                       )}
 
