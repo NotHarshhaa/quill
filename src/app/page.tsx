@@ -92,9 +92,9 @@ export default function QuillPage() {
         setIsSidebarOpen(true);
       }
 
-      // Show welcome popup modal by default unless user unchecks startup preference
-      const stored = localStorage.getItem(SHOW_WELCOME_KEY);
-      if (stored !== "false") {
+      // Show welcome popup modal by default unless user opted out
+      const showPref = localStorage.getItem(SHOW_WELCOME_KEY);
+      if (showPref !== "false") {
         setIsWelcomeOpen(true);
       }
     }
