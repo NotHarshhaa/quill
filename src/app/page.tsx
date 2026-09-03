@@ -12,7 +12,7 @@ import { countWords } from "@/lib/utils";
 import { toggleTaskInMarkdown } from "@/lib/markdown";
 import { notesRepository } from "@/lib/storage/notesRepository";
 import { Note } from "@/lib/storage/schema";
-import { PanelLeftOpen, Minimize2 } from "lucide-react";
+import { Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Corners } from "@/components/frame";
 import { VersionHistoryDialog } from "@/components/history/version-history-dialog";
@@ -315,22 +315,6 @@ export default function QuillPage() {
                 className="lg:hidden fixed inset-0 z-30 bg-black/45 backdrop-blur-xs animate-in fade-in-50 duration-200"
                 aria-hidden="true"
               />
-            )}
-
-            {/* Expand sidebar button when collapsed on desktop */}
-            {!isSidebarOpen && (
-              <div className="hidden lg:block absolute left-2 top-2 z-20">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="relative h-7 w-7 text-muted-foreground/70 hover:text-foreground bg-background/80 border border-border/80 shadow-xs rounded-none"
-                  title="Show sidebar"
-                >
-                  <Corners size="sm" offset="border" weight="thin" light />
-                  <PanelLeftOpen className="h-3.5 w-3.5" />
-                </Button>
-              </div>
             )}
 
             {/* Sidebar: persistent on desktop, slide-over drawer on mobile/tablet */}

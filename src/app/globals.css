@@ -199,7 +199,7 @@
 }
 
 .horizontal-toolbar-scroll::-webkit-scrollbar {
-  height: 5px;
+  height: 4px;
 }
 
 .horizontal-toolbar-scroll::-webkit-scrollbar-track {

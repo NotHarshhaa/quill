@@ -198,7 +198,7 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
       <Corners size="sm" offset="border" weight="thin" light />
 
       {/* Editor Header Bar with comfortable mobile height */}
-      <div className="h-12 sm:h-10 px-2 sm:px-3 md:px-4 border-b border-border/70 flex items-center justify-between select-none bg-background/50 gap-2 min-w-0">
+      <div className="h-14 sm:h-10 px-2 sm:px-3 md:px-4 border-b border-border/70 flex items-center justify-between select-none bg-background/50 gap-2 min-w-0">
         {/* Left Badge: hidden on mobile/tablet to maximize toolbar space */}
         <Badge
           variant="outline"
@@ -210,9 +210,9 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
 
         {/* Action Toolbar with Spacious Touch Targets, Full Side Scrollbar, & Blueprint Corners */}
         <TooltipProvider delayDuration={150}>
-          <div className="flex-1 min-w-0 flex items-center justify-start sm:justify-end overflow-hidden">
-            <div className="horizontal-toolbar-scroll max-w-full pb-1.5 sm:pb-1 pt-0.5 px-0.5">
-              <div className="relative flex items-center gap-1 sm:gap-1.5 bg-card/85 p-1 sm:p-0.5 border border-border/80 shadow-xs rounded-none w-max">
+          <div className="flex-1 min-w-0 flex items-center justify-start sm:justify-end">
+            <div className="horizontal-toolbar-scroll max-w-full py-2 sm:py-0.5 px-1.5">
+              <div className="relative flex items-center gap-1 sm:gap-1.5 bg-card/85 p-0.5 border border-border/80 shadow-xs rounded-none w-max">
                 <Corners size="sm" offset="border" weight="thin" light />
 
                 {/* Group 1: Undo / Redo */}

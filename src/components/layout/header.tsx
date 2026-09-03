@@ -75,9 +75,13 @@ export function Header({
             variant="ghost"
             size="icon-xs"
             onClick={onToggleSidebar}
-            className="text-muted-foreground hover:text-foreground shrink-0"
-            aria-label="Toggle notes list"
-            title="Toggle notes list"
+            className={`h-7 w-7 rounded-none shrink-0 transition-colors ${
+              isSidebarOpen
+                ? "text-foreground hover:text-foreground hover:bg-muted/80"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
             <PanelLeft className="size-4" />
           </Button>
@@ -377,16 +381,16 @@ export function Header({
         </div>
 
         {/* Mobile Dropdown Menu with Matching Blueprint Corners */}
-        <div className="relative flex sm:hidden items-center bg-card/80 p-0.5 border border-border/80 shadow-xs shrink-0 select-none">
-          <Corners size="sm" offset="border" weight="thin" light />
+        <div className="sm:hidden flex items-center shrink-0 select-none">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon-xs"
-                className="h-7 w-7 rounded-none text-muted-foreground hover:text-foreground relative"
+                className="relative h-7 w-7 rounded-none bg-card/80 border border-border/80 shadow-xs text-muted-foreground hover:text-foreground"
                 aria-label="Menu"
               >
+                <Corners size="sm" offset="border" weight="thin" light />
                 <Menu className="size-3.5" />
                 {activeNote?.isPinned && (
                   <span className="absolute top-1 right-1 size-1.5 rounded-full bg-amber-500 ring-1 ring-background" />
