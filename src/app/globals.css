@@ -169,6 +169,16 @@
   }
 }
 
+/* Tactile Drafting / Blueprint Grid Background for Focus Desk */
+.bg-drafting-grid {
+  background-color: var(--background);
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--foreground) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 9%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: center center;
+}
+
 /* Custom scrollbars for clean paper aesthetic */
 ::-webkit-scrollbar {
   width: 6px;

@@ -8,12 +8,12 @@ import { MarkdownPreview } from "@/components/preview/markdown-preview";
 import { CommandPalette } from "@/components/command/command-palette";
 import { useNotes } from "@/hooks/useNotes";
 import { useAutosave } from "@/hooks/useAutosave";
-import { countWords } from "@/lib/utils";
+import { countWords, cn } from "@/lib/utils";
 import { toggleTaskInMarkdown } from "@/lib/markdown";
 import { notesRepository } from "@/lib/storage/notesRepository";
 import { activityTracker } from "@/lib/storage/activityTracker";
 import { Note } from "@/lib/storage/schema";
-import { Minimize2, ListTree } from "lucide-react";
+import { Minimize2, ListTree, Columns2, Eye, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Corners } from "@/components/frame";
 import { VersionHistoryDialog } from "@/components/history/version-history-dialog";
@@ -63,6 +63,7 @@ export default function QuillPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
+  const [zenViewMode, setZenViewMode] = useState<ViewMode>("editor");
   const [writingGoal, setWritingGoal] = useState<number>(0);
   const [hasNotifiedGoal, setHasNotifiedGoal] = useState(false);
 
@@ -249,40 +250,121 @@ export default function QuillPage() {
       />
 
       {isZenMode ? (
-        /* Zen / Distraction-Free Fullscreen Canvas */
-        <div className="flex-1 flex flex-col h-full bg-background relative overflow-hidden font-sans">
-          <div className="flex-1 max-w-3xl w-full mx-auto h-full p-3 sm:p-8 flex flex-col">
-            <MarkdownEditor
-              content={localContent}
-              onChange={handleEditorChange}
-            />
+        /* Zen / Distraction-Free Fullscreen Canvas with Drafting Grid Background */
+        <div className="flex-1 flex flex-col h-full bg-drafting-grid relative overflow-hidden font-sans select-none">
+          {/* Centered Document Desk Sheet with Balanced Margins on All 4 Sides */}
+          <div className="flex-1 flex items-center justify-center p-3 sm:p-6 md:p-8 pb-22 sm:pb-26 h-full min-h-0 overflow-hidden">
+            <div
+              className={cn(
+                "w-full h-full bg-card border border-border/80 shadow-2xl relative flex flex-col overflow-hidden transition-all duration-200",
+                zenViewMode === "split" ? "max-w-6xl" : "max-w-4xl"
+              )}
+            >
+              <Corners size="default" offset="border" weight="normal" light />
+
+              {/* Focus Paper Content based on zenViewMode */}
+              {zenViewMode === "editor" && (
+                <div className="flex-1 h-full min-h-0 flex flex-col">
+                  <MarkdownEditor
+                    content={localContent}
+                    onChange={handleEditorChange}
+                    borderRight={false}
+                  />
+                </div>
+              )}
+
+              {zenViewMode === "preview" && (
+                <div className="flex-1 h-full min-h-0 overflow-y-auto">
+                  <MarkdownPreview
+                    content={localContent}
+                    onToggleTask={handleToggleTask}
+                    onNavigateWikiLink={navigateOrCreateWikiLink}
+                    backlinks={backlinks}
+                  />
+                </div>
+              )}
+
+              {zenViewMode === "split" && (
+                <div className="flex-1 flex h-full min-w-0 divide-x divide-border/70">
+                  <div className="flex-1 h-full min-w-0 flex flex-col">
+                    <MarkdownEditor
+                      content={localContent}
+                      onChange={handleEditorChange}
+                      borderRight={false}
+                    />
+                  </div>
+                  <div className="flex-1 h-full min-w-0 overflow-y-auto">
+                    <MarkdownPreview
+                      content={localContent}
+                      onToggleTask={handleToggleTask}
+                      onNavigateWikiLink={navigateOrCreateWikiLink}
+                      backlinks={backlinks}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Floating Zen Status Pill with Blueprint Corners */}
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-2.5 bg-card/95 border border-border/80 shadow-2xl px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-sans select-none max-w-[94vw]">
+          <div className="fixed bottom-5 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-2.5 bg-card/95 border border-border/80 shadow-2xl px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-sans select-none max-w-[95vw]">
             <Corners size="sm" offset="border" weight="thin" light />
-            <span className="font-semibold text-foreground max-w-28 sm:max-w-44 truncate">
+            <span className="font-semibold text-foreground max-w-24 sm:max-w-44 truncate">
               {activeNote?.title || "Untitled"}
             </span>
-            <span className="text-muted-foreground/40">·</span>
-            <span className="font-mono text-muted-foreground text-[10.5px] sm:text-[11px] whitespace-nowrap">
-              {wordCount} {wordCount === 1 ? "word" : "words"} · ~{Math.max(1, Math.ceil(wordCount / 200))} min read
+            <span className="text-muted-foreground/40 hidden xs:inline">·</span>
+            <span className="font-mono text-muted-foreground text-[10.5px] sm:text-[11px] whitespace-nowrap hidden xs:inline">
+              {wordCount} {wordCount === 1 ? "word" : "words"}
             </span>
             {writingGoal > 0 && (
               <>
-                <span className="text-muted-foreground/40 hidden xs:inline">·</span>
-                <span className="font-mono text-[10.5px] sm:text-[11px] text-primary font-semibold hidden xs:inline">
+                <span className="text-muted-foreground/40 hidden sm:inline">·</span>
+                <span className="font-mono text-[10.5px] sm:text-[11px] text-primary font-semibold hidden sm:inline">
                   🎯 {Math.min(100, Math.round((wordCount / writingGoal) * 100))}%
                 </span>
               </>
             )}
+
+            {/* View Mode Toggle: Edit | Split | Preview */}
+            <div className="flex items-center border border-border/70 p-0.5 bg-muted/40 ml-1 sm:ml-2">
+              <Button
+                size="xs"
+                variant={zenViewMode === "editor" ? "default" : "ghost"}
+                onClick={() => setZenViewMode("editor")}
+                className="rounded-none h-6 px-2 text-[11px] gap-1"
+                title="Edit Mode"
+              >
+                <PenLine className="size-3" />
+                <span className="hidden sm:inline">Edit</span>
+              </Button>
+              <Button
+                size="xs"
+                variant={zenViewMode === "split" ? "default" : "ghost"}
+                onClick={() => setZenViewMode("split")}
+                className="rounded-none h-6 px-2 text-[11px] gap-1 hidden sm:inline-flex"
+                title="Split Mode"
+              >
+                <Columns2 className="size-3" />
+                <span>Split</span>
+              </Button>
+              <Button
+                size="xs"
+                variant={zenViewMode === "preview" ? "default" : "ghost"}
+                onClick={() => setZenViewMode("preview")}
+                className="rounded-none h-6 px-2 text-[11px] gap-1"
+                title="Preview Mode"
+              >
+                <Eye className="size-3" />
+                <span className="hidden sm:inline">Preview</span>
+              </Button>
+            </div>
 
             {/* Quick Outline in Zen */}
             <Button
               size="xs"
               variant="ghost"
               onClick={() => setIsTocOpen(true)}
-              className="rounded-none h-6 px-2 text-[11px] border border-border/70 text-muted-foreground hover:text-foreground hidden sm:inline-flex"
+              className="rounded-none h-6 px-2 text-[11px] border border-border/70 text-muted-foreground hover:text-foreground hidden md:inline-flex"
             >
               <ListTree className="size-3 mr-1 text-primary" />
               <span>Outline</span>

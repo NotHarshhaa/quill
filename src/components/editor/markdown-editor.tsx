@@ -21,6 +21,7 @@ import {
 import { Corners } from "@/components/frame";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
@@ -36,9 +37,14 @@ import { toast } from "sonner";
 interface MarkdownEditorProps {
   content: string;
   onChange: (value: string) => void;
+  borderRight?: boolean;
 }
 
-export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
+export function MarkdownEditor({
+  content,
+  onChange,
+  borderRight = true,
+}: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -328,7 +334,12 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background border-r border-border/70 overflow-hidden relative font-sans">
+    <div
+      className={cn(
+        "flex-1 flex flex-col h-full bg-background overflow-hidden relative font-sans",
+        borderRight && "border-r border-border/70"
+      )}
+    >
       <Corners size="sm" offset="border" weight="thin" light />
 
       {/* Hidden file input for image upload */}
