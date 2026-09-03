@@ -379,6 +379,10 @@ export default function QuillPage() {
                   toast.success("Note duplicated");
                 }}
                 onOpenTemplates={() => setIsTemplateOpen(true)}
+                onExportNote={(note) => {
+                  notesRepository.exportNote(note);
+                  toast.success(`Exported "${note.title || 'Untitled'}.md"`);
+                }}
               />
             </div>
 

@@ -17,6 +17,8 @@ import {
   RotateCcw,
   Copy,
   Sparkles,
+  PenLine,
+  Download,
 } from "lucide-react";
 import { Note } from "@/lib/storage/schema";
 import { cn } from "@/lib/utils";
@@ -64,6 +66,7 @@ interface NotesSidebarProps {
   onEmptyTrash?: () => void;
   onDuplicateNote?: (id: string) => void;
   onOpenTemplates?: () => void;
+  onExportNote?: (note: Note) => void;
 }
 
 function getSnippet(content: string): string {
@@ -100,6 +103,7 @@ export function NotesSidebar({
   onEmptyTrash,
   onDuplicateNote,
   onOpenTemplates,
+  onExportNote,
 }: NotesSidebarProps) {
   const [activeTab, setActiveTab] = useState<"notes" | "trash">("notes");
   const [deletingNote, setDeletingNote] = useState<Note | null>(null);
@@ -421,54 +425,138 @@ export function NotesSidebar({
                       </h3>
                     </div>
 
-                    {/* Action buttons (Pin & Delete) */}
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {onTogglePin && (
+                    {/* Action buttons & Three-dot menu */}
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {/* Desktop Quick Actions (Pin, Duplicate, Delete on hover) */}
+                      <div className="hidden lg:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {onTogglePin && (
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTogglePin(note.id);
+                            }}
+                            title={note.isPinned ? "Unpin note" : "Pin note to top"}
+                            className="size-6 text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400"
+                          >
+                            {note.isPinned ? (
+                              <PinOff className="size-3" />
+                            ) : (
+                              <Pin className="size-3" />
+                            )}
+                          </Button>
+                        )}
+
+                        {onDuplicateNote && (
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDuplicateNote(note.id);
+                            }}
+                            title="Duplicate note"
+                            className="size-6 text-muted-foreground hover:text-foreground"
+                          >
+                            <Copy className="size-3" />
+                          </Button>
+                        )}
+
                         <Button
                           variant="ghost"
                           size="icon-xs"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onTogglePin(note.id);
+                            setDeletingNote(note);
                           }}
-                          title={note.isPinned ? "Unpin note" : "Pin note to top"}
-                          className="size-6 text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400"
+                          title="Delete note"
+                          className="size-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                         >
-                          {note.isPinned ? (
-                            <PinOff className="size-3" />
-                          ) : (
-                            <Pin className="size-3" />
+                          <Trash2 className="size-3" />
+                        </Button>
+                      </div>
+
+                      {/* Three-Dot Menu: Always visible on Mobile & Tablet, and also available on Desktop */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={(e) => e.stopPropagation()}
+                            className={cn(
+                              "size-6 text-muted-foreground hover:text-foreground rounded-none transition-opacity",
+                              "opacity-80 hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100 data-[state=open]:opacity-100"
+                            )}
+                            title="More note options"
+                          >
+                            <MoreVertical className="size-3.5" />
+                            <span className="sr-only">More options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-44 rounded-none border border-border/80 bg-background/95 backdrop-blur-md shadow-xl font-sans"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DropdownMenuItem
+                            onClick={() => onSelectNote(note.id)}
+                            className="gap-2 text-xs cursor-pointer rounded-none"
+                          >
+                            <PenLine className="size-3.5 text-muted-foreground" />
+                            <span>Edit Note</span>
+                          </DropdownMenuItem>
+
+                          {onDuplicateNote && (
+                            <DropdownMenuItem
+                              onClick={() => onDuplicateNote(note.id)}
+                              className="gap-2 text-xs cursor-pointer rounded-none"
+                            >
+                              <Copy className="size-3.5 text-muted-foreground" />
+                              <span>Duplicate</span>
+                            </DropdownMenuItem>
                           )}
-                        </Button>
-                      )}
 
-                      {onDuplicateNote && (
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDuplicateNote(note.id);
-                          }}
-                          title="Duplicate note"
-                          className="size-6 text-muted-foreground hover:text-foreground"
-                        >
-                          <Copy className="size-3" />
-                        </Button>
-                      )}
+                          {onTogglePin && (
+                            <DropdownMenuItem
+                              onClick={() => onTogglePin(note.id)}
+                              className="gap-2 text-xs cursor-pointer rounded-none"
+                            >
+                              {note.isPinned ? (
+                                <>
+                                  <PinOff className="size-3.5 text-amber-600 dark:text-amber-400" />
+                                  <span>Unpin Note</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Pin className="size-3.5 text-muted-foreground" />
+                                  <span>Pin to Top</span>
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          )}
 
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeletingNote(note);
-                        }}
-                        title="Delete note"
-                        className="size-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="size-3" />
-                      </Button>
+                          {onExportNote && (
+                            <DropdownMenuItem
+                              onClick={() => onExportNote(note)}
+                              className="gap-2 text-xs cursor-pointer rounded-none"
+                            >
+                              <Download className="size-3.5 text-muted-foreground" />
+                              <span>Export Markdown</span>
+                            </DropdownMenuItem>
+                          )}
+
+                          <DropdownMenuSeparator />
+
+                          <DropdownMenuItem
+                            onClick={() => setDeletingNote(note)}
+                            className="gap-2 text-xs cursor-pointer rounded-none text-destructive focus:text-destructive focus:bg-destructive/10"
+                          >
+                            <Trash2 className="size-3.5" />
+                            <span>Delete Note</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
 
