@@ -21,6 +21,7 @@ import {
   ListTree,
   BarChart3,
   Headphones,
+  HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,7 @@ interface HeaderProps {
   onOpenGraph?: () => void;
   onOpenToc?: () => void;
   onOpenInsights?: () => void;
+  onOpenWelcome?: () => void;
 }
 
 export function Header({
@@ -84,6 +86,7 @@ export function Header({
   onOpenGraph,
   onOpenToc,
   onOpenInsights,
+  onOpenWelcome,
 }: HeaderProps) {
   const { theme, setTheme } = useTheme();
 
@@ -302,6 +305,26 @@ export function Header({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="font-sans">
                   <p>Writing Insights & Activity Heatmap</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Welcome & Quick Guide */}
+            {onOpenWelcome && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onOpenWelcome}
+                    className="text-muted-foreground hover:text-foreground rounded-none"
+                    aria-label="Welcome & Guide"
+                  >
+                    <HelpCircle className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans">
+                  <p>Welcome & Quick Guide</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -540,6 +563,14 @@ export function Header({
                 <DropdownMenuItem onClick={onOpenInsights} className="gap-2 cursor-pointer">
                   <BarChart3 className="size-3.5 text-muted-foreground" />
                   <span>Writing Insights & Heatmap</span>
+                </DropdownMenuItem>
+              )}
+
+              {/* Welcome & Guide */}
+              {onOpenWelcome && (
+                <DropdownMenuItem onClick={onOpenWelcome} className="gap-2 cursor-pointer">
+                  <HelpCircle className="size-3.5 text-muted-foreground" />
+                  <span>Welcome & Quick Guide</span>
                 </DropdownMenuItem>
               )}
 

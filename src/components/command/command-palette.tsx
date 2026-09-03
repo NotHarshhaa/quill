@@ -22,6 +22,7 @@ import {
   Network,
   ListTree,
   BarChart3,
+  HelpCircle,
   X,
 } from "lucide-react";
 import { Corners } from "@/components/frame";
@@ -50,6 +51,7 @@ interface CommandPaletteProps {
   onOpenGraph?: () => void;
   onOpenToc?: () => void;
   onOpenInsights?: () => void;
+  onOpenWelcome?: () => void;
 }
 
 type ActionItem = {
@@ -90,6 +92,7 @@ export function CommandPalette({
   onOpenGraph,
   onOpenToc,
   onOpenInsights,
+  onOpenWelcome,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -275,6 +278,20 @@ export function CommandPalette({
         icon: BarChart3,
         handler: () => {
           onOpenInsights();
+          onClose();
+        },
+      });
+    }
+
+    if (onOpenWelcome) {
+      list.push({
+        id: "action-welcome",
+        type: "action",
+        title: "Welcome & Quick Guide",
+        subtitle: "Show Quill introduction, features showcase, and logo",
+        icon: HelpCircle,
+        handler: () => {
+          onOpenWelcome();
           onClose();
         },
       });

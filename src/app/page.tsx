@@ -21,6 +21,7 @@ import { TemplateDialog } from "@/components/templates/template-dialog";
 import { KnowledgeGraphModal } from "@/components/graph/knowledge-graph-modal";
 import { TableOfContents } from "@/components/toc/table-of-contents";
 import { WritingInsightsModal } from "@/components/analytics/writing-insights-modal";
+import { WelcomeModal, SHOW_WELCOME_KEY } from "@/components/welcome/welcome-modal";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -71,12 +72,13 @@ export default function QuillPage() {
   const [isGraphOpen, setIsGraphOpen] = useState(false);
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
+  const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
 
   // Hidden file inputs for .md import and JSON restore
   const markdownInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
 
-  // Responsive defaults on mount: default to preview on mobile devices
+  // Responsive defaults on mount & check welcome modal startup preference
   useEffect(() => {
     if (typeof window !== "undefined") {
       if (window.innerWidth < 768) {
@@ -88,6 +90,12 @@ export default function QuillPage() {
       } else {
         setViewMode("split");
         setIsSidebarOpen(true);
+      }
+
+      // Show welcome popup modal by default unless user unchecks startup preference
+      const stored = localStorage.getItem(SHOW_WELCOME_KEY);
+      if (stored !== "false") {
+        setIsWelcomeOpen(true);
       }
     }
   }, []);
@@ -411,6 +419,7 @@ export default function QuillPage() {
             onOpenGraph={() => setIsGraphOpen(true)}
             onOpenToc={() => setIsTocOpen(true)}
             onOpenInsights={() => setIsInsightsOpen(true)}
+            onOpenWelcome={() => setIsWelcomeOpen(true)}
           />
 
           {/* Main Workspace */}
@@ -541,6 +550,7 @@ export default function QuillPage() {
         onOpenGraph={() => setIsGraphOpen(true)}
         onOpenToc={() => setIsTocOpen(true)}
         onOpenInsights={() => setIsInsightsOpen(true)}
+        onOpenWelcome={() => setIsWelcomeOpen(true)}
       />
 
       {/* Version History Dialog */}
@@ -587,6 +597,29 @@ export default function QuillPage() {
         onClose={() => setIsInsightsOpen(false)}
         activeNote={activeNote}
         notes={allRawNotes}
+      />
+
+      {/* Welcome Popup Modal with Logo & Feature Launchpad */}
+      <WelcomeModal
+        isOpen={isWelcomeOpen}
+        onClose={() => setIsWelcomeOpen(false)}
+        onStartWriting={() => {
+          setIsWelcomeOpen(false);
+          if (typeof window !== "undefined" && window.innerWidth < 768) {
+            setViewMode("editor");
+          }
+        }}
+        onOpenTemplates={() => {
+          setIsWelcomeOpen(false);
+          setIsTemplateOpen(true);
+        }}
+        onOpenGuideNote={() => {
+          setIsWelcomeOpen(false);
+          const welcomeNote = allRawNotes.find((n) => n.id === "welcome-note");
+          if (welcomeNote) {
+            selectNote(welcomeNote.id);
+          }
+        }}
       />
     </div>
   );
