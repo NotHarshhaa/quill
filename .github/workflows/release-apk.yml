@@ -47,7 +47,7 @@ jobs:
       - name: Build Android APK
         run: |
           cd android
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
 
       - name: Prepare APK for Release
         run: |
@@ -56,7 +56,11 @@ jobs:
           if [ -z "$VERSION_TAG" ] || [ "$VERSION_TAG" = "main" ]; then
             VERSION_TAG="latest"
           fi
-          cp android/app/build/outputs/apk/debug/app-debug.apk release-assets/quill-$VERSION_TAG.apk
+          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk release-assets/quill-$VERSION_TAG.apk
+          else
+            cp android/app/build/outputs/apk/debug/app-debug.apk release-assets/quill-$VERSION_TAG.apk
+          fi
           echo "APK generated at release-assets/quill-$VERSION_TAG.apk"
 
       - name: Generate Categorized Release Notes
