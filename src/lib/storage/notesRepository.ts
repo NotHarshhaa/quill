@@ -11,18 +11,37 @@ export const notesRepository = {
       }
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((n) => ({
-          id: n?.id || `note-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-          title: typeof n?.title === "string" ? n.title : "Untitled",
-          content: typeof n?.content === "string" ? n.content : "",
-          createdAt: typeof n?.createdAt === "number" ? n.createdAt : Date.now(),
-          updatedAt: typeof n?.updatedAt === "number" ? n.updatedAt : Date.now(),
-          isPinned: Boolean(n?.isPinned),
-          tags: Array.isArray(n?.tags) ? n.tags : [],
-          isDeleted: Boolean(n?.isDeleted),
-          deletedAt: typeof n?.deletedAt === "number" ? n.deletedAt : undefined,
-          revisions: Array.isArray(n?.revisions) ? n.revisions : [],
-        }));
+        return parsed.map((n) => {
+          const isWelcomeLegacy =
+            n?.id === "welcome-note" &&
+            typeof n?.content === "string" &&
+            !n.content.includes("Feature Architecture Ledger");
+
+          return {
+            id: n?.id || `note-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+            title: typeof n?.title === "string" ? n.title : "Untitled",
+            content: isWelcomeLegacy
+              ? INITIAL_NOTES[0].content
+              : typeof n?.content === "string"
+              ? n.content
+              : "",
+            createdAt: typeof n?.createdAt === "number" ? n.createdAt : Date.now(),
+            updatedAt: isWelcomeLegacy
+              ? Date.now()
+              : typeof n?.updatedAt === "number"
+              ? n.updatedAt
+              : Date.now(),
+            isPinned: n?.id === "welcome-note" ? true : Boolean(n?.isPinned),
+            tags: isWelcomeLegacy
+              ? INITIAL_NOTES[0].tags
+              : Array.isArray(n?.tags)
+              ? n.tags
+              : [],
+            isDeleted: Boolean(n?.isDeleted),
+            deletedAt: typeof n?.deletedAt === "number" ? n.deletedAt : undefined,
+            revisions: Array.isArray(n?.revisions) ? n.revisions : [],
+          };
+        });
       }
       return INITIAL_NOTES;
     } catch {

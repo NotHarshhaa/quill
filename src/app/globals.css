@@ -227,6 +227,36 @@
   background: color-mix(in oklch, var(--foreground) 55%, transparent);
 }
 
+/* Visible horizontal table scrollbar on mobile & desktop */
+.horizontal-table-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 45%, transparent) color-mix(in oklch, var(--foreground) 10%, transparent);
+  -webkit-overflow-scrolling: touch;
+}
+
+.horizontal-table-scroll::-webkit-scrollbar {
+  height: 6px;
+  display: block !important;
+}
+
+.horizontal-table-scroll::-webkit-scrollbar-track {
+  background: color-mix(in oklch, var(--foreground) 10%, transparent);
+  border-radius: 9999px;
+  margin: 0 4px;
+}
+
+.horizontal-table-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--foreground) 45%, transparent);
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklch, var(--background) 50%, transparent);
+}
+
+.horizontal-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--foreground) 70%, transparent);
+}
+
 /* Print & PDF Export Stylesheet */
 @media print {
   header,

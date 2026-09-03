@@ -278,47 +278,56 @@ export function RenderBlock({
       };
 
       return (
-        <div className="relative my-6 overflow-x-auto border border-border/80 bg-card/60 shadow-xs">
+        <div className="relative my-6 border border-border/80 bg-card/60 shadow-xs">
           <Corners size="sm" offset="border" weight="thin" light />
-          <table className="w-full text-left text-sm font-sans border-collapse">
-            <thead>
-              <tr className="border-b border-border bg-muted/60 font-mono text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-                {block.headers.map((head, idx) => (
-                  <th
-                    key={idx}
-                    className={`px-3.5 py-2.5 font-medium border-r border-border/60 last:border-r-0 ${getAlignClass(
-                      head.align
-                    )}`}
-                  >
-                    {head.children.map((child, i) => (
-                      <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
-                    ))}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {block.rows.map((row, rowIdx) => (
-                <tr
-                  key={rowIdx}
-                  className="border-b border-border/40 last:border-b-0 hover:bg-muted/20 transition-colors"
-                >
-                  {row.map((cell, cellIdx) => (
-                    <td
-                      key={cellIdx}
-                      className={`px-3.5 py-2 border-r border-border/40 last:border-r-0 ${getAlignClass(
-                        cell.align
+          <div className="horizontal-table-scroll max-w-full pb-1">
+            <table className="min-w-[560px] w-full text-left text-sm font-sans border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-muted/60 font-mono text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                  {block.headers.map((head, idx) => (
+                    <th
+                      key={idx}
+                      className={`px-3.5 py-2.5 font-medium border-r border-border/60 last:border-r-0 whitespace-nowrap ${getAlignClass(
+                        head.align
                       )}`}
                     >
-                      {cell.children.map((child, i) => (
+                      {head.children.map((child, i) => (
                         <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
                       ))}
-                    </td>
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {block.rows.map((row, rowIdx) => (
+                  <tr
+                    key={rowIdx}
+                    className="border-b border-border/40 last:border-b-0 hover:bg-muted/20 transition-colors"
+                  >
+                    {row.map((cell, cellIdx) => (
+                      <td
+                        key={cellIdx}
+                        className={`px-3.5 py-2 border-r border-border/40 last:border-r-0 ${getAlignClass(
+                          cell.align
+                        )}`}
+                      >
+                        {cell.children.map((child, i) => (
+                          <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
+                        ))}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Mobile scroll indicator footer */}
+          <div className="sm:hidden flex items-center justify-between px-3 py-1 bg-muted/40 border-t border-border/40 text-[10px] font-mono text-muted-foreground select-none">
+            <span>TABLE</span>
+            <span className="flex items-center gap-1 opacity-80">
+              ↔ scroll horizontally
+            </span>
+          </div>
         </div>
       );
     }

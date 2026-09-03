@@ -76,11 +76,11 @@ export default function QuillPage() {
   const markdownInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
 
-  // Responsive defaults on mount
+  // Responsive defaults on mount: default to preview on mobile devices
   useEffect(() => {
     if (typeof window !== "undefined") {
       if (window.innerWidth < 768) {
-        setViewMode("editor");
+        setViewMode("preview");
         setIsSidebarOpen(false);
       } else if (window.innerWidth < 1024) {
         setViewMode("split");
@@ -437,6 +437,9 @@ export default function QuillPage() {
                 onSelectNote={handleSelectNote}
                 onCreateNote={() => {
                   createNote();
+                  if (typeof window !== "undefined" && window.innerWidth < 768) {
+                    setViewMode("editor");
+                  }
                   if (typeof window !== "undefined" && window.innerWidth < 1024) {
                     setIsSidebarOpen(false);
                   }
@@ -464,6 +467,13 @@ export default function QuillPage() {
                 onExportNote={(note) => {
                   notesRepository.exportNote(note);
                   toast.success(`Exported "${note.title || 'Untitled'}.md"`);
+                }}
+                onEditNote={(id) => {
+                  selectNote(id);
+                  setViewMode("editor");
+                  if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                    setIsSidebarOpen(false);
+                  }
                 }}
               />
             </div>

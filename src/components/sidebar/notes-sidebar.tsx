@@ -67,6 +67,7 @@ interface NotesSidebarProps {
   onDuplicateNote?: (id: string) => void;
   onOpenTemplates?: () => void;
   onExportNote?: (note: Note) => void;
+  onEditNote?: (id: string) => void;
 }
 
 function getSnippet(content: string): string {
@@ -104,6 +105,7 @@ export function NotesSidebar({
   onDuplicateNote,
   onOpenTemplates,
   onExportNote,
+  onEditNote,
 }: NotesSidebarProps) {
   const [activeTab, setActiveTab] = useState<"notes" | "trash">("notes");
   const [deletingNote, setDeletingNote] = useState<Note | null>(null);
@@ -500,7 +502,13 @@ export function NotesSidebar({
                           onClick={(e) => e.stopPropagation()}
                         >
                           <DropdownMenuItem
-                            onClick={() => onSelectNote(note.id)}
+                            onClick={() => {
+                              if (onEditNote) {
+                                onEditNote(note.id);
+                              } else {
+                                onSelectNote(note.id);
+                              }
+                            }}
                             className="gap-2 text-xs cursor-pointer rounded-none"
                           >
                             <PenLine className="size-3.5 text-muted-foreground" />
