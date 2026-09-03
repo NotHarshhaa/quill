@@ -64,12 +64,14 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
       <Corners size="sm" offset="border" weight="thin" light />
       {/* Editor Header Bar */}
       <div className="h-10 px-3 sm:px-6 border-b border-border/70 flex items-center justify-between select-none bg-background/50 gap-2">
-        <Badge variant="outline" className="text-[10px] tracking-widest font-mono font-semibold px-1.5 py-0.5 border border-border shrink-0">
+        <Badge variant="outline" className="relative text-[10px] tracking-widest font-mono font-semibold px-1.5 py-0.5 border border-border shrink-0 shadow-xs">
+          <Corners size="sm" offset="border" weight="thin" light />
           <span className="hidden sm:inline">WRITE · </span>MARKDOWN
         </Badge>
 
         {/* Quick format action buttons using shadcn Button */}
-        <div className="flex items-center gap-0.5 sm:gap-1 text-muted-foreground overflow-x-auto no-scrollbar">
+        <div className="relative flex items-center gap-0.5 sm:gap-1 text-muted-foreground overflow-x-auto no-scrollbar bg-card/80 p-0.5 border border-border/80 shadow-xs">
+          <Corners size="sm" offset="border" weight="thin" light />
           <Button
             variant="ghost"
             size="icon-xs"

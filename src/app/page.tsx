@@ -12,8 +12,9 @@ import { countWords } from "@/lib/utils";
 import { toggleTaskInMarkdown } from "@/lib/markdown";
 import { notesRepository } from "@/lib/storage/notesRepository";
 import { Note } from "@/lib/storage/schema";
-import { Edit3, Eye, Columns, PanelLeftOpen } from "lucide-react";
+import { PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Corners } from "@/components/frame";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -213,6 +214,8 @@ export default function QuillPage() {
         onTogglePin={togglePinNote}
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         isSidebarOpen={isSidebarOpen}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
 
       {/* Main Workspace */}
@@ -233,9 +236,10 @@ export default function QuillPage() {
               variant="ghost"
               size="icon"
               onClick={() => setIsSidebarOpen(true)}
-              className="h-7 w-7 text-muted-foreground/70 hover:text-foreground bg-background/80 border border-border/60 shadow-xs"
+              className="relative h-7 w-7 text-muted-foreground/70 hover:text-foreground bg-background/80 border border-border/80 shadow-xs rounded-none"
               title="Show sidebar"
             >
+              <Corners size="sm" offset="border" weight="thin" light />
               <PanelLeftOpen className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -270,40 +274,6 @@ export default function QuillPage() {
             onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
             onToggleCollapse={() => setIsSidebarOpen(false)}
           />
-        </div>
-
-        {/* Mobile & Tablet Mode Selector */}
-        <div className="lg:hidden absolute top-2 right-2.5 z-20 flex items-center bg-card/90 backdrop-blur-md p-0.5 border border-border/80 shadow-xs gap-0.5">
-          <Button
-            size="xs"
-            variant={viewMode === "editor" ? "default" : "ghost"}
-            onClick={() => setViewMode("editor")}
-            className="h-6 px-2 text-[11px] font-sans"
-            title="Write mode"
-          >
-            <Edit3 className="size-3 mr-1" />
-            <span>Write</span>
-          </Button>
-          <Button
-            size="xs"
-            variant={viewMode === "split" ? "default" : "ghost"}
-            onClick={() => setViewMode("split")}
-            className="hidden md:inline-flex h-6 px-2 text-[11px] font-sans"
-            title="Split mode"
-          >
-            <Columns className="size-3 mr-1" />
-            <span>Split</span>
-          </Button>
-          <Button
-            size="xs"
-            variant={viewMode === "preview" ? "default" : "ghost"}
-            onClick={() => setViewMode("preview")}
-            className="h-6 px-2 text-[11px] font-sans"
-            title="Preview mode"
-          >
-            <Eye className="size-3 mr-1" />
-            <span>Preview</span>
-          </Button>
         </div>
 
         {/* Editor & Preview Panes */}

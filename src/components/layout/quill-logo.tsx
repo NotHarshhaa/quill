@@ -46,8 +46,8 @@ export function QuillLogo() {
       <QuillIcon className="size-5 shrink-0" />
       <span className="font-sans text-sm sm:text-base tracking-tight text-foreground font-semibold flex items-center">
         Quill
-        <span className="hidden md:inline text-xs text-muted-foreground font-normal tracking-normal mx-1">—</span>
-        <span className="hidden md:inline text-xs font-normal text-muted-foreground">offline notes</span>
+        <span className="hidden xl:inline text-xs text-muted-foreground font-normal tracking-normal mx-1">—</span>
+        <span className="hidden xl:inline text-xs font-normal text-muted-foreground">offline notes</span>
       </span>
     </div>
   );

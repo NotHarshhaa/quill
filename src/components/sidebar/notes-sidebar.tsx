@@ -100,26 +100,27 @@ export function NotesSidebar({
     <aside className="w-72 sm:w-80 max-w-[85vw] border-r border-border/70 flex flex-col h-full bg-background shadow-2xl lg:shadow-none select-none shrink-0 relative font-sans">
       {/* Sidebar Header */}
       <div className="p-3.5 sm:p-4 flex items-center justify-between border-b border-border/40">
-        <div className="flex items-center gap-1.5">
+        <div className="relative flex items-center gap-1 bg-card/80 p-0.5 border border-border/80 shadow-xs">
+          <Corners size="sm" offset="border" weight="thin" light />
           {onToggleCollapse && (
             <Button
               variant="ghost"
               size="icon-xs"
               onClick={onToggleCollapse}
-              className="text-muted-foreground/60 hover:text-foreground inline-flex"
+              className="text-muted-foreground/60 hover:text-foreground inline-flex rounded-none"
               title="Close sidebar"
             >
               <PanelLeftClose className="size-3.5" />
             </Button>
           )}
-          <Badge variant="outline" className="text-[10px] tracking-widest font-mono font-semibold px-1.5 py-0.5 border border-border">
+          <Badge variant="outline" className="text-[10px] tracking-widest font-mono font-semibold px-1.5 py-0.5 border-0 rounded-none">
             NOTES
           </Badge>
           <Button
             variant="ghost"
             size="icon-xs"
             onClick={() => setShowSearch(!showSearch)}
-            className="text-muted-foreground/60 hover:text-foreground"
+            className="text-muted-foreground/60 hover:text-foreground rounded-none"
             title="Search notes"
           >
             <Search className="size-3" />
@@ -131,7 +132,7 @@ export function NotesSidebar({
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="text-muted-foreground/60 hover:text-foreground"
+                className="text-muted-foreground/60 hover:text-foreground rounded-none"
                 title="Options & Data"
               >
                 <MoreVertical className="size-3" />
@@ -171,7 +172,9 @@ export function NotesSidebar({
           size="xs"
           variant="default"
           onClick={onCreateNote}
+          className="relative border border-primary/40 shadow-xs rounded-none"
         >
+          <Corners size="sm" offset="border" weight="thin" light />
           <Plus className="size-3.5" />
           <span>New</span>
         </Button>

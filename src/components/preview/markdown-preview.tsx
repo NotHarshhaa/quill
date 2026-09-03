@@ -20,7 +20,8 @@ export function MarkdownPreview({ content, onToggleTask }: MarkdownPreviewProps)
       <Corners size="sm" offset="border" weight="thin" light />
       {/* Preview Header Bar */}
       <div className="h-10 px-3 sm:px-6 border-b border-border/70 flex items-center justify-between select-none bg-background/50">
-        <Badge variant="outline" className="text-[10px] tracking-widest font-mono font-semibold px-1.5 py-0.5 border border-border">
+        <Badge variant="outline" className="relative text-[10px] tracking-widest font-mono font-semibold px-1.5 py-0.5 border border-border shadow-xs">
+          <Corners size="sm" offset="border" weight="thin" light />
           <span className="hidden sm:inline">PREVIEW · </span>RENDERED
         </Badge>
       </div>
