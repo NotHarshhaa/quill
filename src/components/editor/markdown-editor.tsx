@@ -13,9 +13,10 @@ import {
   Heading2,
   Table,
   Feather,
-  Link2,
   Undo2,
   Redo2,
+  Image as ImageIcon,
+  Search as SearchIcon,
 } from "lucide-react";
 import { Corners } from "@/components/frame";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { SlashCommandMenu, SlashCommand } from "./slash-command-menu";
+import { FindReplaceBar } from "./find-replace-bar";
+import { mediaRepository } from "@/lib/storage/mediaRepository";
+import { toast } from "sonner";
 
 interface MarkdownEditorProps {
   content: string;
@@ -36,7 +41,23 @@ interface MarkdownEditorProps {
 export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const [isTypewriter, setIsTypewriter] = useState(false);
+  const [isFindOpen, setIsFindOpen] = useState(false);
+
+  // Slash Command State
+  const [slashMenu, setSlashMenu] = useState<{
+    isOpen: boolean;
+    query: string;
+    slashIndex: number;
+    position: { top: number; left: number };
+  }>({
+    isOpen: false,
+    query: "",
+    slashIndex: -1,
+    position: { top: 60, left: 24 },
+  });
 
   // Undo / Redo History Stack
   const historyRef = useRef<string[]>([content]);
@@ -156,6 +177,112 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
     }, 0);
   };
 
+  // Detect `/` on current line to trigger slash command popup
+  const checkSlashCommand = (currentText: string, cursorIndex: number) => {
+    const textBefore = currentText.substring(0, cursorIndex);
+    const lastNewline = textBefore.lastIndexOf("\n");
+    const lineBeforeCursor = textBefore.substring(lastNewline + 1);
+
+    const slashMatch = lineBeforeCursor.match(/(?:^|\s)\/([a-zA-Z0-9_-]*)$/);
+    if (slashMatch) {
+      const matchOffset = lineBeforeCursor.lastIndexOf("/");
+      const absoluteSlashIndex = lastNewline + 1 + matchOffset;
+      const query = slashMatch[1] || "";
+
+      const lineCount = textBefore.split("\n").length;
+      const approxTop = Math.min(
+        Math.max(50, lineCount * 24 + 30 - (scrollContainerRef.current?.scrollTop || 0)),
+        (scrollContainerRef.current?.clientHeight || 450) - 220
+      );
+
+      setSlashMenu({
+        isOpen: true,
+        query,
+        slashIndex: absoluteSlashIndex,
+        position: { top: Math.max(45, approxTop), left: 24 },
+      });
+    } else {
+      if (slashMenu.isOpen) {
+        setSlashMenu((prev) => ({ ...prev, isOpen: false }));
+      }
+    }
+  };
+
+  const handleSelectSlashCommand = (cmd: SlashCommand) => {
+    if (cmd.id === "image") {
+      setSlashMenu((prev) => ({ ...prev, isOpen: false }));
+      imageInputRef.current?.click();
+      return;
+    }
+
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = slashMenu.slashIndex >= 0 ? slashMenu.slashIndex : textarea.selectionStart;
+    const end = textarea.selectionStart;
+
+    const before = content.substring(0, start);
+    const after = content.substring(end);
+    const snippet = cmd.snippet;
+    const newContent = before + snippet + after;
+
+    pushHistory(newContent, true);
+    setSlashMenu((prev) => ({ ...prev, isOpen: false }));
+
+    setTimeout(() => {
+      textarea.focus();
+      const newCursor = start + snippet.length;
+      textarea.setSelectionRange(newCursor, newCursor);
+      handleCursorScroll();
+    }, 0);
+  };
+
+  // Image Upload, Paste & Drop Handler
+  const handleUploadImageFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please provide an image file");
+      return;
+    }
+
+    try {
+      const cleanName = file.name.replace(/\.[^/.]+$/, "");
+      const { uri } = await mediaRepository.saveImage(file, cleanName);
+      const snippet = `\n![${cleanName || "Visual"}](${uri})\n`;
+      insertSnippet(snippet, "", "");
+      toast.success(`Image "${cleanName || "Visual"}" stored locally`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to store image offline");
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            handleUploadImageFile(file);
+          }
+          return;
+        }
+      }
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        imageFiles.forEach((file) => handleUploadImageFile(file));
+      }
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Undo: Ctrl+Z / Cmd+Z (without shift)
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
@@ -171,6 +298,13 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
     ) {
       e.preventDefault();
       handleRedo();
+      return;
+    }
+
+    // Find & Replace: Ctrl+F / Cmd+F or Ctrl+H / Cmd+H
+    if ((e.metaKey || e.ctrlKey) && (e.key.toLowerCase() === "f" || e.key.toLowerCase() === "h")) {
+      e.preventDefault();
+      setIsFindOpen(true);
       return;
     }
 
@@ -197,6 +331,19 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
     <div className="flex-1 flex flex-col h-full bg-background border-r border-border/70 overflow-hidden relative font-sans">
       <Corners size="sm" offset="border" weight="thin" light />
 
+      {/* Hidden file input for image upload */}
+      <input
+        type="file"
+        ref={imageInputRef}
+        accept="image/*"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleUploadImageFile(file);
+          e.target.value = "";
+        }}
+        className="hidden"
+      />
+
       {/* Editor Header Bar with comfortable mobile height */}
       <div className="h-14 sm:h-10 px-2 sm:px-3 md:px-4 border-b border-border/70 flex items-center justify-between select-none bg-background/50 gap-2 min-w-0">
         {/* Left Badge: hidden on mobile/tablet to maximize toolbar space */}
@@ -208,7 +355,7 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
           <span className="hidden xl:inline">WRITE · </span>MARKDOWN
         </Badge>
 
-        {/* Action Toolbar with Spacious Touch Targets, Full Side Scrollbar, & Blueprint Corners */}
+        {/* Action Toolbar with Touch Targets, Full Side Scrollbar, & Blueprint Corners */}
         <TooltipProvider delayDuration={150}>
           <div className="flex-1 min-w-0 flex items-center justify-start sm:justify-end">
             <div className="horizontal-toolbar-scroll max-w-full py-2 sm:py-0.5 px-1.5">
@@ -368,7 +515,7 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
 
                 <Separator orientation="vertical" className="h-4 mx-0.5 sm:mx-1 shrink-0 opacity-60" />
 
-                {/* Group 4: Structure & Links */}
+                {/* Group 4: Structure, Tables & Media */}
                 <div className="flex items-center gap-0.5 shrink-0">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -460,6 +607,44 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
                       <span>Wiki-link ([[Note Title]])</span>
                     </TooltipContent>
                   </Tooltip>
+
+                  {/* Insert Image */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => imageInputRef.current?.click()}
+                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
+                        aria-label="Insert Image"
+                      >
+                        <ImageIcon className="size-4 sm:size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-[11px]">
+                      <span>Insert Image (Upload or Paste)</span>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Find & Replace */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => setIsFindOpen((prev) => !prev)}
+                        className={`h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none transition-colors ${
+                          isFindOpen ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        aria-label="Find and Replace"
+                      >
+                        <SearchIcon className="size-4 sm:size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-[11px]">
+                      <span>Find & Replace (Ctrl+F)</span>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
 
                 <Separator orientation="vertical" className="h-4 mx-0.5 sm:mx-1 shrink-0 opacity-60" />
@@ -497,10 +682,25 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
         </TooltipProvider>
       </div>
 
-      {/* Editor Textarea with Typewriter Scrolling Mode support */}
+      {/* Find & Replace Bar Dock */}
+      <FindReplaceBar
+        isOpen={isFindOpen}
+        onClose={() => setIsFindOpen(false)}
+        content={content}
+        onReplace={(newVal) => pushHistory(newVal, true)}
+        onHighlightMatch={(start, end) => {
+          const textarea = textareaRef.current;
+          if (textarea) {
+            textarea.focus();
+            textarea.setSelectionRange(start, end);
+          }
+        }}
+      />
+
+      {/* Editor Textarea with Typewriter Scrolling Mode, Slash Commands & Image Drag/Paste */}
       <div
         ref={scrollContainerRef}
-        className={`flex-1 p-3.5 sm:p-6 overflow-y-auto ${
+        className={`flex-1 p-3.5 sm:p-6 overflow-y-auto relative ${
           isTypewriter ? "pb-[50vh]" : ""
         }`}
       >
@@ -510,13 +710,31 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
           onChange={(e) => {
             pushHistory(e.target.value, false);
             handleCursorScroll();
+            checkSlashCommand(e.target.value, e.target.selectionStart);
           }}
-          onClick={handleCursorScroll}
-          onKeyUp={handleCursorScroll}
+          onClick={(e) => {
+            handleCursorScroll();
+            checkSlashCommand(content, (e.target as HTMLTextAreaElement).selectionStart);
+          }}
+          onKeyUp={(e) => {
+            handleCursorScroll();
+            checkSlashCommand(content, (e.target as HTMLTextAreaElement).selectionStart);
+          }}
           onKeyDown={handleKeyDown}
-          placeholder="Start typing in markdown..."
+          onPaste={handlePaste}
+          onDrop={handleDrop}
+          placeholder="Start typing in markdown, or type / for quick elements..."
           spellCheck={false}
           className="w-full h-full resize-none bg-transparent text-foreground placeholder:text-muted-foreground/40 font-mono text-[14px] leading-relaxed focus:outline-none"
+        />
+
+        {/* Floating Slash Command Menu */}
+        <SlashCommandMenu
+          isOpen={slashMenu.isOpen}
+          query={slashMenu.query}
+          onSelect={handleSelectSlashCommand}
+          onClose={() => setSlashMenu((prev) => ({ ...prev, isOpen: false }))}
+          position={slashMenu.position}
         />
       </div>
     </div>

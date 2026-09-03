@@ -63,7 +63,30 @@ export function parseInline(text: string): InlineNode[] {
       }
     }
 
-    // 5. Standard Links: [text](href)
+    // 5. Images: ![alt](src)
+    if (text.startsWith("![", index)) {
+      const closingBracket = text.indexOf("]", index + 2);
+      if (
+        closingBracket !== -1 &&
+        text[closingBracket + 1] === "("
+      ) {
+        const closingParen = text.indexOf(")", closingBracket + 2);
+        if (closingParen !== -1) {
+          const alt = text.slice(index + 2, closingBracket);
+          const src = text.slice(closingBracket + 2, closingParen).trim();
+          nodes.push({
+            type: "image",
+            alt,
+            src,
+            caption: alt || undefined,
+          });
+          index = closingParen + 1;
+          continue;
+        }
+      }
+    }
+
+    // 6. Standard Links: [text](href)
     if (text[index] === "[") {
       const closingBracket = text.indexOf("]", index + 1);
       if (
@@ -85,7 +108,7 @@ export function parseInline(text: string): InlineNode[] {
       }
     }
 
-    // 5. Italic: *text* or _text_
+    // 7. Italic: *text* or _text_
     if (
       (text[index] === "*" && !text.startsWith("**", index)) ||
       (text[index] === "_" && !text.startsWith("__", index))
@@ -102,7 +125,7 @@ export function parseInline(text: string): InlineNode[] {
 
     // Accumulate regular text until next potential markdown symbol
     let nextSpecial = length;
-    const specialChars = ["`", "*", "_", "~", "["];
+    const specialChars = ["`", "*", "_", "~", "[", "!"];
     for (const char of specialChars) {
       const pos = text.indexOf(char, index);
       if (pos !== -1 && pos < nextSpecial) {

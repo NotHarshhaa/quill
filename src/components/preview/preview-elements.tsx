@@ -1,7 +1,79 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { BlockNode, InlineNode, TableAlignment } from "@/lib/markdown/types";
 import { Corners } from "@/components/frame";
 import { Info, Lightbulb, AlertTriangle, ShieldAlert, Flame } from "lucide-react";
+import { mediaRepository } from "@/lib/storage/mediaRepository";
+
+function ImagePreview({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
+  const [resolvedSrc, setResolvedSrc] = useState<string>(src.startsWith("quill-media://") ? "" : src);
+  const [isZoomed, setIsZoomed] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (src.startsWith("quill-media://")) {
+      mediaRepository.resolveMediaUrl(src).then((url) => {
+        if (isMounted) setResolvedSrc(url);
+      });
+    } else {
+      setResolvedSrc(src);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [src]);
+
+  return (
+    <figure className="my-4 inline-block max-w-full font-sans">
+      <div
+        className="relative group border border-border/80 bg-card/60 p-1 shadow-xs cursor-zoom-in inline-block"
+        onClick={() => setIsZoomed(true)}
+      >
+        <Corners size="sm" offset="border" weight="thin" light />
+        {resolvedSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={resolvedSrc}
+            alt={alt || "Note visual"}
+            className="max-h-96 max-w-full rounded-none object-contain transition-transform group-hover:scale-[1.01]"
+            loading="lazy"
+          />
+        ) : (
+          <div className="h-32 w-64 flex items-center justify-center bg-muted/40 text-xs text-muted-foreground animate-pulse font-mono">
+            Loading image...
+          </div>
+        )}
+      </div>
+      {(caption || alt) && (
+        <figcaption className="text-xs text-muted-foreground/80 mt-1.5 font-sans italic text-center">
+          {caption || alt}
+        </figcaption>
+      )}
+
+      {/* Lightbox Zoom Dialog */}
+      {isZoomed && resolvedSrc && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-150"
+          onClick={() => setIsZoomed(false)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-card p-2 border border-border/80 shadow-2xl">
+            <Corners size="default" offset="border" weight="normal" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={resolvedSrc}
+              alt={alt || "Enlarged visual"}
+              className="max-w-full max-h-[80vh] object-contain"
+            />
+            {caption && (
+              <p className="text-center text-xs text-muted-foreground mt-2 font-mono">
+                {caption} · Click anywhere to close
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </figure>
+  );
+}
 
 export function RenderInline({
   node,
@@ -66,6 +138,8 @@ export function RenderInline({
           [[{node.label}]]
         </span>
       );
+    case "image":
+      return <ImagePreview src={node.src} alt={node.alt} caption={node.caption} />;
   }
 }
 
@@ -91,31 +165,31 @@ export function RenderBlock({
       switch (block.level) {
         case 1:
           return (
-            <h1 className="font-sans text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-6">
+            <h1 id={block.id} className="font-sans text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-6 scroll-mt-6">
               {headingText}
             </h1>
           );
         case 2:
           return (
-            <h2 className="font-sans text-2xl font-semibold tracking-tight text-foreground mt-7 mb-2">
+            <h2 id={block.id} className="font-sans text-2xl font-semibold tracking-tight text-foreground mt-7 mb-2 scroll-mt-6">
               {headingText}
             </h2>
           );
         case 3:
           return (
-            <h3 className="font-sans text-xl font-semibold tracking-tight text-foreground mt-6 mb-2">
+            <h3 id={block.id} className="font-sans text-xl font-semibold tracking-tight text-foreground mt-6 mb-2 scroll-mt-6">
               {headingText}
             </h3>
           );
         case 4:
           return (
-            <h4 className="font-sans text-lg font-medium text-foreground mt-4 mb-2">
+            <h4 id={block.id} className="font-sans text-lg font-medium text-foreground mt-4 mb-2 scroll-mt-6">
               {headingText}
             </h4>
           );
         default:
           return (
-            <h5 className="font-sans text-base font-medium text-foreground mt-4 mb-1">
+            <h5 id={block.id} className="font-sans text-base font-medium text-foreground mt-4 mb-1 scroll-mt-6">
               {headingText}
             </h5>
           );

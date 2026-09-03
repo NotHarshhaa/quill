@@ -29,9 +29,21 @@ function parseTableAlignments(delimiterLine: string): TableAlignment[] {
   });
 }
 
+export function slugify(text: string): string {
+  return (
+    text
+      .toLowerCase()
+      .replace(/<[^>]*>/g, "")
+      .replace(/[^\w\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-") || "section"
+  );
+}
+
 export function parseMarkdown(markdown: string): MarkdownDocument {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const blocks: BlockNode[] = [];
+  const headingCounts = new Map<string, number>();
   let index = 0;
   let taskCounter = 0;
 
@@ -77,9 +89,15 @@ export function parseMarkdown(markdown: string): MarkdownDocument {
     if (headingMatch) {
       const level = headingMatch[1].length as 1 | 2 | 3 | 4 | 5 | 6;
       const text = headingMatch[2].trim();
+      const baseSlug = slugify(text);
+      const count = headingCounts.get(baseSlug) || 0;
+      headingCounts.set(baseSlug, count + 1);
+      const id = count === 0 ? baseSlug : `${baseSlug}-${count}`;
+
       blocks.push({
         type: "heading",
         level,
+        id,
         children: parseInline(text),
       });
       index++;

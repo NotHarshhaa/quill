@@ -1,7 +1,27 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Download, Moon, Sun, Laptop, Command, Pin, PanelLeft, Edit3, Eye, Columns, History, Printer, Maximize2, Target, MoreHorizontal, Menu } from "lucide-react";
+import {
+  Download,
+  Moon,
+  Sun,
+  Laptop,
+  Command,
+  Pin,
+  PanelLeft,
+  Edit3,
+  Eye,
+  Columns,
+  History,
+  Printer,
+  Maximize2,
+  Target,
+  Menu,
+  Network,
+  ListTree,
+  BarChart3,
+  Headphones,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -21,6 +41,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { notesRepository } from "@/lib/storage/notesRepository";
 import { Note } from "@/lib/storage/schema";
 import { SaveStatus } from "@/hooks/useAutosave";
+import { AmbientSoundPlayer } from "@/components/audio/ambient-sound-player";
 import { toast } from "sonner";
 
 export type ViewMode = "editor" | "split" | "preview";
@@ -40,6 +61,9 @@ interface HeaderProps {
   onToggleZen?: () => void;
   writingGoal?: number;
   onSetWritingGoal?: (goal: number) => void;
+  onOpenGraph?: () => void;
+  onOpenToc?: () => void;
+  onOpenInsights?: () => void;
 }
 
 export function Header({
@@ -57,6 +81,9 @@ export function Header({
   onToggleZen,
   writingGoal = 0,
   onSetWritingGoal,
+  onOpenGraph,
+  onOpenToc,
+  onOpenInsights,
 }: HeaderProps) {
   const { theme, setTheme } = useTheme();
 
@@ -144,7 +171,7 @@ export function Header({
         </div>
       )}
 
-      {/* Right: Word count, status, pin, export, theme */}
+      {/* Right: Word count, status, tools & options */}
       <div className="flex items-center gap-1.5 sm:gap-2 text-xs tracking-wider shrink-0">
         <Badge
           variant="outline"
@@ -195,6 +222,90 @@ export function Header({
         <div className="relative hidden sm:flex items-center bg-card/80 p-0.5 border border-border/80 shadow-xs gap-0.5 shrink-0 select-none">
           <Corners size="sm" offset="border" weight="thin" light />
           <TooltipProvider>
+            {/* Table of Contents / Document Outline */}
+            {onOpenToc && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onOpenToc}
+                    className="text-muted-foreground hover:text-foreground rounded-none"
+                    aria-label="Table of Contents Outline"
+                  >
+                    <ListTree className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans">
+                  <p>Document Outline (Table of Contents)</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Interactive Knowledge Graph */}
+            {onOpenGraph && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onOpenGraph}
+                    className="text-muted-foreground hover:text-foreground rounded-none"
+                    aria-label="Knowledge Graph"
+                  >
+                    <Network className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans">
+                  <p>Interactive Knowledge Graph View</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Ambient Soundscape & Pomodoro Player Dropdown */}
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      className="text-muted-foreground hover:text-foreground rounded-none"
+                      aria-label="Ambient Sound & Pomodoro"
+                    >
+                      <Headphones className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans">
+                  <p>Ambient Soundscapes & Pomodoro Timer</p>
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="p-0 border-none bg-transparent shadow-none">
+                <AmbientSoundPlayer />
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Writing Insights & Analytics */}
+            {onOpenInsights && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onOpenInsights}
+                    className="text-muted-foreground hover:text-foreground rounded-none"
+                    aria-label="Writing Insights"
+                  >
+                    <BarChart3 className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans">
+                  <p>Writing Insights & Activity Heatmap</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+
             {/* Toggle Pin on Active Note */}
             {activeNote && onTogglePin && (
               <Tooltip>
@@ -407,6 +518,32 @@ export function Header({
                   {activeNote.title || "Untitled Note"}
                 </div>
               )}
+
+              {/* Table of Contents */}
+              {onOpenToc && (
+                <DropdownMenuItem onClick={onOpenToc} className="gap-2 cursor-pointer">
+                  <ListTree className="size-3.5 text-muted-foreground" />
+                  <span>Document Outline</span>
+                </DropdownMenuItem>
+              )}
+
+              {/* Knowledge Graph */}
+              {onOpenGraph && (
+                <DropdownMenuItem onClick={onOpenGraph} className="gap-2 cursor-pointer">
+                  <Network className="size-3.5 text-muted-foreground" />
+                  <span>Knowledge Graph View</span>
+                </DropdownMenuItem>
+              )}
+
+              {/* Writing Insights */}
+              {onOpenInsights && (
+                <DropdownMenuItem onClick={onOpenInsights} className="gap-2 cursor-pointer">
+                  <BarChart3 className="size-3.5 text-muted-foreground" />
+                  <span>Writing Insights & Heatmap</span>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuSeparator className="my-1 border-border/50" />
 
               {/* Pin Note */}
               {activeNote && onTogglePin && (

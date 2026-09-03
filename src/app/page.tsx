@@ -11,12 +11,16 @@ import { useAutosave } from "@/hooks/useAutosave";
 import { countWords } from "@/lib/utils";
 import { toggleTaskInMarkdown } from "@/lib/markdown";
 import { notesRepository } from "@/lib/storage/notesRepository";
+import { activityTracker } from "@/lib/storage/activityTracker";
 import { Note } from "@/lib/storage/schema";
-import { Minimize2 } from "lucide-react";
+import { Minimize2, ListTree } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Corners } from "@/components/frame";
 import { VersionHistoryDialog } from "@/components/history/version-history-dialog";
 import { TemplateDialog } from "@/components/templates/template-dialog";
+import { KnowledgeGraphModal } from "@/components/graph/knowledge-graph-modal";
+import { TableOfContents } from "@/components/toc/table-of-contents";
+import { WritingInsightsModal } from "@/components/analytics/writing-insights-modal";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -61,6 +65,11 @@ export default function QuillPage() {
   const [isZenMode, setIsZenMode] = useState(false);
   const [writingGoal, setWritingGoal] = useState<number>(0);
   const [hasNotifiedGoal, setHasNotifiedGoal] = useState(false);
+
+  // New Feature Modals State
+  const [isGraphOpen, setIsGraphOpen] = useState(false);
+  const [isTocOpen, setIsTocOpen] = useState(false);
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
 
   // Hidden file inputs for .md import and JSON restore
   const markdownInputRef = useRef<HTMLInputElement>(null);
@@ -110,12 +119,13 @@ export default function QuillPage() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, []);
 
-  // Debounced autosave to repository + periodic revision snapshots
+  // Debounced autosave to repository + periodic revision snapshots + activity tracking
   const { status: saveStatus } = useAutosave(
     localContent,
     (content) => {
       if (activeNote) {
         updateNote(activeNote.id, { content }, true);
+        activityTracker.logWords(countWords(content));
       }
     },
     350
@@ -249,9 +259,9 @@ export default function QuillPage() {
           </div>
 
           {/* Floating Zen Status Pill with Blueprint Corners */}
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 sm:gap-3 bg-card/95 border border-border/80 shadow-2xl px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs font-sans select-none max-w-[92vw]">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-2.5 bg-card/95 border border-border/80 shadow-2xl px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-sans select-none max-w-[94vw]">
             <Corners size="sm" offset="border" weight="thin" light />
-            <span className="font-semibold text-foreground max-w-32 sm:max-w-48 truncate">
+            <span className="font-semibold text-foreground max-w-28 sm:max-w-44 truncate">
               {activeNote?.title || "Untitled"}
             </span>
             <span className="text-muted-foreground/40">·</span>
@@ -266,6 +276,18 @@ export default function QuillPage() {
                 </span>
               </>
             )}
+
+            {/* Quick Outline in Zen */}
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => setIsTocOpen(true)}
+              className="rounded-none h-6 px-2 text-[11px] border border-border/70 text-muted-foreground hover:text-foreground hidden sm:inline-flex"
+            >
+              <ListTree className="size-3 mr-1 text-primary" />
+              <span>Outline</span>
+            </Button>
+
             <Button
               size="xs"
               variant="outline"
@@ -304,6 +326,9 @@ export default function QuillPage() {
                 toast.info("Session writing goal cleared");
               }
             }}
+            onOpenGraph={() => setIsGraphOpen(true)}
+            onOpenToc={() => setIsTocOpen(true)}
+            onOpenInsights={() => setIsInsightsOpen(true)}
           />
 
           {/* Main Workspace */}
@@ -417,6 +442,9 @@ export default function QuillPage() {
         onImportMarkdown={() => markdownInputRef.current?.click()}
         onBackupNotes={handleBackupNotes}
         onRestoreBackup={() => jsonInputRef.current?.click()}
+        onOpenGraph={() => setIsGraphOpen(true)}
+        onOpenToc={() => setIsTocOpen(true)}
+        onOpenInsights={() => setIsInsightsOpen(true)}
       />
 
       {/* Version History Dialog */}
@@ -439,6 +467,30 @@ export default function QuillPage() {
           createNoteFromTemplate(tmpl);
           toast.success(`Created note from "${tmpl.title}" template`);
         }}
+      />
+
+      {/* Interactive Knowledge Graph View Modal */}
+      <KnowledgeGraphModal
+        isOpen={isGraphOpen}
+        onClose={() => setIsGraphOpen(false)}
+        notes={allRawNotes}
+        activeNoteId={activeNoteId}
+        onSelectNote={selectNote}
+      />
+
+      {/* Document Outline / Table of Contents Drawer */}
+      <TableOfContents
+        isOpen={isTocOpen}
+        onClose={() => setIsTocOpen(false)}
+        content={localContent}
+      />
+
+      {/* Writing Insights & Heatmap Modal */}
+      <WritingInsightsModal
+        isOpen={isInsightsOpen}
+        onClose={() => setIsInsightsOpen(false)}
+        activeNote={activeNote}
+        notes={allRawNotes}
       />
     </div>
   );

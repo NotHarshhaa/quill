@@ -19,6 +19,9 @@ import {
   Maximize2,
   Sparkles,
   Copy,
+  Network,
+  ListTree,
+  BarChart3,
 } from "lucide-react";
 import { Corners } from "@/components/frame";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -43,6 +46,9 @@ interface CommandPaletteProps {
   onOpenTemplates?: () => void;
   onToggleZen?: () => void;
   onDuplicateActiveNote?: () => void;
+  onOpenGraph?: () => void;
+  onOpenToc?: () => void;
+  onOpenInsights?: () => void;
 }
 
 type ActionItem = {
@@ -80,6 +86,9 @@ export function CommandPalette({
   onOpenTemplates,
   onToggleZen,
   onDuplicateActiveNote,
+  onOpenGraph,
+  onOpenToc,
+  onOpenInsights,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -223,6 +232,48 @@ export function CommandPalette({
         icon: Copy,
         handler: () => {
           onDuplicateActiveNote();
+          onClose();
+        },
+      });
+    }
+
+    if (onOpenToc) {
+      list.push({
+        id: "action-toc",
+        type: "action",
+        title: "Document Outline (Table of Contents)",
+        subtitle: "Navigate sections and headings in active note",
+        icon: ListTree,
+        handler: () => {
+          onOpenToc();
+          onClose();
+        },
+      });
+    }
+
+    if (onOpenGraph) {
+      list.push({
+        id: "action-graph",
+        type: "action",
+        title: "Open Knowledge Graph View",
+        subtitle: "Interactive 2D physics network of notes and wiki-links",
+        icon: Network,
+        handler: () => {
+          onOpenGraph();
+          onClose();
+        },
+      });
+    }
+
+    if (onOpenInsights) {
+      list.push({
+        id: "action-insights",
+        type: "action",
+        title: "Writing Insights & Activity Heatmap",
+        subtitle: "Contribution calendar, readability diagnostics, vault stats",
+        icon: BarChart3,
+        handler: () => {
+          onOpenInsights();
           onClose();
         },
       });
