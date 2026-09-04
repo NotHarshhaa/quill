@@ -649,7 +649,7 @@ export default function QuillPage() {
                   size="icon-xs"
                   variant="ghost"
                   onClick={() => setIsTocOpen(true)}
-                  className="size-7 text-muted-foreground hover:text-foreground"
+                  className="size-7 text-muted-foreground hover:text-foreground hidden sm:inline-flex"
                   aria-label="Document outline"
                   title="Document outline"
                 >
@@ -690,7 +690,7 @@ export default function QuillPage() {
                   size="icon-xs"
                   variant="ghost"
                   onClick={() => setIsZenMode(true)}
-                  className="size-7 text-muted-foreground hover:text-foreground"
+                  className="size-7 text-muted-foreground hover:text-foreground hidden sm:inline-flex"
                   aria-label="Focus mode"
                   title="Focus mode (Ctrl+Shift+F)"
                 >

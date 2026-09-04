@@ -51,8 +51,8 @@ export function SlidingPanel({
           "fixed left-12 top-0 bottom-0 z-50 shadow-2xl",
           // Mobile drawer chrome
           "border-r border-border/70 max-md:border-r",
-          // Size: constant width on mobile, animated on desktop
-          "max-md:w-[var(--dock-width)]",
+          // Size: fits viewport on mobile (minus collapsed rail), animated on desktop
+          "max-md:w-[min(var(--dock-width),calc(100vw-3rem))]",
           isOpen
             ? "md:w-[var(--dock-width)] opacity-100 translate-x-0"
             : "md:w-0 md:border-r-0 opacity-0 -translate-x-full pointer-events-none"
