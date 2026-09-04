@@ -96,8 +96,9 @@ export function NotesPanel({
   return (
     <div className="flex flex-col h-full">
       {/* Search Bar */}
-      <div className="px-3 py-2 border-b border-border/40">
+      <div className="px-3 py-2.5 border-b border-border/40">
         <div className="relative">
+          <Corners size="sm" weight="thin" light />
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground/60" />
           <Input
             type="text"

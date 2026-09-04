@@ -9,8 +9,10 @@ import {
   BarChart3,
   Settings,
   Plus,
-  PanelLeft,
+  ChevronLeft,
+  ChevronRight,
   Command,
+  PanelLeftClose,
 } from "lucide-react";
 import {
   Tooltip,
@@ -33,14 +35,102 @@ const libraryItems: NavItem[] = [
   { id: "trash", icon: Trash2, label: "Trash" },
 ];
 
-function RailButton({ label, children }: { label: string; children: React.ReactNode }) {
+function RailTooltip({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side="right" sideOffset={8} className="font-sans text-[11px]">
+      <TooltipContent side="right" sideOffset={10} className="font-sans text-[11px]">
         {label}
       </TooltipContent>
     </Tooltip>
+  );
+}
+
+interface RowProps {
+  label: string;
+  icon: React.ElementType;
+  active?: boolean;
+  badge?: number;
+  expanded: boolean;
+  onClick: () => void;
+}
+
+/** Icon + label row that drops the label in collapsed mode. */
+function SidebarRow({ label, icon, active, badge, expanded, onClick }: RowProps) {
+  const Icon = icon;
+  return (
+    <RailTooltip label={label}>
+      <button
+        onClick={onClick}
+        aria-label={label}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "relative flex items-center gap-2.5 h-9 rounded-none text-left transition-colors group/row",
+          expanded ? "w-full px-2.5" : "w-9 justify-center mx-auto",
+          active
+            ? "text-foreground bg-muted/80"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+        )}
+      >
+        {active && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary rounded-r" />
+        )}
+        <Icon className="size-[16px] shrink-0" />
+        {expanded && (
+          <>
+            <span className="text-xs font-medium truncate flex-1">{label}</span>
+            {badge && badge > 0 && (
+              <span className="min-w-4 h-4 px-1 grid place-items-center text-[9px] font-medium bg-destructive/15 text-destructive border border-destructive/20 rounded-none">
+                {badge}
+              </span>
+            )}
+          </>
+        )}
+      </button>
+    </RailTooltip>
+  );
+}
+
+/** Compact icon-only control used at the bottom of the rail. */
+function RailControl({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <RailTooltip label={label}>
+      <button
+        onClick={onClick}
+        aria-label={label}
+        className="flex items-center justify-center size-9 mx-auto rounded-none text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+      >
+        {children}
+      </button>
+    </RailTooltip>
+  );
+}
+
+interface GroupLabelProps {
+  expanded: boolean;
+  children: React.ReactNode;
+}
+
+function GroupLabel({ expanded, children }: GroupLabelProps) {
+  if (!expanded) {
+    return (
+      <div className="w-full my-1 px-3">
+        <div className="h-px bg-border/50" />
+      </div>
+    );
+  }
+  return (
+    <div className="w-full px-2.5 pt-2 pb-0.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground/50">
+      {children}
+    </div>
   );
 }
 
@@ -53,6 +143,9 @@ interface VerticalSidebarProps {
   onOpenInsights: () => void;
   trashCount: number;
   dockOpen: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onHide: () => void;
 }
 
 export function VerticalSidebar({
@@ -63,7 +156,9 @@ export function VerticalSidebar({
   onOpenGraph,
   onOpenInsights,
   trashCount,
-  dockOpen,
+  expanded,
+  onToggleExpand,
+  onHide,
 }: VerticalSidebarProps) {
   const handleLibraryClick = (id: SidebarPanel) => {
     onSelectPanel(activePanel === id ? null : id);
@@ -72,129 +167,119 @@ export function VerticalSidebar({
   return (
     <nav
       aria-label="Primary"
-      className="h-full w-12 bg-card border-r border-border/70 flex flex-col items-center gap-1 py-2 shrink-0 select-none"
+      className={cn(
+        "h-full bg-card border-r border-border/70 flex flex-col shrink-0 select-none overflow-hidden transition-[width] duration-200 ease-out",
+        expanded ? "w-56" : "w-12"
+      )}
     >
-      {/* Brand */}
-      <div className="flex items-center justify-center w-full h-9" aria-hidden>
-        <QuillIcon className="size-5 shrink-0" />
+      {/* Brand header */}
+      <div className="flex h-12 items-center shrink-0 gap-2 px-2.5">
+        <div
+          className={cn(
+            "flex items-center gap-2 min-w-0",
+            expanded ? "w-full" : "mx-auto"
+          )}
+        >
+          <QuillIcon className="size-5 shrink-0" />
+          {expanded && (
+            <span className="text-sm font-semibold tracking-tight text-foreground truncate">
+              Quill
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Composer */}
-      <RailButton label="New Note (Ctrl+N)">
-        <button
-          onClick={onNewNote}
-          aria-label="New Note"
-          className="flex items-center justify-center size-9 rounded-none bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="size-4" />
-        </button>
-      </RailButton>
-
-      {/* Command palette */}
-      <RailButton label="Command palette (Ctrl+K)">
-        <button
-          onClick={onSearch}
-          aria-label="Open Command Palette"
-          className="flex items-center justify-center size-9 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-        >
-          <Command className="size-4" />
-        </button>
-      </RailButton>
-
-      {/* Library group */}
-      <div className="w-full px-1.5 pt-1.5">
-        <div className="h-px bg-border/50" />
+      <div className="shrink-0 px-0">
+        <RailTooltip label="New Note (Ctrl+N)">
+          <button
+            onClick={onNewNote}
+            aria-label="New Note"
+            className={cn(
+              "relative flex items-center gap-2 h-9 rounded-none bg-primary text-primary-foreground hover:bg-primary/90 transition-colors w-full overflow-hidden",
+              expanded ? "px-2.5 justify-start" : "justify-center"
+            )}
+          >
+            <Plus className="size-4 shrink-0" />
+            {expanded && <span className="text-xs font-semibold">New Note</span>}
+          </button>
+        </RailTooltip>
       </div>
 
-      <div className="flex flex-col items-center gap-1 w-full px-1.5">
-        {libraryItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activePanel === item.id;
-          const badge = item.id === "trash" ? trashCount : undefined;
-          return (
-            <RailButton key={item.id} label={item.label}>
-              <button
-                onClick={() => handleLibraryClick(item.id)}
-                aria-label={item.label}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "relative flex items-center justify-center size-9 rounded-none transition-colors",
-                  isActive
-                    ? "text-foreground bg-muted/70"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                )}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary rounded-r" />
-                )}
-                <Icon className="size-[16px] shrink-0" />
-                {badge && badge > 0 && (
-                  <span className="absolute -top-px -right-px min-w-3 h-3 px-0.5 grid place-items-center text-[8px] font-medium bg-destructive/15 text-destructive border border-destructive/20 rounded-none">
-                    {badge}
-                  </span>
-                )}
-              </button>
-            </RailButton>
-          );
-        })}
+      {/* Command */}
+      <div className="mt-1 shrink-0">
+        <SidebarRow
+          label="Command palette (Ctrl+K)"
+          icon={Command}
+          expanded={expanded}
+          onClick={onSearch}
+        />
+      </div>
+
+      {/* Library */}
+      <GroupLabel expanded={expanded}>Library</GroupLabel>
+      <div className="flex flex-col gap-0.5">
+        {libraryItems.map((item) => (
+          <SidebarRow
+            key={item.id}
+            label={item.label}
+            icon={item.icon}
+            expanded={expanded}
+            active={activePanel === item.id}
+            badge={item.id === "trash" ? trashCount : undefined}
+            onClick={() => handleLibraryClick(item.id)}
+          />
+        ))}
       </div>
 
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Tools group */}
-      <div className="flex flex-col items-center gap-1 w-full px-1.5 pt-1.5 border-t border-border/50">
-        <RailButton label="Knowledge Graph">
-          <button
-            onClick={onOpenGraph}
-            aria-label="Knowledge Graph"
-            className="flex items-center justify-center size-9 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-          >
-            <Network className="size-4" />
-          </button>
-        </RailButton>
+      {/* Tools */}
+      <GroupLabel expanded={expanded}>Tools</GroupLabel>
+      <div className="flex flex-col gap-0.5">
+        <SidebarRow label="Graph View" icon={Network} expanded={expanded} onClick={onOpenGraph} />
+        <SidebarRow label="Insights" icon={BarChart3} expanded={expanded} onClick={onOpenInsights} />
+      </div>
 
-        <RailButton label="Writing Insights">
-          <button
-            onClick={onOpenInsights}
-            aria-label="Writing Insights"
-            className="flex items-center justify-center size-9 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-          >
-            <BarChart3 className="size-4" />
-          </button>
-        </RailButton>
-
-        <RailButton label="Settings">
-          <button
-            onClick={() => handleLibraryClick("settings")}
-            aria-label="Settings"
-            aria-current={activePanel === "settings" ? "page" : undefined}
-            className={cn(
-              "relative flex items-center justify-center size-9 rounded-none transition-colors",
-              activePanel === "settings"
-                ? "text-foreground bg-muted/70"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-            )}
-          >
-            {activePanel === "settings" && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-primary rounded-r" />
-            )}
-            <Settings className="size-4" />
-          </button>
-        </RailButton>
-
-        {/* Dock toggle */}
-        <RailButton label={dockOpen ? "Hide panel (Ctrl+B)" : "Show notes (Ctrl+B)"}>
-          <button
-            onClick={() => onSelectPanel(dockOpen ? null : activePanel ?? "notes")}
-            aria-label={dockOpen ? "Hide panel" : "Show notes panel"}
-            className="flex items-center justify-center size-9 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-          >
-            <PanelLeft
-              className={cn("size-4 transition-transform duration-150", dockOpen ? "" : "rotate-180")}
-            />
-          </button>
-        </RailButton>
+      {/* Footer */}
+      <div className="border-t border-border/50 py-1.5 flex flex-col gap-0.5">
+        <SidebarRow
+          label="Settings"
+          icon={Settings}
+          expanded={expanded}
+          active={activePanel === "settings"}
+          onClick={() => handleLibraryClick("settings")}
+        />
+        {expanded ? (
+          <div className="flex items-center justify-between h-8 px-1.5 text-[10px] text-muted-foreground/50">
+            <span className="font-mono uppercase tracking-wider">Sidebar</span>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={onToggleExpand}
+                aria-label="Collapse sidebar (Ctrl+B)"
+                title="Collapse sidebar (Ctrl+B)"
+                className="size-6 grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 rounded-none transition-colors"
+              >
+                <ChevronLeft className="size-3.5" />
+              </button>
+              <button
+                onClick={onHide}
+                aria-label="Hide sidebar"
+                title="Hide sidebar"
+                className="size-6 grid place-items-center text-muted-foreground hover:text-foreground hover:bg-muted/40 rounded-none transition-colors"
+              >
+                <PanelLeftClose className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            <RailControl label="Expand sidebar (Ctrl+B)" onClick={onToggleExpand}>
+              <ChevronRight className="size-4" />
+            </RailControl>
+          </div>
+        )}
       </div>
     </nav>
   );

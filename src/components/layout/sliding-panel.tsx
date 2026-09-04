@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Corners } from "@/components/frame";
 
 interface SlidingPanelProps {
   isOpen: boolean;
@@ -43,7 +44,7 @@ export function SlidingPanel({
         aria-label={title}
         aria-hidden={!isOpen}
         className={cn(
-          "flex flex-col h-full overflow-hidden bg-background transition-[width,transform,opacity] duration-200 ease-out",
+          "relative flex flex-col h-full overflow-hidden bg-background transition-[width,transform,opacity] duration-200 ease-out",
           // Desktop: in-flow dock that reflows the document
           "md:static md:shrink-0 md:h-full",
           // Mobile: floating drawer that slides in from the left
@@ -58,6 +59,8 @@ export function SlidingPanel({
         )}
         style={{ "--dock-width": `${width}px` } as React.CSSProperties}
       >
+        <Corners size="sm" weight="thin" light />
+
         {/* Header */}
         <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/50 shrink-0">
           <h2 className="text-xs font-semibold tracking-wide uppercase text-muted-foreground font-sans truncate">

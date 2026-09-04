@@ -17,6 +17,8 @@ import {
   Columns2,
   Maximize2,
   Command,
+  PanelLeftClose,
+  PanelLeftOpen,
   Pin,
   PinOff,
   Star,
@@ -44,6 +46,7 @@ import { VerticalSidebar, SidebarPanel } from "@/components/layout/vertical-side
 import { SlidingPanel } from "@/components/layout/sliding-panel";
 import { NotesPanel } from "@/components/layout/notes-panel";
 import { StatusBar } from "@/components/layout/status-bar";
+import { Corners } from "@/components/frame";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -89,6 +92,8 @@ export default function QuillPage() {
   const [writingGoal, setWritingGoal] = useState<number>(0);
   const [hasNotifiedGoal, setHasNotifiedGoal] = useState(false);
   const [activePanel, setActivePanel] = useState<SidebarPanel | null>(null);
+  const [sideExpanded, setSideExpanded] = useState(true);
+  const [sideVisible, setSideVisible] = useState(true);
   const { resolvedTheme, setTheme } = useTheme();
   const dockOpen = activePanel !== null;
 
@@ -107,10 +112,13 @@ export default function QuillPage() {
     if (typeof window !== "undefined") {
       if (window.innerWidth < 768) {
         setViewMode("preview");
+        setSideExpanded(false);
       } else if (window.innerWidth < 1024) {
         setViewMode("split");
+        setSideExpanded(true);
       } else {
         setViewMode("split");
+        setSideExpanded(true);
       }
 
       // Show welcome popup modal by default unless user opted out
@@ -166,10 +174,15 @@ export default function QuillPage() {
         e.preventDefault();
         setViewMode("preview");
       }
-      // Toggle library dock: Ctrl+B
+      // Toggle sidebar expand/collapse: Ctrl+B
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
         e.preventDefault();
-        setActivePanel((prev) => (prev ? null : "notes"));
+        if (sideVisible) {
+          setSideExpanded((prev) => !prev);
+        } else {
+          setSideVisible(true);
+          setSideExpanded(true);
+        }
       }
       // Escape to close panels/modals
       if (e.key === "Escape") {
@@ -182,7 +195,7 @@ export default function QuillPage() {
     };
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [activePanel, isZenMode, createNote]);
+  }, [activePanel, isZenMode, sideExpanded, sideVisible, createNote]);
 
   // Debounced autosave to repository + periodic revision snapshots + activity tracking
   const { status: saveStatus } = useAutosave(
@@ -315,16 +328,21 @@ export default function QuillPage() {
         {/* Main Layout */}
         <div className="flex-1 flex min-h-0">
           {/* Vertical Sidebar */}
-          <VerticalSidebar
-            activePanel={activePanel}
-            onSelectPanel={setActivePanel}
-            onNewNote={createNote}
-            onSearch={() => setIsCommandPaletteOpen(true)}
-            onOpenGraph={() => setIsGraphOpen(true)}
-            onOpenInsights={() => setIsInsightsOpen(true)}
-            trashCount={trashedNotes.length}
-            dockOpen={dockOpen}
-          />
+          {sideVisible && (
+            <VerticalSidebar
+              activePanel={activePanel}
+              onSelectPanel={setActivePanel}
+              onNewNote={createNote}
+              onSearch={() => setIsCommandPaletteOpen(true)}
+              onOpenGraph={() => setIsGraphOpen(true)}
+              onOpenInsights={() => setIsInsightsOpen(true)}
+              trashCount={trashedNotes.length}
+              dockOpen={dockOpen}
+              expanded={sideExpanded}
+              onToggleExpand={() => setSideExpanded((prev) => !prev)}
+              onHide={() => setSideVisible(false)}
+            />
+          )}
 
           {/* Dockable Library Panel (Notes / Favorites / Trash / Settings) */}
           <SlidingPanel
@@ -521,8 +539,29 @@ export default function QuillPage() {
           <div className="flex-1 flex flex-col min-w-0">
             {/* Top Bar */}
             <div className="h-11 px-3 border-b border-border/50 flex items-center justify-between gap-3 shrink-0 bg-background/60">
-              {/* Left: note title + pin */}
-              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              {/* Left: sidebar toggle + note title + pin */}
+              <div className="flex items-center gap-1 min-w-0 flex-1">
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={() => {
+                    if (sideVisible) {
+                      setSideVisible(false);
+                    } else {
+                      setSideVisible(true);
+                      setSideExpanded(true);
+                    }
+                  }}
+                  className="size-7 text-muted-foreground hover:text-foreground shrink-0"
+                  aria-label={sideVisible ? "Hide sidebar" : "Show sidebar"}
+                  title={sideVisible ? "Hide sidebar (Ctrl+B)" : "Show sidebar (Ctrl+B)"}
+                >
+                  {sideVisible ? (
+                    <PanelLeftClose className="size-3.5" />
+                  ) : (
+                    <PanelLeftOpen className="size-3.5" />
+                  )}
+                </Button>
                 {activeNote && (
                   <Button
                     size="icon-xs"
@@ -554,7 +593,8 @@ export default function QuillPage() {
               </div>
 
               {/* Center: view mode switcher */}
-              <div className="flex items-center bg-muted/40 border border-border/50 p-0.5 shrink-0">
+              <div className="relative flex items-center bg-muted/40 border border-border/50 p-0.5 shrink-0">
+                <Corners size="sm" weight="thin" light />
                 <Button
                   size="xs"
                   variant={viewMode === "editor" ? "secondary" : "ghost"}
