@@ -3,6 +3,7 @@ import { BlockNode, InlineNode, TableAlignment } from "@/lib/markdown/types";
 import { Corners } from "@/components/frame";
 import { Info, Lightbulb, AlertTriangle, ShieldAlert, Flame } from "lucide-react";
 import { mediaRepository } from "@/lib/storage/mediaRepository";
+import { sanitizeUrl } from "@/lib/utils";
 
 function ImagePreview({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
   const [resolvedSrc, setResolvedSrc] = useState<string>(src.startsWith("quill-media://") ? "" : src);
@@ -10,15 +11,25 @@ function ImagePreview({ src, alt, caption }: { src: string; alt: string; caption
 
   useEffect(() => {
     let isMounted = true;
+    let objectUrlToRevoke: string | null = null;
+
     if (src.startsWith("quill-media://")) {
       mediaRepository.resolveMediaUrl(src).then((url) => {
-        if (isMounted) setResolvedSrc(url);
+        if (isMounted) {
+          setResolvedSrc(url);
+          // Track if we need to revoke this URL later
+          if (url.startsWith("blob:")) {
+            objectUrlToRevoke = url;
+          }
+        }
       });
     } else {
       setResolvedSrc(src);
     }
     return () => {
       isMounted = false;
+      // Note: We don't revoke cached URLs here as they may be reused
+      // The cache is managed by mediaRepository.clearObjectUrlCache()
     };
   }, [src]);
 
@@ -115,10 +126,20 @@ export function RenderInline({
           {node.value}
         </code>
       );
-    case "link":
+    case "link": {
+      const safeHref = sanitizeUrl(node.href);
+      if (!safeHref) {
+        return (
+          <span className="text-muted-foreground line-through" title="Unsafe link blocked">
+            {node.children.map((child, i) => (
+              <RenderInline key={i} node={child} onNavigateWikiLink={onNavigateWikiLink} />
+            ))}
+          </span>
+        );
+      }
       return (
         <a
-          href={node.href}
+          href={safeHref}
           target="_blank"
           rel="noopener noreferrer"
           className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground transition-colors"
@@ -128,6 +149,7 @@ export function RenderInline({
           ))}
         </a>
       );
+    }
     case "wikilink":
       return (
         <span

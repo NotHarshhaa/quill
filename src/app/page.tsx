@@ -23,6 +23,7 @@ import { TableOfContents } from "@/components/toc/table-of-contents";
 import { WritingInsightsModal } from "@/components/analytics/writing-insights-modal";
 import { WelcomeModal, SHOW_WELCOME_KEY } from "@/components/welcome/welcome-modal";
 import { AppUpdateNotifier } from "@/components/update/app-update-notifier";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -98,6 +99,11 @@ export default function QuillPage() {
       if (showPref !== "false") {
         setIsWelcomeOpen(true);
       }
+
+      // Set up storage error handler
+      notesRepository.setErrorHandler((message) => {
+        toast.error(message, { duration: 10000 });
+      });
     }
   }, []);
 
@@ -240,7 +246,8 @@ export default function QuillPage() {
   }
 
   return (
-    <div className="h-screen h-[100dvh] w-screen flex flex-col bg-background text-foreground overflow-hidden select-none pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
+    <ErrorBoundary>
+    <div className="h-screen h-[100dvh] w-screen flex flex-col bg-background text-foreground overflow-hidden pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
       {/* Hidden File Inputs for Import & Restore */}
       <input
         type="file"
@@ -626,5 +633,6 @@ export default function QuillPage() {
       {/* In-App Update Notifier (Only active in native mobile app) */}
       <AppUpdateNotifier />
     </div>
+    </ErrorBoundary>
   );
 }

@@ -84,6 +84,16 @@ export function MarkdownEditor({
     isInternalChangeRef.current = false;
   }, [content]);
 
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, []);
+
   // Push new state to history
   const pushHistory = (newVal: string, immediate = false) => {
     isInternalChangeRef.current = true;
@@ -250,14 +260,22 @@ export function MarkdownEditor({
       return;
     }
 
+    // 5MB size limit
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error(`Image too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum size is 5MB.`);
+      return;
+    }
+
     try {
       const cleanName = file.name.replace(/\.[^/.]+$/, "");
       const { uri } = await mediaRepository.saveImage(file, cleanName);
       const snippet = `\n![${cleanName || "Visual"}](${uri})\n`;
       insertSnippet(snippet, "", "");
       toast.success(`Image "${cleanName || "Visual"}" stored locally`);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to store image offline");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to store image offline";
+      toast.error(message);
     }
   };
 

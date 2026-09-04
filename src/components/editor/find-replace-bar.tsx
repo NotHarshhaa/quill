@@ -118,7 +118,8 @@ export function FindReplaceBar({
     let pattern = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     if (wholeWord) pattern = `\\b${pattern}\\b`;
     const regex = new RegExp(pattern, caseSensitive ? "g" : "gi");
-    const newContent = content.replace(regex, replaceQuery);
+    // Use a replacement function to avoid special replacement patterns like $&, $1, etc.
+    const newContent = content.replace(regex, () => replaceQuery);
     onReplace(newContent);
   };
 

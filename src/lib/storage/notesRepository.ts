@@ -1,6 +1,21 @@
 import { INITIAL_NOTES, Note, STORAGE_KEY, ACTIVE_NOTE_KEY } from "./schema";
+import { extractTags } from "@/lib/utils";
+
+export type StorageErrorHandler = (error: string) => void;
+
+function generateNoteId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return `note-${crypto.randomUUID()}`;
+  }
+  return `note-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+let onErrorHandler: StorageErrorHandler | null = null;
 
 export const notesRepository = {
+  setErrorHandler(handler: StorageErrorHandler | null) {
+    onErrorHandler = handler;
+  },
   getNotes(): Note[] {
     if (typeof window === "undefined") return INITIAL_NOTES;
     try {
@@ -54,7 +69,22 @@ export const notesRepository = {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
     } catch (e) {
-      console.error("Failed to save notes to localStorage", e);
+      const error = e as Error & { code?: number };
+      console.error("Failed to save notes to localStorage", error);
+      const isQuotaError = error.name === "QuotaExceededError" ||
+        error.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+        error.code === 22 ||
+        error.code === 1014;
+      if (isQuotaError) {
+        const message = "Storage quota exceeded. Some changes may not be saved. Consider exporting your notes or deleting old ones.";
+        if (onErrorHandler) {
+          onErrorHandler(message);
+        }
+      } else {
+        if (onErrorHandler) {
+          onErrorHandler("Failed to save changes. Please export your notes as backup.");
+        }
+      }
     }
   },
 
@@ -115,28 +145,31 @@ export const notesRepository = {
 
   restoreNotesFromJSON(jsonString: string): { success: boolean; count: number; notes?: Note[]; error?: string } {
     try {
-      const parsed = JSON.parse(jsonString);
-      let candidateNotes: any[] = [];
+      const parsed: unknown = JSON.parse(jsonString);
+      let candidateNotes: Record<string, unknown>[] = [];
 
       if (Array.isArray(parsed)) {
-        candidateNotes = parsed;
-      } else if (parsed && Array.isArray(parsed.notes)) {
-        candidateNotes = parsed.notes;
+        candidateNotes = parsed.filter((n): n is Record<string, unknown> => n !== null && typeof n === "object");
+      } else if (parsed && typeof parsed === "object" && Array.isArray((parsed as Record<string, unknown>).notes)) {
+        const notes = (parsed as Record<string, unknown>).notes;
+        candidateNotes = Array.isArray(notes)
+          ? notes.filter((n): n is Record<string, unknown> => n !== null && typeof n === "object")
+          : [];
       } else {
         return { success: false, count: 0, error: "Invalid backup format: missing notes array" };
       }
 
       // Validate and clean notes
       const validNotes: Note[] = candidateNotes
-        .filter((n) => n && typeof n === "object" && typeof n.id === "string")
+        .filter((n) => typeof n.id === "string")
         .map((n) => ({
-          id: n.id,
+          id: n.id as string,
           title: typeof n.title === "string" ? n.title : "Untitled",
           content: typeof n.content === "string" ? n.content : "",
           createdAt: typeof n.createdAt === "number" ? n.createdAt : Date.now(),
           updatedAt: typeof n.updatedAt === "number" ? n.updatedAt : Date.now(),
           isPinned: Boolean(n.isPinned),
-          tags: Array.isArray(n.tags) ? n.tags.filter((t: any) => typeof t === "string") : [],
+          tags: Array.isArray(n.tags) ? n.tags.filter((t: unknown) => typeof t === "string") : [],
           isDeleted: Boolean(n.isDeleted),
           deletedAt: typeof n.deletedAt === "number" ? n.deletedAt : undefined,
           revisions: Array.isArray(n.revisions) ? n.revisions : [],
@@ -147,8 +180,9 @@ export const notesRepository = {
       }
 
       return { success: true, count: validNotes.length, notes: validNotes };
-    } catch (err: any) {
-      return { success: false, count: 0, error: err?.message || "Failed to parse JSON file" };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to parse JSON file";
+      return { success: false, count: 0, error: message };
     }
   },
 
@@ -161,20 +195,14 @@ export const notesRepository = {
     }
     if (!title) title = "Imported Note";
 
-    // Extract tags from content
-    const tagMatches = content.match(/(?:^|\s)#([a-zA-Z0-9_\-]+)\b/g);
-    const tags = tagMatches
-      ? Array.from(new Set(tagMatches.map((t) => t.trim().replace(/^#/, "").toLowerCase())))
-      : [];
-
     return {
-      id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: generateNoteId(),
       title,
       content,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       isPinned: false,
-      tags,
+      tags: extractTags(content),
       isDeleted: false,
       revisions: [],
     };

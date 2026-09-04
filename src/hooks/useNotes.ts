@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Note } from "@/lib/storage/schema";
 import { notesRepository } from "@/lib/storage/notesRepository";
+import { extractTags } from "@/lib/utils";
 
-function extractTags(content?: string | null): string[] {
-  if (!content || typeof content !== "string") return [];
-  const matches = content.match(/(?:^|\s)#([a-zA-Z0-9_\-]+)\b/g);
-  if (!matches) return [];
-  return Array.from(new Set(matches.map((m) => m.trim().replace(/^#/, "").toLowerCase())));
+function generateId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return `note-${crypto.randomUUID()}`;
+  }
+  return `note-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export function useNotes() {
@@ -41,7 +42,7 @@ export function useNotes() {
 
   const createNote = useCallback((initialData?: Partial<Note>) => {
     const newNote: Note = {
-      id: `note-${Date.now()}`,
+      id: generateId(),
       title: initialData?.title || "Untitled",
       content: initialData?.content || "",
       createdAt: Date.now(),
@@ -197,7 +198,7 @@ export function useNotes() {
     const original = notes.find((n) => n.id === id);
     if (!original) return;
     const duplicated: Note = {
-      id: `note-${Date.now()}`,
+      id: generateId(),
       title: `${original.title || "Untitled"} (Copy)`,
       content: original.content,
       createdAt: Date.now(),

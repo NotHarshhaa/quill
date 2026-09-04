@@ -163,7 +163,7 @@ export function CornerBadge({
   size = "sm",
   as: Comp = "div",
   ...props
-}: HTMLAttributes<HTMLDivElement> & { size?: CornerSize; as?: any }) {
+}: HTMLAttributes<HTMLDivElement> & { size?: CornerSize; as?: React.ElementType }) {
   return (
     <Comp
       className={cn(

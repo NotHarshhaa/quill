@@ -43,6 +43,25 @@ const objectUrlCache = new Map<string, string>();
 
 export const mediaRepository = {
   /**
+   * Revoke object URL for a specific image to free memory
+   */
+  revokeObjectUrl(id: string): void {
+    const cached = objectUrlCache.get(id);
+    if (cached) {
+      URL.revokeObjectURL(cached);
+      objectUrlCache.delete(id);
+    }
+  },
+
+  /**
+   * Clear all cached object URLs to free memory
+   */
+  clearObjectUrlCache(): void {
+    objectUrlCache.forEach((url) => URL.revokeObjectURL(url));
+    objectUrlCache.clear();
+  },
+
+  /**
    * Save a file or blob to IndexedDB
    * Returns a custom URI scheme: `quill-media://<id>`
    */

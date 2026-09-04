@@ -6,6 +6,7 @@ import { RenderBlock } from "./preview-elements";
 import { FileText, Link2 } from "lucide-react";
 import { Corners } from "@/components/frame";
 import { Badge } from "@/components/ui/badge";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 interface MarkdownPreviewProps {
   content: string;
@@ -23,7 +24,8 @@ export function MarkdownPreview({
   const ast = useMarkdownPreview(content);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative font-sans">
+    <ErrorBoundary fallback={<div className="p-4 text-muted-foreground text-sm">Preview unavailable</div>}>
+    <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative font-sans select-text">
       <Corners size="sm" offset="border" weight="thin" light />
       {/* Preview Header Bar */}
       <div className="h-14 sm:h-10 px-2 sm:px-3 md:px-4 border-b border-border/70 flex items-center justify-between select-none bg-background/50">
@@ -80,5 +82,6 @@ export function MarkdownPreview({
         )}
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

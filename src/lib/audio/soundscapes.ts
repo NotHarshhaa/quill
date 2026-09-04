@@ -16,8 +16,11 @@ class SoundscapeEngine {
 
   private initContext(): AudioContext {
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      this.ctx = new AudioCtx();
+      const AudioCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtor) {
+        throw new Error("Web Audio API is not supported in this browser");
+      }
+      this.ctx = new AudioCtor();
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.value = 0.35;
       this.masterGain.connect(this.ctx.destination);

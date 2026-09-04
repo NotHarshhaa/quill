@@ -38,7 +38,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { notesRepository } from "@/lib/storage/notesRepository";
 import { Note } from "@/lib/storage/schema";
 import { SaveStatus } from "@/hooks/useAutosave";
@@ -224,7 +224,6 @@ export function Header({
         {/* Desktop Action Buttons with Blueprint Corners */}
         <div className="relative hidden sm:flex items-center bg-card/80 p-0.5 border border-border/80 shadow-xs gap-0.5 shrink-0 select-none">
           <Corners size="sm" offset="border" weight="thin" light />
-          <TooltipProvider>
             {/* Table of Contents / Document Outline */}
             {onOpenToc && (
               <Tooltip>
@@ -511,7 +510,6 @@ export function Header({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </TooltipProvider>
         </div>
 
         {/* Mobile Dropdown Menu with Matching Blueprint Corners */}
