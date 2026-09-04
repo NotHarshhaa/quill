@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Header } from "@/components/layout/header";
-import { NotesSidebar } from "@/components/sidebar/notes-sidebar";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { MarkdownPreview } from "@/components/preview/markdown-preview";
 import { CommandPalette } from "@/components/command/command-palette";
@@ -13,9 +11,27 @@ import { toggleTaskInMarkdown } from "@/lib/markdown";
 import { notesRepository } from "@/lib/storage/notesRepository";
 import { activityTracker } from "@/lib/storage/activityTracker";
 import { Note } from "@/lib/storage/schema";
-import { Minimize2, ListTree, Columns2, Eye, PenLine } from "lucide-react";
+import {
+  Eye,
+  PenLine,
+  Columns2,
+  Maximize2,
+  Command,
+  Pin,
+  PinOff,
+  Star,
+  Trash2,
+  ListTree,
+  History,
+  Download,
+  FileText,
+  Sun,
+  Moon,
+  X,
+} from "lucide-react";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { Corners } from "@/components/frame";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { VersionHistoryDialog } from "@/components/history/version-history-dialog";
 import { TemplateDialog } from "@/components/templates/template-dialog";
 import { KnowledgeGraphModal } from "@/components/graph/knowledge-graph-modal";
@@ -24,6 +40,10 @@ import { WritingInsightsModal } from "@/components/analytics/writing-insights-mo
 import { WelcomeModal, SHOW_WELCOME_KEY } from "@/components/welcome/welcome-modal";
 import { AppUpdateNotifier } from "@/components/update/app-update-notifier";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { VerticalSidebar, SidebarPanel } from "@/components/layout/vertical-sidebar";
+import { SlidingPanel } from "@/components/layout/sliding-panel";
+import { NotesPanel } from "@/components/layout/notes-panel";
+import { StatusBar } from "@/components/layout/status-bar";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -61,7 +81,6 @@ export default function QuillPage() {
   // Local editor content for immediate keystroke feedback
   const [localContent, setLocalContent] = useState<string>("");
   const [viewMode, setViewMode] = useState<ViewMode>("split");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
@@ -69,6 +88,9 @@ export default function QuillPage() {
   const [zenViewMode, setZenViewMode] = useState<ViewMode>("editor");
   const [writingGoal, setWritingGoal] = useState<number>(0);
   const [hasNotifiedGoal, setHasNotifiedGoal] = useState(false);
+  const [activePanel, setActivePanel] = useState<SidebarPanel | null>(null);
+  const { resolvedTheme, setTheme } = useTheme();
+  const dockOpen = activePanel !== null;
 
   // New Feature Modals State
   const [isGraphOpen, setIsGraphOpen] = useState(false);
@@ -85,13 +107,10 @@ export default function QuillPage() {
     if (typeof window !== "undefined") {
       if (window.innerWidth < 768) {
         setViewMode("preview");
-        setIsSidebarOpen(false);
       } else if (window.innerWidth < 1024) {
         setViewMode("split");
-        setIsSidebarOpen(false);
       } else {
         setViewMode("split");
-        setIsSidebarOpen(true);
       }
 
       // Show welcome popup modal by default unless user opted out
@@ -116,24 +135,54 @@ export default function QuillPage() {
     }
   }, [activeNoteId, activeNote]);
 
-  // Global keyboard shortcuts (Cmd+K for palette, Cmd+Shift+F for Zen, Esc to exit Zen)
+  // Enhanced keyboard shortcuts
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Command Palette: Cmd+K
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setIsCommandPaletteOpen((prev) => !prev);
       }
+      // Zen Mode: Cmd+Shift+F
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "f") {
         e.preventDefault();
         setIsZenMode((prev) => !prev);
       }
+      // New Note: Cmd+N
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n" && !e.shiftKey) {
+        e.preventDefault();
+        createNote();
+      }
+      // View Modes: Cmd+1/2/3
+      if ((e.metaKey || e.ctrlKey) && e.key === "1") {
+        e.preventDefault();
+        setViewMode("editor");
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "2") {
+        e.preventDefault();
+        setViewMode("split");
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "3") {
+        e.preventDefault();
+        setViewMode("preview");
+      }
+      // Toggle library dock: Ctrl+B
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setActivePanel((prev) => (prev ? null : "notes"));
+      }
+      // Escape to close panels/modals
       if (e.key === "Escape") {
-        setIsZenMode(false);
+        if (isZenMode) {
+          setIsZenMode(false);
+        } else if (activePanel) {
+          setActivePanel(null);
+        }
       }
     };
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, []);
+  }, [activePanel, isZenMode, createNote]);
 
   // Debounced autosave to repository + periodic revision snapshots + activity tracking
   const { status: saveStatus } = useAutosave(
@@ -151,12 +200,10 @@ export default function QuillPage() {
     setLocalContent(newContent);
   };
 
-  // Close sidebar drawer on mobile/tablet after selecting note
+  // Close panel after selecting note
   const handleSelectNote = (id: string) => {
     selectNote(id);
-    if (typeof window !== "undefined" && window.innerWidth < 1024) {
-      setIsSidebarOpen(false);
-    }
+    setActivePanel(null);
   };
 
   // Interactive Checklist: toggle [ ] <-> [x] in preview
@@ -228,7 +275,7 @@ export default function QuillPage() {
   // Trigger celebration toast once when session writing goal is reached
   useEffect(() => {
     if (writingGoal > 0 && wordCount >= writingGoal && !hasNotifiedGoal) {
-      toast.success(`🎯 Writing goal achieved: ${wordCount} / ${writingGoal} words!`);
+      toast.success(`Writing goal achieved: ${wordCount} / ${writingGoal} words!`);
       setHasNotifiedGoal(true);
     } else if (writingGoal > 0 && wordCount < writingGoal && hasNotifiedGoal) {
       setHasNotifiedGoal(false);
@@ -247,69 +294,520 @@ export default function QuillPage() {
 
   return (
     <ErrorBoundary>
-    <div className="h-screen h-[100dvh] w-screen flex flex-col bg-background text-foreground overflow-hidden pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
-      {/* Hidden File Inputs for Import & Restore */}
-      <input
-        type="file"
-        ref={markdownInputRef}
-        onChange={handleImportMarkdownFiles}
-        accept=".md,.markdown,.txt"
-        multiple
-        className="hidden"
-      />
-      <input
-        type="file"
-        ref={jsonInputRef}
-        onChange={handleRestoreJSONFile}
-        accept=".json"
-        className="hidden"
-      />
+      <div className="h-screen h-[100dvh] w-screen flex flex-col bg-background text-foreground overflow-hidden">
+        {/* Hidden File Inputs for Import & Restore */}
+        <input
+          type="file"
+          ref={markdownInputRef}
+          onChange={handleImportMarkdownFiles}
+          accept=".md,.markdown,.txt"
+          multiple
+          className="hidden"
+        />
+        <input
+          type="file"
+          ref={jsonInputRef}
+          onChange={handleRestoreJSONFile}
+          accept=".json"
+          className="hidden"
+        />
 
-      {isZenMode ? (
-        /* Zen / Distraction-Free Fullscreen Canvas with Drafting Grid Background */
-        <div className="flex-1 flex flex-col h-full bg-drafting-grid relative overflow-hidden font-sans select-none">
-          {/* Centered Document Desk Sheet with Balanced Margins on All 4 Sides */}
-          <div className="flex-1 flex items-center justify-center p-3 sm:p-6 md:p-8 pb-22 sm:pb-26 h-full min-h-0 overflow-hidden">
-            <div
-              className={cn(
-                "w-full h-full bg-card border border-border/80 shadow-2xl relative flex flex-col overflow-hidden transition-all duration-200",
-                zenViewMode === "split" ? "max-w-6xl" : "max-w-4xl"
-              )}
-            >
-              <Corners size="default" offset="border" weight="normal" light />
+        {/* Main Layout */}
+        <div className="flex-1 flex min-h-0">
+          {/* Vertical Sidebar */}
+          <VerticalSidebar
+            activePanel={activePanel}
+            onSelectPanel={setActivePanel}
+            onNewNote={createNote}
+            onSearch={() => setIsCommandPaletteOpen(true)}
+            onOpenGraph={() => setIsGraphOpen(true)}
+            onOpenInsights={() => setIsInsightsOpen(true)}
+            trashCount={trashedNotes.length}
+            dockOpen={dockOpen}
+          />
 
-              {/* Focus Paper Content based on zenViewMode */}
-              {zenViewMode === "editor" && (
-                <div className="flex-1 h-full min-h-0 flex flex-col">
-                  <MarkdownEditor
-                    content={localContent}
-                    onChange={handleEditorChange}
-                    borderRight={false}
-                  />
-                </div>
-              )}
+          {/* Dockable Library Panel (Notes / Favorites / Trash / Settings) */}
+          <SlidingPanel
+            isOpen={activePanel !== null}
+            onClose={() => setActivePanel(null)}
+            title={
+              activePanel === "notes"
+                ? "Notes"
+                : activePanel === "favorites"
+                ? "Favorites"
+                : activePanel === "trash"
+                ? "Trash"
+                : activePanel === "settings"
+                ? "Settings"
+                : ""
+            }
+          >
+            {activePanel === "notes" && (
+              <NotesPanel
+                notes={notes}
+                activeNoteId={activeNoteId}
+                onSelectNote={handleSelectNote}
+                onCreateNote={createNote}
+                onDeleteNote={deleteNote}
+                onTogglePin={togglePinNote}
+                onDuplicateNote={duplicateNote}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+              />
+            )}
 
-              {zenViewMode === "preview" && (
-                <div className="flex-1 h-full min-h-0 overflow-y-auto">
-                  <MarkdownPreview
-                    content={localContent}
-                    onToggleTask={handleToggleTask}
-                    onNavigateWikiLink={navigateOrCreateWikiLink}
-                    backlinks={backlinks}
-                  />
-                </div>
-              )}
-
-              {zenViewMode === "split" && (
-                <div className="flex-1 flex h-full min-w-0 divide-x divide-border/70">
-                  <div className="flex-1 h-full min-w-0 flex flex-col">
-                    <MarkdownEditor
-                      content={localContent}
-                      onChange={handleEditorChange}
-                      borderRight={false}
-                    />
+            {activePanel === "favorites" && (
+              <div className="flex flex-col h-full">
+                <ScrollArea className="flex-1">
+                  <div className="p-2 space-y-1">
+                    {notes.filter((n) => n.isPinned).length === 0 ? (
+                      <div className="py-12 text-center">
+                        <Star className="size-8 text-muted-foreground/25 mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">No favorites yet</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-1">
+                          Pin notes to add them here
+                        </p>
+                      </div>
+                    ) : (
+                      notes
+                        .filter((n) => n.isPinned)
+                        .map((note) => (
+                          <button
+                            key={note.id}
+                            onClick={() => handleSelectNote(note.id)}
+                            className={cn(
+                              "w-full text-left p-2.5 rounded-none transition-colors border",
+                              activeNoteId === note.id
+                                ? "bg-card border-border shadow-sm"
+                                : "border-transparent hover:bg-muted/40 hover:border-border/40"
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <Star className="size-3 text-amber-500 fill-amber-500 shrink-0" />
+                              <span className="text-xs font-medium text-foreground truncate">
+                                {note.title || "Untitled"}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">
+                              {note.content.slice(0, 60) || "Empty"}
+                            </p>
+                          </button>
+                        ))
+                    )}
                   </div>
-                  <div className="flex-1 h-full min-w-0 overflow-y-auto">
+                </ScrollArea>
+              </div>
+            )}
+
+            {activePanel === "trash" && (
+              <div className="flex flex-col h-full">
+                {trashedNotes.length > 0 && (
+                  <div className="flex items-center justify-between px-2 py-1.5 border-b border-border/40">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">
+                      {trashedNotes.length} deleted
+                    </span>
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      onClick={emptyTrash}
+                      className="text-[10px] text-destructive hover:text-destructive h-6"
+                    >
+                      Empty Trash
+                    </Button>
+                  </div>
+                )}
+                <ScrollArea className="flex-1">
+                  <div className="p-2 space-y-1">
+                    {trashedNotes.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <Trash2 className="size-8 text-muted-foreground/25 mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">Trash is empty</p>
+                      </div>
+                    ) : (
+                      trashedNotes.map((note) => (
+                        <div
+                          key={note.id}
+                          className="p-2.5 rounded-none border border-border/50 bg-muted/20"
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs font-medium text-foreground truncate flex-1">
+                              {note.title || "Untitled"}
+                            </span>
+                            <Button
+                              size="icon-xs"
+                              variant="ghost"
+                              onClick={() => restoreFromTrash(note.id)}
+                              className="size-6 text-muted-foreground hover:text-foreground"
+                              title="Restore"
+                            >
+                              <X className="size-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {activePanel === "settings" && (
+              <div className="flex flex-col h-full overflow-y-auto">
+                <div className="p-3 space-y-3">
+                  <div className="border border-border/50 p-3 rounded-none bg-muted/20">
+                    <h4 className="text-xs font-semibold text-foreground mb-2">Writing Goal</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {[0, 250, 500, 1000].map((goal) => (
+                        <Button
+                          key={goal}
+                          size="xs"
+                          variant={writingGoal === goal ? "default" : "outline"}
+                          onClick={() => {
+                            setWritingGoal(goal);
+                            if (goal > 0) {
+                              toast.info(`Session writing goal: ${goal} words`);
+                            }
+                          }}
+                          className="text-[10px] h-6 px-2"
+                        >
+                          {goal === 0 ? "None" : goal}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="border border-border/50 p-3 rounded-none bg-muted/20">
+                    <h4 className="text-xs font-semibold text-foreground mb-2">Data</h4>
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={handleBackupNotes}
+                        className="text-[10px] h-7 justify-start"
+                      >
+                        <FileText className="size-3 mr-1.5" />
+                        Export All Notes
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={() => jsonInputRef.current?.click()}
+                        className="text-[10px] h-7 justify-start"
+                      >
+                        <FileText className="size-3 mr-1.5" />
+                        Import Backup
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="border border-border/50 p-3 rounded-none bg-muted/20">
+                    <h4 className="text-xs font-semibold text-foreground mb-2">About</h4>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      Quill v1.5.0 — Offline-first markdown notes
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </SlidingPanel>
+
+          
+          
+          
+          
+          
+          
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Top Bar */}
+            <div className="h-11 px-3 border-b border-border/50 flex items-center justify-between gap-3 shrink-0 bg-background/60">
+              {/* Left: note title + pin */}
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                {activeNote && (
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    onClick={() => togglePinNote(activeNote.id)}
+                    className={cn(
+                      "size-7 shrink-0",
+                      activeNote.isPinned
+                        ? "text-amber-500 hover:text-amber-400"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    aria-label={activeNote.isPinned ? "Unpin note" : "Pin note"}
+                    aria-pressed={activeNote.isPinned}
+                    title={activeNote.isPinned ? "Unpin note" : "Pin note"}
+                  >
+                    {activeNote.isPinned ? (
+                      <Pin className="size-3.5 fill-current" />
+                    ) : (
+                      <PinOff className="size-3.5" />
+                    )}
+                  </Button>
+                )}
+                <span
+                  className="text-sm font-medium text-foreground truncate"
+                  title={activeNote?.title}
+                >
+                  {activeNote?.title || "Untitled"}
+                </span>
+              </div>
+
+              {/* Center: view mode switcher */}
+              <div className="flex items-center bg-muted/40 border border-border/50 p-0.5 shrink-0">
+                <Button
+                  size="xs"
+                  variant={viewMode === "editor" ? "secondary" : "ghost"}
+                  onClick={() => setViewMode("editor")}
+                  className="h-6 px-2 text-[11px] gap-1"
+                  title="Editor (Ctrl+1)"
+                >
+                  <PenLine className="size-3" />
+                  <span className="hidden sm:inline">Edit</span>
+                </Button>
+                <Button
+                  size="xs"
+                  variant={viewMode === "split" ? "secondary" : "ghost"}
+                  onClick={() => setViewMode("split")}
+                  className="hidden sm:inline-flex h-6 px-2 text-[11px] gap-1"
+                  title="Split (Ctrl+2)"
+                >
+                  <Columns2 className="size-3" />
+                  <span>Split</span>
+                </Button>
+                <Button
+                  size="xs"
+                  variant={viewMode === "preview" ? "secondary" : "ghost"}
+                  onClick={() => setViewMode("preview")}
+                  className="h-6 px-2 text-[11px] gap-1"
+                  title="Preview (Ctrl+3)"
+                >
+                  <Eye className="size-3" />
+                  <span className="hidden sm:inline">Preview</span>
+                </Button>
+              </div>
+
+              {/* Right: actions */}
+              <div className="flex items-center gap-0.5 shrink-0">
+                {/* Command palette */}
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => setIsCommandPaletteOpen(true)}
+                  className="h-7 px-2 text-[11px] gap-1.5 text-muted-foreground hover:text-foreground"
+                  title="Command palette (Ctrl+K)"
+                >
+                  <Command className="size-3.5" />
+                  <span className="hidden sm:inline">Commands</span>
+                  <kbd className="hidden xl:inline-block font-mono text-[9px] px-1 py-0.5 rounded-xs bg-muted border border-border/60 text-muted-foreground">
+                    ⌘K
+                  </kbd>
+                </Button>
+
+                {/* Document outline */}
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={() => setIsTocOpen(true)}
+                  className="size-7 text-muted-foreground hover:text-foreground"
+                  aria-label="Document outline"
+                  title="Document outline"
+                >
+                  <ListTree className="size-3.5" />
+                </Button>
+
+                {/* Version history */}
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={() => setIsHistoryOpen(true)}
+                  className="size-7 text-muted-foreground hover:text-foreground hidden sm:inline-flex"
+                  aria-label="Version history"
+                  title="Version history"
+                >
+                  <History className="size-3.5" />
+                </Button>
+
+                {/* Export markdown */}
+                {activeNote && (
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    onClick={() => {
+                      notesRepository.exportNote(activeNote);
+                      toast.success(`Exported "${activeNote.title || "Untitled"}.md"`);
+                    }}
+                    className="size-7 text-muted-foreground hover:text-foreground hidden sm:inline-flex"
+                    aria-label="Export note as Markdown"
+                    title="Export as .md"
+                  >
+                    <Download className="size-3.5" />
+                  </Button>
+                )}
+
+                {/* Zen mode */}
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={() => setIsZenMode(true)}
+                  className="size-7 text-muted-foreground hover:text-foreground"
+                  aria-label="Focus mode"
+                  title="Focus mode (Ctrl+Shift+F)"
+                >
+                  <Maximize2 className="size-3.5" />
+                </Button>
+
+                <div className="w-px h-4 bg-border/60 mx-0.5" />
+
+                {/* Theme toggle */}
+                <Button
+                  size="icon-xs"
+                  variant="ghost"
+                  onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                  className="relative size-7 text-muted-foreground hover:text-foreground"
+                  aria-label="Toggle theme"
+                  title={resolvedTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+                >
+                  <Sun className="size-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                  <Moon className="absolute size-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Editor/Preview Content */}
+            <div className="flex-1 flex min-h-0">
+              {isZenMode ? (
+                /* Zen Mode - Centered Focus */
+                <div className="flex-1 flex flex-col h-full bg-drafting-grid relative overflow-hidden">
+                  <div className="flex-1 flex items-center justify-center p-4 sm:p-8 h-full min-h-0 overflow-hidden">
+                    <div className="w-full max-w-3xl h-full bg-card border border-border/80 shadow-2xl relative flex flex-col overflow-hidden">
+                      {zenViewMode === "editor" && (
+                        <MarkdownEditor
+                          content={localContent}
+                          onChange={handleEditorChange}
+                          borderRight={false}
+                        />
+                      )}
+                      {zenViewMode === "preview" && (
+                        <div className="flex-1 h-full min-h-0 overflow-y-auto">
+                          <MarkdownPreview
+                            content={localContent}
+                            onToggleTask={handleToggleTask}
+                            onNavigateWikiLink={navigateOrCreateWikiLink}
+                            backlinks={backlinks}
+                          />
+                        </div>
+                      )}
+                      {zenViewMode === "split" && (
+                        <div className="flex-1 flex h-full min-w-0 divide-x divide-border/70">
+                          <div className="flex-1 h-full min-w-0 flex flex-col">
+                            <MarkdownEditor
+                              content={localContent}
+                              onChange={handleEditorChange}
+                              borderRight={false}
+                            />
+                          </div>
+                          <div className="flex-1 h-full min-w-0 overflow-y-auto">
+                            <MarkdownPreview
+                              content={localContent}
+                              onToggleTask={handleToggleTask}
+                              onNavigateWikiLink={navigateOrCreateWikiLink}
+                              backlinks={backlinks}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Zen Mode Bottom Bar */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-card/95 border border-border/80 shadow-lg px-3 py-1.5 text-xs">
+                    <span className="font-medium text-foreground truncate max-w-[200px]">
+                      {activeNote?.title || "Untitled"}
+                    </span>
+                    <span className="text-muted-foreground/40">·</span>
+                    <span className="font-mono text-muted-foreground text-[10px]">
+                      {wordCount} words
+                    </span>
+                    <div className="flex items-center border border-border/50 p-0.5 bg-muted/40 ml-2">
+                      <Button
+                        size="xs"
+                        variant={zenViewMode === "editor" ? "default" : "ghost"}
+                        onClick={() => setZenViewMode("editor")}
+                        className="h-5 px-1.5 text-[10px]"
+                      >
+                        <PenLine className="size-2.5" />
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant={zenViewMode === "split" ? "default" : "ghost"}
+                        onClick={() => setZenViewMode("split")}
+                        className="h-5 px-1.5 text-[10px]"
+                      >
+                        <Columns2 className="size-2.5" />
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant={zenViewMode === "preview" ? "default" : "ghost"}
+                        onClick={() => setZenViewMode("preview")}
+                        className="h-5 px-1.5 text-[10px]"
+                      >
+                        <Eye className="size-2.5" />
+                      </Button>
+                    </div>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => setIsZenMode(false)}
+                      className="h-5 px-2 text-[10px] border-border/50 ml-1"
+                    >
+                      Exit
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                /* Normal Mode - Editor/Preview Panes */
+                <>
+                  {/* Editor Pane */}
+                  <div
+                    className={cn(
+                      "h-full min-w-0 flex flex-col",
+                      viewMode === "editor"
+                        ? "flex-1"
+                        : viewMode === "split"
+                        ? "flex-1 border-r border-border/70"
+                        : "hidden"
+                    )}
+                  >
+                    {viewMode === "editor" ? (
+                      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-background">
+                        <div className="w-full max-w-3xl h-full">
+                          <MarkdownEditor
+                            content={localContent}
+                            onChange={handleEditorChange}
+                            borderRight={false}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <MarkdownEditor
+                        content={localContent}
+                        onChange={handleEditorChange}
+                      />
+                    )}
+                  </div>
+
+                  {/* Preview Pane */}
+                  <div
+                    className={cn(
+                      "h-full min-w-0 overflow-y-auto",
+                      viewMode === "preview"
+                        ? "flex-1"
+                        : viewMode === "split"
+                        ? "flex-1"
+                        : "hidden"
+                    )}
+                  >
                     <MarkdownPreview
                       content={localContent}
                       onToggleTask={handleToggleTask}
@@ -317,322 +815,126 @@ export default function QuillPage() {
                       backlinks={backlinks}
                     />
                   </div>
-                </div>
+                </>
               )}
             </div>
           </div>
-
-          {/* Floating Zen Status Pill with Blueprint Corners */}
-          <div className="fixed bottom-5 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-2.5 bg-card/95 border border-border/80 shadow-2xl px-3 py-1.5 sm:px-4 sm:py-2 text-xs font-sans select-none max-w-[95vw]">
-            <Corners size="sm" offset="border" weight="thin" light />
-            <span className="font-semibold text-foreground max-w-24 sm:max-w-44 truncate">
-              {activeNote?.title || "Untitled"}
-            </span>
-            <span className="text-muted-foreground/40 hidden xs:inline">·</span>
-            <span className="font-mono text-muted-foreground text-[10.5px] sm:text-[11px] whitespace-nowrap hidden xs:inline">
-              {wordCount} {wordCount === 1 ? "word" : "words"}
-            </span>
-            {writingGoal > 0 && (
-              <>
-                <span className="text-muted-foreground/40 hidden sm:inline">·</span>
-                <span className="font-mono text-[10.5px] sm:text-[11px] text-primary font-semibold hidden sm:inline">
-                  🎯 {Math.min(100, Math.round((wordCount / writingGoal) * 100))}%
-                </span>
-              </>
-            )}
-
-            {/* View Mode Toggle: Edit | Split | Preview */}
-            <div className="flex items-center border border-border/70 p-0.5 bg-muted/40 ml-1 sm:ml-2">
-              <Button
-                size="xs"
-                variant={zenViewMode === "editor" ? "default" : "ghost"}
-                onClick={() => setZenViewMode("editor")}
-                className="rounded-none h-6 px-2 text-[11px] gap-1"
-                title="Edit Mode"
-              >
-                <PenLine className="size-3" />
-                <span className="hidden sm:inline">Edit</span>
-              </Button>
-              <Button
-                size="xs"
-                variant={zenViewMode === "split" ? "default" : "ghost"}
-                onClick={() => setZenViewMode("split")}
-                className="rounded-none h-6 px-2 text-[11px] gap-1 hidden sm:inline-flex"
-                title="Split Mode"
-              >
-                <Columns2 className="size-3" />
-                <span>Split</span>
-              </Button>
-              <Button
-                size="xs"
-                variant={zenViewMode === "preview" ? "default" : "ghost"}
-                onClick={() => setZenViewMode("preview")}
-                className="rounded-none h-6 px-2 text-[11px] gap-1"
-                title="Preview Mode"
-              >
-                <Eye className="size-3" />
-                <span className="hidden sm:inline">Preview</span>
-              </Button>
-            </div>
-
-            {/* Quick Outline in Zen */}
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() => setIsTocOpen(true)}
-              className="rounded-none h-6 px-2 text-[11px] border border-border/70 text-muted-foreground hover:text-foreground hidden md:inline-flex"
-            >
-              <ListTree className="size-3 mr-1 text-primary" />
-              <span>Outline</span>
-            </Button>
-
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => setIsZenMode(false)}
-              className="rounded-none h-6 px-2 gap-1 text-[11px] border-border/70 ml-1"
-            >
-              <Minimize2 className="size-3" />
-              <span>Exit (Esc)</span>
-            </Button>
-          </div>
         </div>
-      ) : (
-        /* Normal Dual-Pane Layout */
-        <>
-          {/* Top Navigation Bar */}
-          <Header
-            activeNote={activeNote}
-            wordCount={wordCount}
-            saveStatus={saveStatus}
-            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-            onTogglePin={togglePinNote}
-            onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-            isSidebarOpen={isSidebarOpen}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            onOpenHistory={() => setIsHistoryOpen(true)}
-            onPrintNote={() => window.print()}
-            onToggleZen={() => setIsZenMode((prev) => !prev)}
-            writingGoal={writingGoal}
-            onSetWritingGoal={(goal) => {
-              setWritingGoal(goal);
-              setHasNotifiedGoal(false);
-              if (goal > 0) {
-                toast.info(`Session writing goal: ${goal} words`);
-              } else {
-                toast.info("Session writing goal cleared");
-              }
-            }}
-            onOpenGraph={() => setIsGraphOpen(true)}
-            onOpenToc={() => setIsTocOpen(true)}
-            onOpenInsights={() => setIsInsightsOpen(true)}
-            onOpenWelcome={() => setIsWelcomeOpen(true)}
-          />
 
-          {/* Main Workspace */}
-          <div className="flex-1 flex min-h-0 relative">
-            {/* Mobile / Tablet Drawer Backdrop Overlay */}
-            {isSidebarOpen && (
-              <div
-                onClick={() => setIsSidebarOpen(false)}
-                className="lg:hidden fixed inset-0 z-30 bg-black/45 backdrop-blur-xs animate-in fade-in-50 duration-200"
-                aria-hidden="true"
-              />
-            )}
+        {/* Status Bar */}
+        <StatusBar
+          saveStatus={saveStatus}
+          wordCount={wordCount}
+          activeNoteTitle={activeNote?.title}
+          tags={activeNote?.tags}
+        />
 
-            {/* Sidebar: persistent on desktop, slide-over drawer on mobile/tablet */}
-            <div
-              className={`h-full z-40 transition-transform duration-200 ease-in-out fixed inset-y-0 left-0 lg:static lg:inset-auto lg:translate-x-0 ${
-                isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:hidden"
-              }`}
-            >
-              <NotesSidebar
-                notes={notes}
-                trashedNotes={trashedNotes}
-                activeNoteId={activeNoteId}
-                onSelectNote={handleSelectNote}
-                onCreateNote={() => {
-                  createNote();
-                  if (typeof window !== "undefined" && window.innerWidth < 768) {
-                    setViewMode("editor");
-                  }
-                  if (typeof window !== "undefined" && window.innerWidth < 1024) {
-                    setIsSidebarOpen(false);
-                  }
-                }}
-                onDeleteNote={deleteNote}
-                onRestoreFromTrash={restoreFromTrash}
-                onPurgeNote={purgeNote}
-                onEmptyTrash={emptyTrash}
-                onTogglePin={togglePinNote}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                selectedTag={selectedTag}
-                onSelectTag={setSelectedTag}
-                allTags={allTags}
-                onImportMarkdown={() => markdownInputRef.current?.click()}
-                onBackupNotes={handleBackupNotes}
-                onRestoreBackup={() => jsonInputRef.current?.click()}
-                onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-                onToggleCollapse={() => setIsSidebarOpen(false)}
-                onDuplicateNote={(id) => {
-                  duplicateNote(id);
-                  toast.success("Note duplicated");
-                }}
-                onOpenTemplates={() => setIsTemplateOpen(true)}
-                onExportNote={(note) => {
-                  notesRepository.exportNote(note);
-                  toast.success(`Exported "${note.title || 'Untitled'}.md"`);
-                }}
-                onEditNote={(id) => {
-                  selectNote(id);
-                  setViewMode("editor");
-                  if (typeof window !== "undefined" && window.innerWidth < 1024) {
-                    setIsSidebarOpen(false);
-                  }
-                }}
-              />
-            </div>
+        {/* Command Palette (Cmd+K / Ctrl+K) */}
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          notes={allRawNotes}
+          activeNote={activeNote}
+          onSelectNote={selectNote}
+          onCreateNote={createNote}
+          onTogglePin={togglePinNote}
+          onOpenHistory={() => setIsHistoryOpen(true)}
+          onPrintNote={() => window.print()}
+          onOpenTemplates={() => setIsTemplateOpen(true)}
+          onToggleZen={() => setIsZenMode((prev) => !prev)}
+          onDuplicateActiveNote={() => {
+            if (activeNote) {
+              duplicateNote(activeNote.id);
+              toast.success("Note duplicated");
+            }
+          }}
+          onExportNote={() => {
+            if (activeNote) {
+              notesRepository.exportNote(activeNote);
+              toast.success(`Exported "${activeNote.title || "Untitled"}.md"`);
+            }
+          }}
+          onImportMarkdown={() => markdownInputRef.current?.click()}
+          onBackupNotes={handleBackupNotes}
+          onRestoreBackup={() => jsonInputRef.current?.click()}
+          onOpenGraph={() => setIsGraphOpen(true)}
+          onOpenToc={() => setIsTocOpen(true)}
+          onOpenInsights={() => setIsInsightsOpen(true)}
+          onOpenWelcome={() => setIsWelcomeOpen(true)}
+        />
 
-            {/* Editor & Preview Panes */}
-            <div className="flex-1 flex h-full min-w-0">
-              {/* Editor Pane */}
-              <div
-                className={`editor-pane h-full flex-1 min-w-0 ${
-                  viewMode === "editor" || viewMode === "split" ? "flex" : "hidden"
-                }`}
-              >
-                <MarkdownEditor
-                  content={localContent}
-                  onChange={handleEditorChange}
-                />
-              </div>
+        {/* Version History Dialog */}
+        <VersionHistoryDialog
+          isOpen={isHistoryOpen}
+          onClose={() => setIsHistoryOpen(false)}
+          activeNote={activeNote}
+          onRestoreRevision={(noteId, content) => {
+            restoreRevision(noteId, content);
+            setLocalContent(content);
+            toast.success("Snapshot restored successfully");
+          }}
+        />
 
-              {/* Preview Pane with Interactive Checklists, Wiki-links & Backlinks */}
-              <div
-                className={`preview-pane h-full flex-1 min-w-0 ${
-                  viewMode === "preview" || viewMode === "split" ? "flex" : "hidden"
-                }`}
-              >
-                <MarkdownPreview
-                  content={localContent}
-                  onToggleTask={handleToggleTask}
-                  onNavigateWikiLink={navigateOrCreateWikiLink}
-                  backlinks={backlinks}
-                />
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+        {/* Note Template Dialog */}
+        <TemplateDialog
+          isOpen={isTemplateOpen}
+          onClose={() => setIsTemplateOpen(false)}
+          onSelectTemplate={(tmpl) => {
+            createNoteFromTemplate(tmpl);
+            toast.success(`Created note from "${tmpl.title}" template`);
+          }}
+        />
 
-      {/* Command Palette (Cmd+K / Ctrl+K) */}
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-        notes={allRawNotes}
-        activeNote={activeNote}
-        onSelectNote={selectNote}
-        onCreateNote={createNote}
-        onTogglePin={togglePinNote}
-        onOpenHistory={() => setIsHistoryOpen(true)}
-        onPrintNote={() => window.print()}
-        onOpenTemplates={() => setIsTemplateOpen(true)}
-        onToggleZen={() => setIsZenMode((prev) => !prev)}
-        onDuplicateActiveNote={() => {
-          if (activeNote) {
-            duplicateNote(activeNote.id);
-            toast.success("Note duplicated");
-          }
-        }}
-        onExportNote={() => {
-          if (activeNote) {
-            notesRepository.exportNote(activeNote);
-            toast.success(`Exported "${activeNote.title || 'Untitled'}.md"`);
-          }
-        }}
-        onImportMarkdown={() => markdownInputRef.current?.click()}
-        onBackupNotes={handleBackupNotes}
-        onRestoreBackup={() => jsonInputRef.current?.click()}
-        onOpenGraph={() => setIsGraphOpen(true)}
-        onOpenToc={() => setIsTocOpen(true)}
-        onOpenInsights={() => setIsInsightsOpen(true)}
-        onOpenWelcome={() => setIsWelcomeOpen(true)}
-      />
+        {/* Interactive Knowledge Graph View Modal */}
+        <KnowledgeGraphModal
+          isOpen={isGraphOpen}
+          onClose={() => setIsGraphOpen(false)}
+          notes={allRawNotes}
+          activeNoteId={activeNoteId}
+          onSelectNote={selectNote}
+        />
 
-      {/* Version History Dialog */}
-      <VersionHistoryDialog
-        isOpen={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
-        activeNote={activeNote}
-        onRestoreRevision={(noteId, content) => {
-          restoreRevision(noteId, content);
-          setLocalContent(content);
-          toast.success("Snapshot restored successfully");
-        }}
-      />
+        {/* Document Outline / Table of Contents Drawer */}
+        <TableOfContents
+          isOpen={isTocOpen}
+          onClose={() => setIsTocOpen(false)}
+          content={localContent}
+        />
 
-      {/* Note Template Dialog */}
-      <TemplateDialog
-        isOpen={isTemplateOpen}
-        onClose={() => setIsTemplateOpen(false)}
-        onSelectTemplate={(tmpl) => {
-          createNoteFromTemplate(tmpl);
-          toast.success(`Created note from "${tmpl.title}" template`);
-        }}
-      />
+        {/* Writing Insights & Heatmap Modal */}
+        <WritingInsightsModal
+          isOpen={isInsightsOpen}
+          onClose={() => setIsInsightsOpen(false)}
+          activeNote={activeNote}
+          notes={allRawNotes}
+        />
 
-      {/* Interactive Knowledge Graph View Modal */}
-      <KnowledgeGraphModal
-        isOpen={isGraphOpen}
-        onClose={() => setIsGraphOpen(false)}
-        notes={allRawNotes}
-        activeNoteId={activeNoteId}
-        onSelectNote={selectNote}
-      />
+        {/* Welcome Popup Modal with Logo & Feature Launchpad */}
+        <WelcomeModal
+          isOpen={isWelcomeOpen}
+          onClose={() => setIsWelcomeOpen(false)}
+          onStartWriting={() => {
+            setIsWelcomeOpen(false);
+            if (typeof window !== "undefined" && window.innerWidth < 768) {
+              setViewMode("editor");
+            }
+          }}
+          onOpenTemplates={() => {
+            setIsWelcomeOpen(false);
+            setIsTemplateOpen(true);
+          }}
+          onOpenGuideNote={() => {
+            setIsWelcomeOpen(false);
+            const welcomeNote = allRawNotes.find((n) => n.id === "welcome-note");
+            if (welcomeNote) {
+              selectNote(welcomeNote.id);
+            }
+          }}
+        />
 
-      {/* Document Outline / Table of Contents Drawer */}
-      <TableOfContents
-        isOpen={isTocOpen}
-        onClose={() => setIsTocOpen(false)}
-        content={localContent}
-      />
-
-      {/* Writing Insights & Heatmap Modal */}
-      <WritingInsightsModal
-        isOpen={isInsightsOpen}
-        onClose={() => setIsInsightsOpen(false)}
-        activeNote={activeNote}
-        notes={allRawNotes}
-      />
-
-      {/* Welcome Popup Modal with Logo & Feature Launchpad */}
-      <WelcomeModal
-        isOpen={isWelcomeOpen}
-        onClose={() => setIsWelcomeOpen(false)}
-        onStartWriting={() => {
-          setIsWelcomeOpen(false);
-          if (typeof window !== "undefined" && window.innerWidth < 768) {
-            setViewMode("editor");
-          }
-        }}
-        onOpenTemplates={() => {
-          setIsWelcomeOpen(false);
-          setIsTemplateOpen(true);
-        }}
-        onOpenGuideNote={() => {
-          setIsWelcomeOpen(false);
-          const welcomeNote = allRawNotes.find((n) => n.id === "welcome-note");
-          if (welcomeNote) {
-            selectNote(welcomeNote.id);
-          }
-        }}
-      />
-
-      {/* In-App Update Notifier (Only active in native mobile app) */}
-      <AppUpdateNotifier />
-    </div>
+        {/* In-App Update Notifier (Only active in native mobile app) */}
+        <AppUpdateNotifier />
+      </div>
     </ErrorBoundary>
   );
 }
