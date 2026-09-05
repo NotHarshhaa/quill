@@ -21,19 +21,14 @@ import {
   PanelLeftOpen,
   Pin,
   PinOff,
-  Star,
-  Trash2,
   ListTree,
   History,
   Download,
-  FileText,
   Sun,
   Moon,
-  X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { VersionHistoryDialog } from "@/components/history/version-history-dialog";
 import { TemplateDialog } from "@/components/templates/template-dialog";
 import { KnowledgeGraphModal } from "@/components/graph/knowledge-graph-modal";
@@ -42,9 +37,7 @@ import { WritingInsightsModal } from "@/components/analytics/writing-insights-mo
 import { WelcomeModal, SHOW_WELCOME_KEY } from "@/components/welcome/welcome-modal";
 import { AppUpdateNotifier } from "@/components/update/app-update-notifier";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { VerticalSidebar, SidebarPanel } from "@/components/layout/vertical-sidebar";
-import { SlidingPanel } from "@/components/layout/sliding-panel";
-import { NotesPanel } from "@/components/layout/notes-panel";
+import { AppSidebar, SidebarPanel } from "@/components/layout/app-sidebar";
 import { StatusBar } from "@/components/layout/status-bar";
 import { Corners } from "@/components/frame";
 import { toast } from "sonner";
@@ -91,11 +84,9 @@ export default function QuillPage() {
   const [zenViewMode, setZenViewMode] = useState<ViewMode>("editor");
   const [writingGoal, setWritingGoal] = useState<number>(0);
   const [hasNotifiedGoal, setHasNotifiedGoal] = useState(false);
-  const [activePanel, setActivePanel] = useState<SidebarPanel | null>(null);
-  const [sideExpanded, setSideExpanded] = useState(true);
+  const [activePanel, setActivePanel] = useState<SidebarPanel>("all");
   const [sideVisible, setSideVisible] = useState(true);
   const { resolvedTheme, setTheme } = useTheme();
-  const dockOpen = activePanel !== null;
 
   // New Feature Modals State
   const [isGraphOpen, setIsGraphOpen] = useState(false);
@@ -112,13 +103,13 @@ export default function QuillPage() {
     if (typeof window !== "undefined") {
       if (window.innerWidth < 768) {
         setViewMode("preview");
-        setSideExpanded(false);
+        setSideVisible(false);
       } else if (window.innerWidth < 1024) {
         setViewMode("split");
-        setSideExpanded(true);
+        setSideVisible(true);
       } else {
         setViewMode("split");
-        setSideExpanded(true);
+        setSideVisible(true);
       }
 
       // Show welcome popup modal by default unless user opted out
@@ -174,28 +165,33 @@ export default function QuillPage() {
         e.preventDefault();
         setViewMode("preview");
       }
-      // Toggle sidebar expand/collapse: Ctrl+B
+      // Toggle sidebar visibility: Ctrl+B (skipped while typing so Ctrl+B stays "bold" in the editor)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        const target = e.target as HTMLElement | null;
+        const isTyping =
+          !!target &&
+          (target.isContentEditable ||
+            ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+        if (isTyping) return;
         e.preventDefault();
-        if (sideVisible) {
-          setSideExpanded((prev) => !prev);
-        } else {
-          setSideVisible(true);
-          setSideExpanded(true);
-        }
+        setSideVisible((prev) => !prev);
       }
-      // Escape to close panels/modals
+      // Escape to close mobile sidebar drawer / exit zen mode
       if (e.key === "Escape") {
         if (isZenMode) {
           setIsZenMode(false);
-        } else if (activePanel) {
-          setActivePanel(null);
+        } else if (
+          sideVisible &&
+          typeof window !== "undefined" &&
+          window.matchMedia("(max-width: 767px)").matches
+        ) {
+          setSideVisible(false);
         }
       }
     };
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [activePanel, isZenMode, sideExpanded, sideVisible, createNote]);
+  }, [isZenMode, sideVisible, createNote]);
 
   // Debounced autosave to repository + periodic revision snapshots + activity tracking
   const { status: saveStatus } = useAutosave(
@@ -213,10 +209,12 @@ export default function QuillPage() {
     setLocalContent(newContent);
   };
 
-  // Close panel after selecting note
+  // Select note; on mobile also close the sidebar drawer
   const handleSelectNote = (id: string) => {
     selectNote(id);
-    setActivePanel(null);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      setSideVisible(false);
+    }
   };
 
   // Interactive Checklist: toggle [ ] <-> [x] in preview
@@ -327,214 +325,37 @@ export default function QuillPage() {
 
         {/* Main Layout */}
         <div className="flex-1 flex min-h-0">
-          {/* Vertical Sidebar */}
-          {sideVisible && (
-            <VerticalSidebar
-              activePanel={activePanel}
-              onSelectPanel={setActivePanel}
-              onNewNote={createNote}
-              onSearch={() => setIsCommandPaletteOpen(true)}
-              onOpenGraph={() => setIsGraphOpen(true)}
-              onOpenInsights={() => setIsInsightsOpen(true)}
-              trashCount={trashedNotes.length}
-              dockOpen={dockOpen}
-              expanded={sideExpanded}
-              onToggleExpand={() => setSideExpanded((prev) => !prev)}
-              onHide={() => setSideVisible(false)}
-            />
-          )}
+          {/* Unified Library Sidebar (All / Favorites / Trash / Settings) */}
+          <AppSidebar
+            open={sideVisible}
+            onClose={() => setSideVisible(false)}
+            activePanel={activePanel}
+            onSelectPanel={setActivePanel}
+            notes={notes}
+            trashedNotes={trashedNotes}
+            activeNoteId={activeNoteId}
+            onSelectNote={handleSelectNote}
+            onCreateNote={createNote}
+            onDeleteNote={deleteNote}
+            onTogglePin={togglePinNote}
+            onDuplicateNote={duplicateNote}
+            onRestoreNote={restoreFromTrash}
+            onEmptyTrash={emptyTrash}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onOpenGraph={() => setIsGraphOpen(true)}
+            onOpenInsights={() => setIsInsightsOpen(true)}
+            writingGoal={writingGoal}
+            onWritingGoalChange={(goal) => {
+              setWritingGoal(goal);
+              if (goal > 0) {
+                toast.info(`Session writing goal: ${goal} words`);
+              }
+            }}
+            onExportAll={handleBackupNotes}
+            onImportBackup={() => jsonInputRef.current?.click()}
+          />
 
-          {/* Dockable Library Panel (Notes / Favorites / Trash / Settings) */}
-          <SlidingPanel
-            isOpen={activePanel !== null}
-            onClose={() => setActivePanel(null)}
-            title={
-              activePanel === "notes"
-                ? "Notes"
-                : activePanel === "favorites"
-                ? "Favorites"
-                : activePanel === "trash"
-                ? "Trash"
-                : activePanel === "settings"
-                ? "Settings"
-                : ""
-            }
-          >
-            {activePanel === "notes" && (
-              <NotesPanel
-                notes={notes}
-                activeNoteId={activeNoteId}
-                onSelectNote={handleSelectNote}
-                onCreateNote={createNote}
-                onDeleteNote={deleteNote}
-                onTogglePin={togglePinNote}
-                onDuplicateNote={duplicateNote}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-              />
-            )}
-
-            {activePanel === "favorites" && (
-              <div className="flex flex-col h-full">
-                <ScrollArea className="flex-1">
-                  <div className="p-2 space-y-1">
-                    {notes.filter((n) => n.isPinned).length === 0 ? (
-                      <div className="py-12 text-center">
-                        <Star className="size-8 text-muted-foreground/25 mx-auto mb-2" />
-                        <p className="text-xs text-muted-foreground">No favorites yet</p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-1">
-                          Pin notes to add them here
-                        </p>
-                      </div>
-                    ) : (
-                      notes
-                        .filter((n) => n.isPinned)
-                        .map((note) => (
-                          <button
-                            key={note.id}
-                            onClick={() => handleSelectNote(note.id)}
-                            className={cn(
-                              "w-full text-left p-2.5 rounded-none transition-colors border",
-                              activeNoteId === note.id
-                                ? "bg-card border-border shadow-sm"
-                                : "border-transparent hover:bg-muted/40 hover:border-border/40"
-                            )}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <Star className="size-3 text-amber-500 fill-amber-500 shrink-0" />
-                              <span className="text-xs font-medium text-foreground truncate">
-                                {note.title || "Untitled"}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">
-                              {note.content.slice(0, 60) || "Empty"}
-                            </p>
-                          </button>
-                        ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </div>
-            )}
-
-            {activePanel === "trash" && (
-              <div className="flex flex-col h-full">
-                {trashedNotes.length > 0 && (
-                  <div className="flex items-center justify-between px-2 py-1.5 border-b border-border/40">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">
-                      {trashedNotes.length} deleted
-                    </span>
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      onClick={emptyTrash}
-                      className="text-[10px] text-destructive hover:text-destructive h-6"
-                    >
-                      Empty Trash
-                    </Button>
-                  </div>
-                )}
-                <ScrollArea className="flex-1">
-                  <div className="p-2 space-y-1">
-                    {trashedNotes.length === 0 ? (
-                      <div className="py-12 text-center">
-                        <Trash2 className="size-8 text-muted-foreground/25 mx-auto mb-2" />
-                        <p className="text-xs text-muted-foreground">Trash is empty</p>
-                      </div>
-                    ) : (
-                      trashedNotes.map((note) => (
-                        <div
-                          key={note.id}
-                          className="p-2.5 rounded-none border border-border/50 bg-muted/20"
-                        >
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-xs font-medium text-foreground truncate flex-1">
-                              {note.title || "Untitled"}
-                            </span>
-                            <Button
-                              size="icon-xs"
-                              variant="ghost"
-                              onClick={() => restoreFromTrash(note.id)}
-                              className="size-6 text-muted-foreground hover:text-foreground"
-                              title="Restore"
-                            >
-                              <X className="size-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </div>
-            )}
-
-            {activePanel === "settings" && (
-              <div className="flex flex-col h-full overflow-y-auto">
-                <div className="p-3 space-y-3">
-                  <div className="border border-border/50 p-3 rounded-none bg-muted/20">
-                    <h4 className="text-xs font-semibold text-foreground mb-2">Writing Goal</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {[0, 250, 500, 1000].map((goal) => (
-                        <Button
-                          key={goal}
-                          size="xs"
-                          variant={writingGoal === goal ? "default" : "outline"}
-                          onClick={() => {
-                            setWritingGoal(goal);
-                            if (goal > 0) {
-                              toast.info(`Session writing goal: ${goal} words`);
-                            }
-                          }}
-                          className="text-[10px] h-6 px-2"
-                        >
-                          {goal === 0 ? "None" : goal}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="border border-border/50 p-3 rounded-none bg-muted/20">
-                    <h4 className="text-xs font-semibold text-foreground mb-2">Data</h4>
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        onClick={handleBackupNotes}
-                        className="text-[10px] h-7 justify-start"
-                      >
-                        <FileText className="size-3 mr-1.5" />
-                        Export All Notes
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        onClick={() => jsonInputRef.current?.click()}
-                        className="text-[10px] h-7 justify-start"
-                      >
-                        <FileText className="size-3 mr-1.5" />
-                        Import Backup
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="border border-border/50 p-3 rounded-none bg-muted/20">
-                    <h4 className="text-xs font-semibold text-foreground mb-2">About</h4>
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      Quill v1.5.0 — Offline-first markdown notes
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </SlidingPanel>
-
-          
-          
-          
-          
-          
-          
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Top Bar */}
@@ -544,14 +365,7 @@ export default function QuillPage() {
                 <Button
                   size="icon-xs"
                   variant="ghost"
-                  onClick={() => {
-                    if (sideVisible) {
-                      setSideVisible(false);
-                    } else {
-                      setSideVisible(true);
-                      setSideExpanded(true);
-                    }
-                  }}
+                  onClick={() => setSideVisible((prev) => !prev)}
                   className="size-7 text-muted-foreground hover:text-foreground shrink-0"
                   aria-label={sideVisible ? "Hide sidebar" : "Show sidebar"}
                   title={sideVisible ? "Hide sidebar (Ctrl+B)" : "Show sidebar (Ctrl+B)"}
