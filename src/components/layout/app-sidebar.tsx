@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Note } from "@/lib/storage/schema";
 import { cn, formatDate } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -38,12 +39,22 @@ import { QuillIcon } from "./quill-logo";
 
 export type SidebarPanel = "all" | "favorites" | "trash" | "settings";
 
-function getSnippet(content: string, maxLength = 60): string {
+const SIDEBAR_MIN_WIDTH = 220;
+const SIDEBAR_MAX_WIDTH = 480;
+const SIDEBAR_DEFAULT_WIDTH = 260;
+const SIDEBAR_WIDTH_KEY = "quill.sidebar.width";
+
+function clampSidebarWidth(value: number): number {
+  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
+}
+
+function getSnippet(content: string, maxLength = 160): string {
   if (!content.trim()) return "Empty note";
   const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
   for (const line of lines) {
     if (!line.startsWith("#") && !line.startsWith("-") && !line.startsWith("!")) {
-      return line.slice(0, maxLength) + (line.length > maxLength ? "..." : "");
+      // Generous pool; the row's CSS `truncate` ellipsizes at the live sidebar width
+      return line.slice(0, maxLength);
     }
   }
   return lines[0]?.slice(0, maxLength) || "No preview";
@@ -272,9 +283,10 @@ const libraryTabs: { id: SidebarPanel; label: string; icon: React.ElementType }[
 /**
  * Unified library sidebar: brand header, New Note, library tabs
  * (All / Favorites / Trash), search, and the live note list in one
- * always-visible column. On desktop it docks in-flow (collapses to
- * zero width when hidden); on small screens it becomes an off-canvas
- * drawer with a backdrop.
+ * always-visible column. On desktop it docks in-flow with a draggable
+ * right edge (width persisted, double-click the edge to reset) and
+ * collapses to zero width when hidden; on small screens it becomes an
+ * off-canvas drawer with a backdrop.
  */
 export function AppSidebar({
   open,
@@ -300,6 +312,45 @@ export function AppSidebar({
   onExportAll,
   onImportBackup,
 }: AppSidebarProps) {
+  const asideRef = useRef<HTMLElement>(null);
+  const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Restore persisted width (client only, after hydration)
+  useEffect(() => {
+    const stored = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY));
+    if (Number.isFinite(stored) && stored > 0) {
+      setWidth(clampSidebarWidth(stored));
+    }
+  }, []);
+
+  const handleResizeStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsResizing(true);
+  };
+
+  const handleResizeMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isResizing || !asideRef.current) return;
+    const left = asideRef.current.getBoundingClientRect().left;
+    setWidth(clampSidebarWidth(e.clientX - left));
+  };
+
+  const handleResizeEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isResizing) return;
+    setIsResizing(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, String(width));
+  };
+
+  const commitWidth = (next: number) => {
+    setWidth(next);
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, String(next));
+  };
+
   const query = searchQuery.trim().toLowerCase();
   const matchesQuery = (note: Note) =>
     !query ||
@@ -336,21 +387,26 @@ export function AppSidebar({
       />
 
       <aside
+        ref={asideRef}
         aria-label="Library"
         aria-hidden={!open}
         inert={!open}
+        style={{ "--sidebar-w": `${width}px` } as React.CSSProperties}
         className={cn(
-          "flex flex-col h-full bg-card border-r border-border/70 shrink-0 overflow-hidden select-none",
-          "transition-[width,transform] duration-200 ease-out",
+          "relative flex flex-col h-full bg-card border-r border-border/70 shrink-0 overflow-hidden select-none",
+          // Freeze the width animation while dragging the resize handle
+          isResizing
+            ? "transition-none"
+            : "transition-[width,transform] duration-200 ease-out",
           // Mobile: off-canvas drawer
           "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50",
           "max-md:w-[min(300px,calc(100vw-3rem))]",
           open ? "max-md:translate-x-0 max-md:shadow-2xl" : "max-md:-translate-x-full",
           // Desktop: in-flow dock, width collapse when hidden
-          open ? "md:w-[260px]" : "md:w-0 md:border-r-0"
+          open ? "md:w-[var(--sidebar-w)]" : "md:w-0 md:border-r-0"
         )}
       >
-        <div className="flex flex-col h-full w-full md:w-[260px] shrink-0 min-w-0">
+        <div className="flex flex-col h-full w-full md:w-[var(--sidebar-w)] shrink-0 min-w-0">
           {/* Brand header */}
           <div className="flex h-12 items-center gap-2 px-3 shrink-0">
             <QuillIcon className="size-5 shrink-0" />
@@ -612,6 +668,34 @@ export function AppSidebar({
             </FooterButton>
           </div>
         </div>
+
+        {/* Desktop resize handle (drag, double-click to reset, arrow keys to adjust) */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize sidebar"
+          aria-valuenow={width}
+          aria-valuemin={SIDEBAR_MIN_WIDTH}
+          aria-valuemax={SIDEBAR_MAX_WIDTH}
+          tabIndex={open ? 0 : -1}
+          onPointerDown={handleResizeStart}
+          onPointerMove={handleResizeMove}
+          onPointerUp={handleResizeEnd}
+          onLostPointerCapture={() => setIsResizing(false)}
+          onDoubleClick={() => commitWidth(SIDEBAR_DEFAULT_WIDTH)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+              e.preventDefault();
+              commitWidth(clampSidebarWidth(width + (e.key === "ArrowLeft" ? -24 : 24)));
+            }
+          }}
+          className={cn(
+            "absolute inset-y-0 right-0 z-20 hidden w-1.5 -mr-px cursor-col-resize touch-none md:block",
+            "after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-transparent after:transition-colors",
+            "hover:after:bg-primary/40 focus-visible:after:bg-primary/60 focus-visible:outline-none",
+            isResizing && "after:w-0.5 after:bg-primary/60"
+          )}
+        />
       </aside>
     </>
   );
