@@ -63,15 +63,20 @@ function clampSidebarWidth(value: number): number {
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
 }
 
-function getSnippet(content: string, maxLength = 140): string {
+function getSnippet(content: string, maxLength = 260): string {
   if (!content.trim()) return "Empty note";
   const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
+  const collected: string[] = [];
   for (const line of lines) {
-    if (!line.startsWith("#") && !line.startsWith("-") && !line.startsWith("!")) {
-      return line.slice(0, maxLength);
+    if (!line.startsWith("#") && !line.startsWith("!")) {
+      const cleaned = line.replace(/^[-*]\s*(\[[ xX]\]\s*)?/, "").replace(/^>\s*/, "").trim();
+      if (cleaned) {
+        collected.push(cleaned);
+        if (collected.join(" ").length >= maxLength) break;
+      }
     }
   }
-  return lines[0]?.slice(0, maxLength) || "No preview";
+  return collected.join(" ").slice(0, maxLength) || lines[0]?.slice(0, maxLength) || "Empty note";
 }
 
 function groupNotesByDate(notes: Note[]): { label: string; notes: Note[] }[] {
@@ -132,13 +137,22 @@ function NoteRow({
     <div
       onClick={() => onSelect(note.id)}
       className={cn(
-        "group relative w-full min-w-0 max-w-full text-left p-2.5 rounded-none transition-all cursor-pointer font-sans select-none box-border overflow-hidden",
+        "group relative w-full min-w-0 max-w-full text-left p-3 rounded-none transition-all cursor-pointer font-sans select-none box-border",
         isActive
           ? "bg-card shadow-xs border border-border text-foreground"
-          : "hover:bg-muted/40 text-foreground/80 hover:text-foreground border border-border/40 hover:border-border/70"
+          : "bg-card/40 hover:bg-muted/40 text-foreground/80 hover:text-foreground border border-border/60 hover:border-border/90"
       )}
     >
-      {isActive && <Corners size="sm" offset="border" weight="thin" light />}
+      <Corners
+        size="sm"
+        offset="border"
+        weight="thin"
+        light={!isActive}
+        className={cn(
+          "transition-opacity",
+          isActive ? "border-primary opacity-100" : "opacity-40 group-hover:opacity-100"
+        )}
+      />
 
       <div className="flex items-start justify-between gap-1.5 w-full min-w-0">
         <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
@@ -213,13 +227,13 @@ function NoteRow({
         </div>
       </div>
 
-      {/* Snippet preview */}
-      <p className="text-[11px] text-muted-foreground/75 truncate mt-1 leading-snug font-sans block w-full min-w-0">
+      {/* Snippet preview - multi-line wrapped */}
+      <p className="text-[11px] text-muted-foreground/75 line-clamp-2 mt-1.5 leading-relaxed font-sans block w-full min-w-0 break-words">
         {snippet}
       </p>
 
       {/* Tags and Date */}
-      <div className="flex items-center justify-between gap-1.5 mt-2 pt-1 border-t border-border/20 w-full min-w-0">
+      <div className="flex items-center justify-between gap-1.5 mt-2.5 pt-1.5 border-t border-border/30 w-full min-w-0">
         <div className="flex items-center gap-1 flex-wrap min-w-0 flex-1 overflow-hidden">
           {note.tags && note.tags.length > 0 ? (
             note.tags.slice(0, 3).map((tag) => (
@@ -757,8 +771,9 @@ export function AppSidebar({
                     filteredTrashNotes.map((note) => (
                       <div
                         key={note.id}
-                        className="p-2.5 rounded-none border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors relative w-full min-w-0 max-w-full box-border overflow-hidden"
+                        className="group relative p-2.5 rounded-none border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors w-full min-w-0 max-w-full box-border"
                       >
+                        <Corners size="sm" offset="border" weight="thin" light className="opacity-40 group-hover:opacity-100 transition-opacity" />
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-xs font-medium text-foreground truncate flex-1">
                             {note.title || "Untitled"}
@@ -801,8 +816,8 @@ export function AppSidebar({
                             )}
                           </div>
                         </div>
-                        <p className="text-[10.5px] text-muted-foreground/70 truncate mt-1">
-                          {getSnippet(note.content, 80)}
+                        <p className="text-[10.5px] text-muted-foreground/75 line-clamp-2 mt-1.5 leading-relaxed">
+                          {getSnippet(note.content, 120)}
                         </p>
                       </div>
                     ))
