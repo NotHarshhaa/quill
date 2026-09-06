@@ -343,6 +343,7 @@ export default function QuillPage() {
           <AppSidebar
             open={sideVisible}
             onClose={() => setSideVisible(false)}
+            onOpen={() => setSideVisible(true)}
             activePanel={activePanel}
             onSelectPanel={setActivePanel}
             notes={notes}

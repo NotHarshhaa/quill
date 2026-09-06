@@ -33,6 +33,8 @@ import {
   Sun,
   Moon,
   Laptop,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import {
   Tooltip,
@@ -47,7 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Corners } from "@/components/frame";
-import { QuillLogo } from "./quill-logo";
+import { QuillLogo, QuillIcon } from "./quill-logo";
 import { AmbientSoundPlayer } from "@/components/audio/ambient-sound-player";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -298,6 +300,7 @@ export interface AppSidebarProps {
   onOpenGraph: () => void;
   onOpenInsights: () => void;
   onOpenWelcome?: () => void;
+  onOpen?: () => void;
   writingGoal: number;
   onWritingGoalChange: (goal: number) => void;
   onExportAll: () => void;
@@ -308,6 +311,7 @@ export interface AppSidebarProps {
 export function AppSidebar({
   open,
   onClose,
+  onOpen,
   activePanel,
   onSelectPanel,
   notes,
@@ -432,8 +436,6 @@ export function AppSidebar({
       <aside
         ref={asideRef}
         aria-label="Library"
-        aria-hidden={!open}
-        inert={!open}
         style={{ "--sidebar-w": `${width}px` } as React.CSSProperties}
         className={cn(
           "relative flex flex-col h-full bg-card/95 border-r border-border/80 shrink-0 overflow-hidden select-none font-sans",
@@ -444,16 +446,254 @@ export function AppSidebar({
           "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50",
           "max-md:w-[min(320px,calc(100vw-2.5rem))]",
           open ? "max-md:translate-x-0 max-md:shadow-2xl" : "max-md:-translate-x-full",
-          // Desktop: in-flow dock
-          open ? "md:w-[var(--sidebar-w)]" : "md:w-0 md:border-r-0"
+          // Desktop: in-flow dock (Full width when open, sleek 48px icon rail when closed)
+          open ? "md:w-[var(--sidebar-w)]" : "md:w-12"
         )}
       >
-        <div className="flex flex-col h-full w-full min-w-0 overflow-hidden box-border">
-          {/* Brand header (Unified h-12 height) */}
-          <div className="h-12 px-3 border-b border-border/80 flex items-center justify-between gap-2 shrink-0 bg-background/50">
-            <QuillLogo />
+        {!open ? (
+          /* Collapsed Mini Rail (Desktop) */
+          <div className="hidden md:flex flex-col h-full w-12 items-center py-2 shrink-0 select-none overflow-y-auto no-scrollbar">
+            {/* Brand Logo / Monogram */}
+            <div className="h-10 flex items-center justify-center shrink-0 mb-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onOpen}
+                    className="p-1.5 hover:bg-muted/60 text-foreground transition-all rounded-none cursor-pointer group"
+                    aria-label="Expand library (Ctrl+B)"
+                  >
+                    <QuillIcon className="size-5 transition-transform group-hover:scale-110" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
+                  Quill — Expand Library (Ctrl+B)
+                </TooltipContent>
+              </Tooltip>
+            </div>
 
-            <div className="flex items-center gap-1 shrink-0">
+            {/* Quick Action: New Note Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleNewNoteClick}
+                  className="relative size-8 flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-none border border-primary shadow-xs cursor-pointer group mb-1.5 shrink-0"
+                  aria-label="New Note (Ctrl+N)"
+                >
+                  <Corners size="sm" weight="thin" light />
+                  <Plus className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
+                New Note (Ctrl+N)
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Templates picker button */}
+            {onOpenTemplates && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onOpenTemplates}
+                    className="size-8 text-muted-foreground hover:text-foreground rounded-none shrink-0 mb-1"
+                    aria-label="Note Templates"
+                  >
+                    <LayoutTemplate className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
+                  Note Templates
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Divider */}
+            <div className="w-5 h-px bg-border/60 my-1.5 shrink-0" />
+
+            {/* Navigation Panels */}
+            <div className="flex flex-col items-center gap-1 shrink-0">
+              {/* All Notes */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectPanel("all");
+                      onOpen?.();
+                    }}
+                    className={cn(
+                      "relative size-8 flex items-center justify-center rounded-none transition-colors cursor-pointer",
+                      activePanel === "all"
+                        ? "bg-card text-foreground font-semibold border border-border shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                    aria-label={`All Notes (${notes.length})`}
+                  >
+                    {activePanel === "all" && <Corners size="sm" weight="thin" light />}
+                    <FileText className="size-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
+                  All Notes ({notes.length})
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Favorites / Pinned */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectPanel("favorites");
+                      onOpen?.();
+                    }}
+                    className={cn(
+                      "relative size-8 flex items-center justify-center rounded-none transition-colors cursor-pointer",
+                      activePanel === "favorites"
+                        ? "bg-card text-foreground font-semibold border border-border shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                    aria-label={`Pinned Notes (${pinnedCount})`}
+                  >
+                    {activePanel === "favorites" && <Corners size="sm" weight="thin" light />}
+                    <Pin className={cn("size-3.5", pinnedCount > 0 && "text-amber-500 fill-current")} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
+                  Pinned Notes ({pinnedCount})
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Trash */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectPanel("trash");
+                      onOpen?.();
+                    }}
+                    className={cn(
+                      "relative size-8 flex items-center justify-center rounded-none transition-colors cursor-pointer",
+                      activePanel === "trash"
+                        ? "bg-card text-destructive font-semibold border border-border shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                    aria-label={`Trash (${trashedNotes.length})`}
+                  >
+                    {activePanel === "trash" && <Corners size="sm" weight="thin" light />}
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
+                  Trash ({trashedNotes.length})
+                </TooltipContent>
+              </Tooltip>
+            </div>
+
+            {/* Divider */}
+            <div className="w-5 h-px bg-border/60 my-1.5 shrink-0" />
+
+            {/* Tools / Features */}
+            <div className="flex flex-col items-center gap-1 shrink-0">
+              {onOpenGraph && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={onOpenGraph}
+                      className="size-8 text-muted-foreground hover:text-foreground rounded-none"
+                      aria-label="Knowledge Graph"
+                    >
+                      <Network className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
+                    Knowledge Graph (Ctrl+G)
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
+              {onOpenInsights && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={onOpenInsights}
+                      className="size-8 text-muted-foreground hover:text-foreground rounded-none"
+                      aria-label="Writing Analytics"
+                    >
+                      <BarChart3 className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
+                    Writing Analytics & Insights
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
+              {/* Ambient Soundscapes in Rail */}
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        className="size-8 text-muted-foreground hover:text-foreground rounded-none"
+                        aria-label="Ambient Soundscapes"
+                      >
+                        <Headphones className="size-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
+                    Ambient Soundscapes & Focus
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent side="right" align="start" className="p-0 border-none bg-transparent shadow-none w-auto">
+                  <AmbientSoundPlayer />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Flexible Spacer */}
+            <div className="flex-1 min-h-2" />
+
+            {/* Bottom Utilities */}
+            <div className="flex flex-col items-center gap-1 shrink-0 pt-2 border-t border-border/60 w-full">
+              {/* Vault Preferences & Data */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectPanel(activePanel === "settings" ? "all" : "settings");
+                      onOpen?.();
+                    }}
+                    className={cn(
+                      "relative size-8 flex items-center justify-center rounded-none transition-colors cursor-pointer",
+                      activePanel === "settings"
+                        ? "bg-card text-primary font-semibold border border-border shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                    aria-label="Vault Preferences & Data"
+                  >
+                    {activePanel === "settings" && <Corners size="sm" weight="thin" light />}
+                    <Settings className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
+                  Vault Preferences & Data
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Quick Guide */}
               {onOpenWelcome && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -461,29 +701,93 @@ export function AppSidebar({
                       variant="ghost"
                       size="icon-xs"
                       onClick={onOpenWelcome}
+                      className="size-8 text-muted-foreground hover:text-foreground rounded-none"
                       aria-label="Quick Guide"
-                      className="size-7 rounded-none text-muted-foreground hover:text-foreground"
                     >
                       <HelpCircle className="size-3.5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="font-sans text-xs">
+                  <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
                     Quick Guide & Launchpad
                   </TooltipContent>
                 </Tooltip>
               )}
 
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={onClose}
-                aria-label="Close sidebar"
-                className="size-7 rounded-none text-muted-foreground hover:text-foreground md:hidden"
-              >
-                <X className="size-4" />
-              </Button>
+              {/* Expand Library Toggle */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onOpen}
+                    className="size-8 text-primary hover:text-primary hover:bg-primary/10 rounded-none transition-colors"
+                    aria-label="Expand library"
+                  >
+                    <PanelLeftOpen className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
+                  Expand Library (Ctrl+B)
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
+        ) : (
+          /* Expanded Sidebar Content */
+          <div className="flex flex-col h-full w-full min-w-0 overflow-hidden box-border">
+            {/* Brand header (Unified h-12 height) */}
+            <div className="h-12 px-3 border-b border-border/80 flex items-center justify-between gap-2 shrink-0 bg-background/50">
+              <QuillLogo />
+
+              <div className="flex items-center gap-1 shrink-0">
+                {onOpenWelcome && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={onOpenWelcome}
+                        aria-label="Quick Guide"
+                        className="size-7 rounded-none text-muted-foreground hover:text-foreground"
+                      >
+                        <HelpCircle className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-xs">
+                      Quick Guide & Launchpad
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Desktop collapse button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={onClose}
+                      aria-label="Collapse library"
+                      className="size-7 rounded-none text-muted-foreground hover:text-foreground hidden md:inline-flex"
+                    >
+                      <PanelLeftClose className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans text-xs">
+                    Collapse to Rail (Ctrl+B)
+                  </TooltipContent>
+                </Tooltip>
+
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={onClose}
+                  aria-label="Close sidebar"
+                  className="size-7 rounded-none text-muted-foreground hover:text-foreground md:hidden"
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            </div>
 
           {/* Primary Actions: New Note + Templates Combo */}
           <div className="p-2.5 pb-2 shrink-0 flex items-center gap-1.5">
@@ -1069,34 +1373,37 @@ export function AppSidebar({
             </Tooltip>
           </div>
         </div>
+      )}
 
-        {/* Desktop Resize Handle */}
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize sidebar"
-          aria-valuenow={width}
-          aria-valuemin={SIDEBAR_MIN_WIDTH}
-          aria-valuemax={SIDEBAR_MAX_WIDTH}
-          tabIndex={open ? 0 : -1}
-          onPointerDown={handleResizeStart}
-          onPointerMove={handleResizeMove}
-          onPointerUp={handleResizeEnd}
-          onLostPointerCapture={() => setIsResizing(false)}
-          onDoubleClick={() => commitWidth(SIDEBAR_DEFAULT_WIDTH)}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-              e.preventDefault();
-              commitWidth(clampSidebarWidth(width + (e.key === "ArrowLeft" ? -24 : 24)));
-            }
-          }}
-          className={cn(
-            "absolute inset-y-0 right-0 z-20 hidden w-1.5 -mr-px cursor-col-resize touch-none md:block",
-            "after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-transparent after:transition-colors",
-            "hover:after:bg-primary/50 focus-visible:after:bg-primary/70 focus-visible:outline-none",
-            isResizing && "after:w-0.5 after:bg-primary"
-          )}
-        />
+        {/* Desktop Resize Handle (only visible when expanded) */}
+        {open && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            aria-valuenow={width}
+            aria-valuemin={SIDEBAR_MIN_WIDTH}
+            aria-valuemax={SIDEBAR_MAX_WIDTH}
+            tabIndex={0}
+            onPointerDown={handleResizeStart}
+            onPointerMove={handleResizeMove}
+            onPointerUp={handleResizeEnd}
+            onLostPointerCapture={() => setIsResizing(false)}
+            onDoubleClick={() => commitWidth(SIDEBAR_DEFAULT_WIDTH)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                e.preventDefault();
+                commitWidth(clampSidebarWidth(width + (e.key === "ArrowLeft" ? -24 : 24)));
+              }
+            }}
+            className={cn(
+              "absolute inset-y-0 right-0 z-20 hidden w-1.5 -mr-px cursor-col-resize touch-none md:block",
+              "after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-transparent after:transition-colors",
+              "hover:after:bg-primary/50 focus-visible:after:bg-primary/70 focus-visible:outline-none",
+              isResizing && "after:w-0.5 after:bg-primary"
+            )}
+          />
+        )}
       </aside>
     </>
   );
