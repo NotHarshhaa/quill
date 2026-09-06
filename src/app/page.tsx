@@ -384,23 +384,24 @@ export default function QuillPage() {
 
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Top Bar (Unified h-12 height matching sidebar) */}
-            <div className="h-12 px-3 border-b border-border/80 flex items-center justify-between gap-2.5 shrink-0 bg-background/70 backdrop-blur-xs select-none">
-              {/* Left: sidebar toggle + note title + pin + stats badge */}
-              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            {/* Top Bar (Unified h-12 height matching sidebar, balanced 3-zone layout) */}
+            <div className="h-12 px-3 border-b border-border/80 flex items-center justify-between gap-3 shrink-0 bg-background/80 backdrop-blur-xs select-none">
+              {/* Zone 1: Left (Sidebar toggle, Note title, Pin, Wordcount) */}
+              <div className="flex items-center gap-2 min-w-0 flex-1 basis-0 justify-start">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       size="icon-xs"
                       variant="ghost"
                       onClick={() => setSideVisible((prev) => !prev)}
-                      className="size-7.5 rounded-none text-muted-foreground hover:text-foreground shrink-0"
+                      className="relative size-7.5 rounded-none border border-border/70 bg-card/40 hover:bg-muted/50 hover:border-border text-muted-foreground hover:text-foreground shrink-0 group transition-all"
                       aria-label={sideVisible ? "Hide sidebar" : "Show sidebar"}
                     >
+                      <Corners size="sm" weight="thin" light className="opacity-30 group-hover:opacity-100 transition-opacity" />
                       {sideVisible ? (
-                        <PanelLeftClose className="size-4" />
+                        <PanelLeftClose className="size-3.5" />
                       ) : (
-                        <PanelLeftOpen className="size-4" />
+                        <PanelLeftOpen className="size-3.5" />
                       )}
                     </Button>
                   </TooltipTrigger>
@@ -438,14 +439,14 @@ export default function QuillPage() {
                 )}
 
                 <span
-                  className="text-xs font-semibold text-foreground truncate max-w-[200px] sm:max-w-xs font-sans tracking-tight"
+                  className="text-xs font-semibold text-foreground truncate max-w-[160px] sm:max-w-xs font-sans tracking-tight"
                   title={activeNote?.title}
                 >
                   {activeNote?.title || "Untitled"}
                 </span>
 
                 {/* Word count & Reading time & Goal Progress Badge */}
-                <div className="relative hidden xl:inline-flex items-center gap-1.5 px-2 py-0.5 border border-border/70 bg-card/60 font-mono text-[10px] tracking-wider shrink-0 text-muted-foreground ml-1">
+                <div className="relative hidden 2xl:inline-flex items-center gap-1.5 px-2 py-0.5 border border-border/70 bg-card/60 font-mono text-[10px] tracking-wider shrink-0 text-muted-foreground ml-1">
                   <Corners size="sm" weight="thin" light />
                   <span>{wordCount} {wordCount === 1 ? "word" : "words"}</span>
                   <span className="opacity-40">·</span>
@@ -461,205 +462,214 @@ export default function QuillPage() {
                 </div>
               </div>
 
-              {/* Center: view mode switcher */}
-              <div className="relative flex items-center bg-muted/40 border border-border/70 p-0.5 shrink-0 rounded-none shadow-xs">
-                <Corners size="sm" weight="thin" light />
-                <Button
-                  size="xs"
-                  variant={viewMode === "editor" ? "secondary" : "ghost"}
-                  onClick={() => setViewMode("editor")}
-                  className={cn(
-                    "h-6.5 px-2 text-[11px] font-sans gap-1 rounded-none",
-                    viewMode === "editor" && "shadow-xs border border-border/80 font-medium"
-                  )}
-                  title="Editor (Ctrl+1)"
-                >
-                  <PenLine className="size-3" />
-                  <span className="hidden sm:inline">Write</span>
-                </Button>
-                <Button
-                  size="xs"
-                  variant={viewMode === "split" ? "secondary" : "ghost"}
-                  onClick={() => setViewMode("split")}
-                  className={cn(
-                    "hidden sm:inline-flex h-6.5 px-2 text-[11px] font-sans gap-1 rounded-none",
-                    viewMode === "split" && "shadow-xs border border-border/80 font-medium"
-                  )}
-                  title="Split (Ctrl+2)"
-                >
-                  <Columns2 className="size-3" />
-                  <span>Split</span>
-                </Button>
-                <Button
-                  size="xs"
-                  variant={viewMode === "preview" ? "secondary" : "ghost"}
-                  onClick={() => setViewMode("preview")}
-                  className={cn(
-                    "h-6.5 px-2 text-[11px] font-sans gap-1 rounded-none",
-                    viewMode === "preview" && "shadow-xs border border-border/80 font-medium"
-                  )}
-                  title="Preview (Ctrl+3)"
-                >
-                  <Eye className="size-3" />
-                  <span className="hidden sm:inline">Preview</span>
-                </Button>
+              {/* Zone 2: Center (view mode switcher - mathematically centered) */}
+              <div className="flex items-center justify-center shrink-0">
+                <div className="relative flex items-center bg-card/40 border border-border/70 p-0.5 shrink-0 rounded-none shadow-2xs">
+                  <Corners size="sm" weight="thin" light />
+                  <Button
+                    size="xs"
+                    variant={viewMode === "editor" ? "secondary" : "ghost"}
+                    onClick={() => setViewMode("editor")}
+                    className={cn(
+                      "h-6.5 px-2.5 text-[11px] font-sans gap-1 rounded-none transition-colors",
+                      viewMode === "editor" && "shadow-xs border border-border/80 font-medium bg-background text-foreground"
+                    )}
+                    title="Editor (Ctrl+1)"
+                  >
+                    <PenLine className="size-3" />
+                    <span className="hidden sm:inline font-mono tracking-tight text-[10.5px]">WRITE</span>
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant={viewMode === "split" ? "secondary" : "ghost"}
+                    onClick={() => setViewMode("split")}
+                    className={cn(
+                      "hidden sm:inline-flex h-6.5 px-2.5 text-[11px] font-sans gap-1 rounded-none transition-colors",
+                      viewMode === "split" && "shadow-xs border border-border/80 font-medium bg-background text-foreground"
+                    )}
+                    title="Split (Ctrl+2)"
+                  >
+                    <Columns2 className="size-3" />
+                    <span className="font-mono tracking-tight text-[10.5px]">SPLIT</span>
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant={viewMode === "preview" ? "secondary" : "ghost"}
+                    onClick={() => setViewMode("preview")}
+                    className={cn(
+                      "h-6.5 px-2.5 text-[11px] font-sans gap-1 rounded-none transition-colors",
+                      viewMode === "preview" && "shadow-xs border border-border/80 font-medium bg-background text-foreground"
+                    )}
+                    title="Preview (Ctrl+3)"
+                  >
+                    <Eye className="size-3" />
+                    <span className="hidden sm:inline font-mono tracking-tight text-[10.5px]">PREVIEW</span>
+                  </Button>
+                </div>
               </div>
 
-              {/* Right: actions & tools */}
-              <div className="flex items-center gap-0.5 shrink-0">
+              {/* Zone 3: Right (Framed Commands, Action Tools Cluster, and Theme Switcher) */}
+              <div className="flex items-center gap-2 min-w-0 flex-1 basis-0 justify-end">
                 {/* Command palette */}
-                <Button
-                  size="xs"
-                  variant="ghost"
+                <button
+                  type="button"
                   onClick={() => setIsCommandPaletteOpen(true)}
-                  className="h-7 px-2 text-[11px] gap-1.5 text-muted-foreground hover:text-foreground rounded-none"
+                  className="relative flex items-center gap-1.5 h-7 px-2 border border-border/70 bg-card/40 hover:bg-muted/50 hover:border-border text-xs font-mono text-muted-foreground hover:text-foreground transition-all shadow-2xs rounded-none cursor-pointer group shrink-0"
                   title="Command palette (Ctrl+K)"
                 >
-                  <Command className="size-3.5" />
-                  <span className="hidden sm:inline font-sans">Commands</span>
-                  <kbd className="hidden xl:inline-block font-mono text-[9px] px-1 py-0.2 rounded-none bg-muted border border-border/70 text-muted-foreground">
+                  <Corners size="sm" weight="thin" light className="opacity-30 group-hover:opacity-100 transition-opacity" />
+                  <Command className="size-3.5 text-primary shrink-0" />
+                  <span className="hidden xl:inline font-sans text-xs text-foreground/80 group-hover:text-foreground">Commands</span>
+                  <kbd className="hidden sm:inline-flex items-center font-mono text-[9px] px-1 py-0.2 bg-muted/60 border border-border/70 text-muted-foreground">
                     ⌘K
                   </kbd>
-                </Button>
+                </button>
 
-                {/* Templates picker button */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      onClick={() => setIsTemplateOpen(true)}
-                      className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
-                      aria-label="Note Templates"
-                    >
-                      <LayoutTemplate className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="font-sans text-xs">
-                    Note Templates
-                  </TooltipContent>
-                </Tooltip>
+                {/* Framed Action Tools Cluster */}
+                <div className="relative flex items-center bg-card/40 border border-border/70 p-0.5 shadow-2xs rounded-none shrink-0">
+                  <Corners size="sm" weight="thin" light />
 
-                {/* Ambient Soundscapes & Pomodoro Dropdown */}
-                <DropdownMenu>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="icon-xs"
-                          variant="ghost"
-                          className="size-7 text-muted-foreground hover:text-foreground rounded-none"
-                          aria-label="Ambient Soundscapes & Focus"
-                        >
-                          <Headphones className="size-3.5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-xs">
-                      Ambient Soundscapes & Focus Timer
-                    </TooltipContent>
-                  </Tooltip>
-                  <DropdownMenuContent side="bottom" align="end" className="p-0 border-none bg-transparent shadow-none w-auto">
-                    <AmbientSoundPlayer />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Document outline */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      onClick={() => setIsTocOpen(true)}
-                      className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
-                      aria-label="Document outline"
-                    >
-                      <ListTree className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="font-sans text-xs">
-                    Document Outline
-                  </TooltipContent>
-                </Tooltip>
-
-                {/* Version history */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      onClick={() => setIsHistoryOpen(true)}
-                      className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
-                      aria-label="Version history"
-                    >
-                      <History className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="font-sans text-xs">
-                    Snapshots & History
-                  </TooltipContent>
-                </Tooltip>
-
-                {/* Export markdown */}
-                {activeNote && (
+                  {/* Templates picker button */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         size="icon-xs"
                         variant="ghost"
-                        onClick={() => {
-                          notesRepository.exportNote(activeNote);
-                          toast.success(`Exported "${activeNote.title || "Untitled"}.md"`);
-                        }}
-                        className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
-                        aria-label="Export as Markdown"
+                        onClick={() => setIsTemplateOpen(true)}
+                        className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
+                        aria-label="Note Templates"
                       >
-                        <Download className="size-3.5" />
+                        <LayoutTemplate className="size-3.5" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="font-sans text-xs">
-                      Export Note (.md)
+                      Note Templates
                     </TooltipContent>
                   </Tooltip>
-                )}
 
-                {/* Print / PDF Export */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      onClick={() => window.print()}
-                      className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden md:inline-flex"
-                      aria-label="Print Note"
-                    >
-                      <Printer className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="font-sans text-xs">
-                    Print / Export PDF (Ctrl+P)
-                  </TooltipContent>
-                </Tooltip>
+                  {/* Ambient Soundscapes & Pomodoro Dropdown */}
+                  <DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="icon-xs"
+                            variant="ghost"
+                            className="size-6.5 text-muted-foreground hover:text-foreground rounded-none"
+                            aria-label="Ambient Soundscapes & Focus"
+                          >
+                            <Headphones className="size-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="font-sans text-xs">
+                        Ambient Soundscapes & Focus Timer
+                      </TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent side="bottom" align="end" className="p-0 border-none bg-transparent shadow-none w-auto">
+                      <AmbientSoundPlayer />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
-                {/* Zen mode */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      onClick={() => setIsZenMode(true)}
-                      className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
-                      aria-label="Focus mode"
-                    >
-                      <Maximize2 className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="font-sans text-xs">
-                    Zen Focus Desk (Ctrl+Shift+F)
-                  </TooltipContent>
-                </Tooltip>
+                  <div className="w-px h-3.5 bg-border/40 mx-0.5 hidden sm:block" />
 
-                <div className="w-px h-4 bg-border/70 mx-0.5" />
+                  {/* Document outline */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        onClick={() => setIsTocOpen(true)}
+                        className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
+                        aria-label="Document outline"
+                      >
+                        <ListTree className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-xs">
+                      Document Outline
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Version history */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        onClick={() => setIsHistoryOpen(true)}
+                        className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
+                        aria-label="Version history"
+                      >
+                        <History className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-xs">
+                      Snapshots & History
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Export markdown */}
+                  {activeNote && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon-xs"
+                          variant="ghost"
+                          onClick={() => {
+                            notesRepository.exportNote(activeNote);
+                            toast.success(`Exported "${activeNote.title || "Untitled"}.md"`);
+                          }}
+                          className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden md:inline-flex"
+                          aria-label="Export as Markdown"
+                        >
+                          <Download className="size-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="font-sans text-xs">
+                        Export Note (.md)
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  {/* Print / PDF Export */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        onClick={() => window.print()}
+                        className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden md:inline-flex"
+                        aria-label="Print Note"
+                      >
+                        <Printer className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-xs">
+                      Print / Export PDF (Ctrl+P)
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <div className="w-px h-3.5 bg-border/40 mx-0.5 hidden sm:block" />
+
+                  {/* Zen mode */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        onClick={() => setIsZenMode(true)}
+                        className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
+                        aria-label="Focus mode"
+                      >
+                        <Maximize2 className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-xs">
+                      Zen Focus Desk (Ctrl+Shift+F)
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
 
                 {/* Theme toggle */}
                 <Tooltip>
@@ -668,9 +678,10 @@ export default function QuillPage() {
                       size="icon-xs"
                       variant="ghost"
                       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                      className="relative size-7 text-muted-foreground hover:text-foreground rounded-none"
+                      className="relative size-7.5 border border-border/70 bg-card/40 hover:bg-muted/50 hover:border-border rounded-none text-muted-foreground hover:text-foreground shadow-2xs group transition-all shrink-0"
                       aria-label="Toggle theme"
                     >
+                      <Corners size="sm" weight="thin" light className="opacity-30 group-hover:opacity-100 transition-opacity" />
                       <Sun className="size-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                       <Moon className="absolute size-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                     </Button>
