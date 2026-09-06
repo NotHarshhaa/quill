@@ -21,6 +21,18 @@ import {
   BarChart3,
   Settings,
   FileText,
+  LayoutTemplate,
+  Headphones,
+  HelpCircle,
+  ArrowLeft,
+  Upload,
+  Download,
+  Database,
+  Check,
+  Target,
+  Sun,
+  Moon,
+  Laptop,
 } from "lucide-react";
 import {
   Tooltip,
@@ -35,25 +47,27 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Corners } from "@/components/frame";
-import { QuillIcon } from "./quill-logo";
+import { QuillLogo } from "./quill-logo";
+import { AmbientSoundPlayer } from "@/components/audio/ambient-sound-player";
+import { useTheme } from "next-themes";
+import { toast } from "sonner";
 
 export type SidebarPanel = "all" | "favorites" | "trash" | "settings";
 
 const SIDEBAR_MIN_WIDTH = 220;
 const SIDEBAR_MAX_WIDTH = 480;
-const SIDEBAR_DEFAULT_WIDTH = 260;
+const SIDEBAR_DEFAULT_WIDTH = 270;
 const SIDEBAR_WIDTH_KEY = "quill.sidebar.width";
 
 function clampSidebarWidth(value: number): number {
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(value)));
 }
 
-function getSnippet(content: string, maxLength = 160): string {
+function getSnippet(content: string, maxLength = 140): string {
   if (!content.trim()) return "Empty note";
   const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
   for (const line of lines) {
     if (!line.startsWith("#") && !line.startsWith("-") && !line.startsWith("!")) {
-      // Generous pool; the row's CSS `truncate` ellipsizes at the live sidebar width
       return line.slice(0, maxLength);
     }
   }
@@ -91,40 +105,6 @@ function groupNotesByDate(notes: Note[]): { label: string; notes: Note[] }[] {
   return groups.filter((g) => g.notes.length > 0);
 }
 
-function FooterButton({
-  label,
-  active,
-  onClick,
-  children,
-}: {
-  label: string;
-  active?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          onClick={onClick}
-          aria-label={label}
-          className={cn(
-            "flex items-center justify-center size-8 rounded-none transition-colors",
-            active
-              ? "text-foreground bg-muted/80"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-          )}
-        >
-          {children}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={6} className="font-sans text-[11px]">
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
 interface NoteRowProps {
   note: Note;
   isActive: boolean;
@@ -132,31 +112,42 @@ interface NoteRowProps {
   onTogglePin: (id: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
+  onSelectTag?: (tag: string | null) => void;
+  selectedTag?: string | null;
 }
 
-function NoteRow({ note, isActive, onSelect, onTogglePin, onDuplicate, onDelete }: NoteRowProps) {
+function NoteRow({
+  note,
+  isActive,
+  onSelect,
+  onTogglePin,
+  onDuplicate,
+  onDelete,
+  onSelectTag,
+  selectedTag,
+}: NoteRowProps) {
   const snippet = getSnippet(note.content);
 
   return (
     <div
       onClick={() => onSelect(note.id)}
       className={cn(
-        "group relative w-full text-left p-2.5 rounded-md transition-colors cursor-pointer",
+        "group relative w-full min-w-0 max-w-full text-left p-2.5 rounded-none transition-all cursor-pointer font-sans select-none box-border overflow-hidden",
         isActive
-          ? "bg-muted/50 border border-border"
-          : "hover:bg-muted/40 border border-transparent hover:border-border/40"
+          ? "bg-card shadow-xs border border-border text-foreground"
+          : "hover:bg-muted/40 text-foreground/80 hover:text-foreground border border-border/40 hover:border-border/70"
       )}
     >
       {isActive && <Corners size="sm" offset="border" weight="thin" light />}
 
-      <div className="flex items-start justify-between gap-1">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+      <div className="flex items-start justify-between gap-1.5 w-full min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
           {note.isPinned && (
             <Pin className="size-3 text-amber-600 dark:text-amber-400 fill-current shrink-0" />
           )}
           <h3
             className={cn(
-              "text-xs truncate",
+              "text-xs truncate font-sans tracking-tight block w-full min-w-0",
               isActive ? "text-foreground font-semibold" : "text-foreground/90 font-medium"
             )}
           >
@@ -164,10 +155,10 @@ function NoteRow({ note, isActive, onSelect, onTogglePin, onDuplicate, onDelete 
           </h3>
         </div>
 
-        {/* Actions (always visible on touch devices and for the active note) */}
+        {/* Action dropdown */}
         <div
           className={cn(
-            "flex items-center gap-0.5 transition-opacity",
+            "flex items-center gap-0.5 shrink-0 transition-opacity",
             isActive
               ? "opacity-100"
               : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
@@ -179,28 +170,29 @@ function NoteRow({ note, isActive, onSelect, onTogglePin, onDuplicate, onDelete 
                 variant="ghost"
                 size="icon-xs"
                 onClick={(e) => e.stopPropagation()}
-                className="size-6 text-muted-foreground hover:text-foreground"
+                className="size-5.5 rounded-none text-muted-foreground hover:text-foreground"
+                aria-label="Note options"
               >
                 <MoreVertical className="size-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-36">
+            <DropdownMenuContent align="end" className="w-36 font-sans text-xs rounded-none border-border/80">
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
                   onTogglePin(note.id);
                 }}
-                className="gap-2 text-xs"
+                className="gap-2 text-xs cursor-pointer"
               >
                 {note.isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-                <span>{note.isPinned ? "Unpin" : "Pin"}</span>
+                <span>{note.isPinned ? "Unpin" : "Pin to Top"}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
                   onDuplicate(note.id);
                 }}
-                className="gap-2 text-xs"
+                className="gap-2 text-xs cursor-pointer"
               >
                 <Copy className="size-3.5" />
                 <span>Duplicate</span>
@@ -211,40 +203,58 @@ function NoteRow({ note, isActive, onSelect, onTogglePin, onDuplicate, onDelete 
                   e.stopPropagation();
                   onDelete(note.id);
                 }}
-                className="gap-2 text-xs text-destructive focus:text-destructive"
+                className="gap-2 text-xs text-destructive focus:text-destructive cursor-pointer"
               >
                 <Trash2 className="size-3.5" />
-                <span>Delete</span>
+                <span>Move to Trash</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      {/* Snippet */}
-      <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">{snippet}</p>
+      {/* Snippet preview */}
+      <p className="text-[11px] text-muted-foreground/75 truncate mt-1 leading-snug font-sans block w-full min-w-0">
+        {snippet}
+      </p>
 
-      {/* Tags */}
-      {note.tags && note.tags.length > 0 && (
-        <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-          {note.tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="text-[9px] font-mono text-muted-foreground/70 bg-muted/50 px-1.5 py-0.5"
-            >
-              #{tag}
-            </span>
-          ))}
-          {note.tags.length > 3 && (
-            <span className="text-[9px] font-mono text-muted-foreground/50">
+      {/* Tags and Date */}
+      <div className="flex items-center justify-between gap-1.5 mt-2 pt-1 border-t border-border/20 w-full min-w-0">
+        <div className="flex items-center gap-1 flex-wrap min-w-0 flex-1 overflow-hidden">
+          {note.tags && note.tags.length > 0 ? (
+            note.tags.slice(0, 3).map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectTag?.(selectedTag === tag ? null : tag);
+                }}
+                className={cn(
+                  "text-[9.5px] font-mono px-1.5 py-0.2 rounded-none transition-colors border truncate max-w-[80px]",
+                  selectedTag === tag
+                    ? "bg-primary text-primary-foreground border-primary font-semibold"
+                    : "bg-muted/40 text-muted-foreground hover:text-foreground border-border/40 hover:border-border"
+                )}
+                title={`Filter by #${tag}`}
+              >
+                #{tag}
+              </button>
+            ))
+          ) : (
+            <span className="text-[9px] font-mono text-muted-foreground/40">#none</span>
+          )}
+          {note.tags && note.tags.length > 3 && (
+            <span className="text-[9px] font-mono text-muted-foreground/60 shrink-0">
               +{note.tags.length - 3}
             </span>
           )}
         </div>
-      )}
 
-      {/* Date */}
-      <div className="text-[9px] text-muted-foreground/50 mt-1">{formatDate(note.updatedAt)}</div>
+        <span className="text-[9.5px] font-mono text-muted-foreground/50 shrink-0">
+          {formatDate(note.updatedAt)}
+        </span>
+      </div>
     </div>
   );
 }
@@ -259,35 +269,28 @@ export interface AppSidebarProps {
   activeNoteId: string;
   onSelectNote: (id: string) => void;
   onCreateNote: () => void;
+  onOpenTemplates?: () => void;
   onDeleteNote: (id: string) => void;
   onTogglePin: (id: string) => void;
   onDuplicateNote: (id: string) => void;
   onRestoreNote: (id: string) => void;
+  onPurgeNote?: (id: string) => void;
   onEmptyTrash: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  selectedTag?: string | null;
+  onSelectTag?: (tag: string | null) => void;
+  allTags?: string[];
   onOpenGraph: () => void;
   onOpenInsights: () => void;
+  onOpenWelcome?: () => void;
   writingGoal: number;
   onWritingGoalChange: (goal: number) => void;
   onExportAll: () => void;
   onImportBackup: () => void;
+  onImportMarkdown?: () => void;
 }
 
-const libraryTabs: { id: SidebarPanel; label: string; icon: React.ElementType }[] = [
-  { id: "all", label: "All", icon: FileText },
-  { id: "favorites", label: "Favorites", icon: Star },
-  { id: "trash", label: "Trash", icon: Trash2 },
-];
-
-/**
- * Unified library sidebar: brand header, New Note, library tabs
- * (All / Favorites / Trash), search, and the live note list in one
- * always-visible column. On desktop it docks in-flow with a draggable
- * right edge (width persisted, double-click the edge to reset) and
- * collapses to zero width when hidden; on small screens it becomes an
- * off-canvas drawer with a backdrop.
- */
 export function AppSidebar({
   open,
   onClose,
@@ -298,25 +301,33 @@ export function AppSidebar({
   activeNoteId,
   onSelectNote,
   onCreateNote,
+  onOpenTemplates,
   onDeleteNote,
   onTogglePin,
   onDuplicateNote,
   onRestoreNote,
+  onPurgeNote,
   onEmptyTrash,
   searchQuery,
   onSearchChange,
+  selectedTag,
+  onSelectTag,
+  allTags = [],
   onOpenGraph,
   onOpenInsights,
+  onOpenWelcome,
   writingGoal,
   onWritingGoalChange,
   onExportAll,
   onImportBackup,
+  onImportMarkdown,
 }: AppSidebarProps) {
   const asideRef = useRef<HTMLElement>(null);
   const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
+  const { theme, setTheme } = useTheme();
 
-  // Restore persisted width (client only, after hydration)
+  // Restore persisted width
   useEffect(() => {
     const stored = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY));
     if (Number.isFinite(stored) && stored > 0) {
@@ -351,28 +362,46 @@ export function AppSidebar({
     localStorage.setItem(SIDEBAR_WIDTH_KEY, String(next));
   };
 
+  // Note filtering
   const query = searchQuery.trim().toLowerCase();
-  const matchesQuery = (note: Note) =>
-    !query ||
-    note.title.toLowerCase().includes(query) ||
-    note.content.toLowerCase().includes(query);
+  const matchesQueryAndTag = (note: Note) => {
+    const matchesSearch =
+      !query ||
+      note.title.toLowerCase().includes(query) ||
+      note.content.toLowerCase().includes(query) ||
+      note.tags?.some((t) => t.toLowerCase().includes(query));
 
-  const allNotes = activePanel === "all" ? notes.filter(matchesQuery) : [];
+    const matchesTag = !selectedTag || (note.tags && note.tags.includes(selectedTag));
+
+    return matchesSearch && matchesTag;
+  };
+
+  const allNotes = activePanel === "all" ? notes.filter(matchesQueryAndTag) : [];
   const favoriteNotes =
-    activePanel === "favorites" ? notes.filter((n) => n.isPinned && matchesQuery(n)) : [];
-  const showSearch = activePanel === "all" || activePanel === "favorites";
+    activePanel === "favorites" ? notes.filter((n) => n.isPinned && matchesQueryAndTag(n)) : [];
+  const filteredTrashNotes =
+    activePanel === "trash" ? trashedNotes.filter((n) => !query || n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query)) : [];
 
-  const renderRow = (note: Note) => (
-    <NoteRow
-      key={note.id}
-      note={note}
-      isActive={note.id === activeNoteId}
-      onSelect={onSelectNote}
-      onTogglePin={onTogglePin}
-      onDuplicate={onDuplicateNote}
-      onDelete={onDeleteNote}
-    />
-  );
+  const pinnedCount = notes.filter((n) => n.isPinned).length;
+
+  const handleNoteClick = (id: string) => {
+    onSelectNote(id);
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      onClose();
+    }
+  };
+
+  const handleNewNoteClick = () => {
+    onCreateNote();
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      onClose();
+    }
+  };
+
+  const handleDuplicate = (id: string) => {
+    onDuplicateNote(id);
+    toast.success("Note duplicated");
+  };
 
   return (
     <>
@@ -381,7 +410,7 @@ export function AppSidebar({
         aria-hidden
         onClick={onClose}
         className={cn(
-          "fixed inset-0 z-40 bg-black/25 transition-opacity duration-200 md:hidden",
+          "fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity duration-200 md:hidden",
           open ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
       />
@@ -393,202 +422,388 @@ export function AppSidebar({
         inert={!open}
         style={{ "--sidebar-w": `${width}px` } as React.CSSProperties}
         className={cn(
-          "relative flex flex-col h-full bg-card border-r border-border/70 shrink-0 overflow-hidden select-none",
-          // Freeze the width animation while dragging the resize handle
+          "relative flex flex-col h-full bg-card/95 border-r border-border/80 shrink-0 overflow-hidden select-none font-sans",
           isResizing
             ? "transition-none"
             : "transition-[width,transform] duration-200 ease-out",
           // Mobile: off-canvas drawer
           "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50",
-          "max-md:w-[min(300px,calc(100vw-3rem))]",
+          "max-md:w-[min(320px,calc(100vw-2.5rem))]",
           open ? "max-md:translate-x-0 max-md:shadow-2xl" : "max-md:-translate-x-full",
-          // Desktop: in-flow dock, width collapse when hidden
+          // Desktop: in-flow dock
           open ? "md:w-[var(--sidebar-w)]" : "md:w-0 md:border-r-0"
         )}
       >
-        <div className="flex flex-col h-full w-full md:w-[var(--sidebar-w)] shrink-0 min-w-0">
-          {/* Brand header */}
-          <div className="flex h-12 items-center gap-2 px-3 shrink-0">
-            <QuillIcon className="size-5 shrink-0" />
-            <span className="flex-1 text-sm font-semibold tracking-tight text-foreground truncate">
-              Quill
-            </span>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={onClose}
-              aria-label="Close sidebar"
-              className="size-7 text-muted-foreground hover:text-foreground md:hidden"
-            >
-              <X className="size-4" />
-            </Button>
+        <div className="flex flex-col h-full w-full min-w-0 overflow-hidden box-border">
+          {/* Brand header (Unified h-12 height) */}
+          <div className="h-12 px-3 border-b border-border/80 flex items-center justify-between gap-2 shrink-0 bg-background/50">
+            <QuillLogo />
+
+            <div className="flex items-center gap-1 shrink-0">
+              {onOpenWelcome && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={onOpenWelcome}
+                      aria-label="Quick Guide"
+                      className="size-7 rounded-none text-muted-foreground hover:text-foreground"
+                    >
+                      <HelpCircle className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans text-xs">
+                    Quick Guide & Launchpad
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={onClose}
+                aria-label="Close sidebar"
+                className="size-7 rounded-none text-muted-foreground hover:text-foreground md:hidden"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
           </div>
 
-          {/* Composer */}
-          <div className="px-2 pb-1 shrink-0">
+          {/* Primary Actions: New Note + Templates Combo */}
+          <div className="p-2.5 pb-2 shrink-0 flex items-center gap-1.5">
             <button
-              onClick={onCreateNote}
+              type="button"
+              onClick={handleNewNoteClick}
               aria-label="New Note (Ctrl+N)"
-              className="w-full h-9 flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-xs font-semibold"
+              className="relative flex-1 h-8 flex items-center justify-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-xs font-semibold rounded-none border border-primary shadow-xs"
             >
-              <Plus className="size-4 shrink-0" />
-              New Note
+              <Corners size="sm" weight="thin" light />
+              <Plus className="size-3.5 shrink-0" />
+              <span>New Note</span>
+            </button>
+
+            {onOpenTemplates && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={onOpenTemplates}
+                    aria-label="Note Templates"
+                    className="relative h-8 px-2.5 rounded-none border-border/80 bg-background/80 hover:bg-muted/80 text-foreground text-xs gap-1 font-mono tracking-tight shrink-0 shadow-xs"
+                  >
+                    <Corners size="sm" weight="thin" light />
+                    <LayoutTemplate className="size-3.5" />
+                    <span className="text-[11px]">Templates</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="font-sans text-xs">
+                  Choose from Note Templates
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+
+          {/* Library Tabs (All / Favorites / Trash) */}
+          <div className="relative flex items-center gap-0.5 mx-2.5 p-0.5 bg-muted/40 border border-border/60 shrink-0">
+            <Corners size="sm" weight="thin" light />
+            <button
+              type="button"
+              onClick={() => onSelectPanel("all")}
+              aria-current={activePanel === "all" ? "page" : undefined}
+              className={cn(
+                "flex-1 h-7 flex items-center justify-center gap-1 text-[10.5px] font-mono uppercase tracking-wider transition-colors rounded-none",
+                activePanel === "all"
+                  ? "bg-card text-foreground shadow-xs border border-border font-semibold"
+                  : "text-muted-foreground hover:text-foreground border border-transparent"
+              )}
+            >
+              <FileText className="size-3 shrink-0" />
+              <span>All</span>
+              <span className="text-[9.5px] opacity-70 font-mono">({notes.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectPanel("favorites")}
+              aria-current={activePanel === "favorites" ? "page" : undefined}
+              className={cn(
+                "flex-1 h-7 flex items-center justify-center gap-1 text-[10.5px] font-mono uppercase tracking-wider transition-colors rounded-none",
+                activePanel === "favorites"
+                  ? "bg-card text-foreground shadow-xs border border-border font-semibold"
+                  : "text-muted-foreground hover:text-foreground border border-transparent"
+              )}
+            >
+              <Star className="size-3 shrink-0 text-amber-500" />
+              <span>Favs</span>
+              <span className="text-[9.5px] opacity-70 font-mono">({pinnedCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectPanel("trash")}
+              aria-current={activePanel === "trash" ? "page" : undefined}
+              className={cn(
+                "flex-1 h-7 flex items-center justify-center gap-1 text-[10.5px] font-mono uppercase tracking-wider transition-colors rounded-none",
+                activePanel === "trash"
+                  ? "bg-card text-destructive shadow-xs border border-border font-semibold"
+                  : "text-muted-foreground hover:text-foreground border border-transparent"
+              )}
+            >
+              <Trash2 className="size-3 shrink-0" />
+              <span>Trash</span>
+              {trashedNotes.length > 0 && (
+                <span className="text-[9.5px] font-mono text-destructive font-bold">
+                  ({trashedNotes.length})
+                </span>
+              )}
             </button>
           </div>
 
-          {/* Library tabs */}
-          <div className="relative flex items-center gap-0.5 mx-2 mt-1 p-0.5 bg-muted/40 border border-border/50 shrink-0">
-            <Corners size="sm" weight="thin" light />
-            {libraryTabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => onSelectPanel(tab.id)}
-                  aria-current={activePanel === tab.id ? "page" : undefined}
-                  className={cn(
-                    "flex-1 h-7 flex items-center justify-center gap-1 text-[10px] font-mono uppercase tracking-wider transition-colors",
-                    activePanel === tab.id
-                      ? "bg-card text-foreground shadow-xs border border-border/60"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Icon className="size-3 shrink-0" />
-                  <span className="truncate">{tab.label}</span>
-                  {tab.id === "trash" && trashedNotes.length > 0 && (
-                    <span className="text-[9px] font-medium text-destructive">
-                      {trashedNotes.length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Search (All / Favorites) */}
-          {showSearch && (
-            <div className="px-2 py-2 border-b border-border/40 shrink-0">
+          {/* Search bar (Available in All, Favorites, and Trash) */}
+          {activePanel !== "settings" && (
+            <div className="px-2.5 pt-2 pb-1.5 shrink-0">
               <div className="relative">
                 <Corners size="sm" weight="thin" light />
-                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground/60" />
+                <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground/60" />
                 <Input
                   type="text"
-                  placeholder="Search notes..."
+                  placeholder={
+                    activePanel === "trash"
+                      ? "Search in trash..."
+                      : "Search notes or tags..."
+                  }
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  className="pl-8 pr-7 h-7 text-xs bg-background/70 font-sans"
+                  className="pl-8 pr-7 h-8 text-xs bg-background/80 font-sans rounded-none border-border/80 shadow-xs focus-visible:ring-1"
                 />
                 {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
+                  <button
+                    type="button"
                     onClick={() => onSearchChange("")}
-                    className="absolute right-1.5 top-1 text-muted-foreground/60 hover:text-foreground size-5"
+                    className="absolute right-2 top-2 text-muted-foreground hover:text-foreground size-4 flex items-center justify-center"
+                    aria-label="Clear search"
                   >
                     <X className="size-3" />
-                  </Button>
+                  </button>
                 )}
               </div>
             </div>
           )}
 
-          {/* Content */}
-          <ScrollArea className="flex-1 min-h-0">
+          {/* Dynamic Tag Filter Strip */}
+          {activePanel !== "settings" && activePanel !== "trash" && allTags.length > 0 && (
+            <div className="px-2.5 py-1 shrink-0 w-full min-w-0 overflow-hidden">
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none w-full [mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent_100%)]">
+                <button
+                  type="button"
+                  onClick={() => onSelectTag?.(null)}
+                  className={cn(
+                    "text-[10px] font-mono uppercase px-2 py-0.5 rounded-none whitespace-nowrap transition-colors border shrink-0",
+                    !selectedTag
+                      ? "bg-primary text-primary-foreground font-semibold border-primary"
+                      : "bg-muted/40 text-muted-foreground hover:text-foreground border-border/40 hover:border-border"
+                  )}
+                >
+                  All
+                </button>
+                {allTags.map((tag) => {
+                  const isSelected = selectedTag === tag;
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => onSelectTag?.(isSelected ? null : tag)}
+                      className={cn(
+                        "text-[10px] font-mono px-2 py-0.5 rounded-none whitespace-nowrap transition-colors border shrink-0",
+                        isSelected
+                          ? "bg-primary text-primary-foreground font-semibold border-primary"
+                          : "bg-muted/40 text-muted-foreground hover:text-foreground border-border/40 hover:border-border"
+                      )}
+                    >
+                      #{tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Main Content Area */}
+          <ScrollArea className="flex-1 min-h-0 w-full min-w-0 overflow-hidden">
+            {/* All Notes Panel */}
             {activePanel === "all" && (
-              <div className="px-2 py-2 space-y-4">
+              <div className="p-2.5 space-y-2.5 w-full min-w-0">
                 {(() => {
                   const grouped = groupNotesByDate(allNotes);
                   if (grouped.length === 0) {
                     return (
-                      <div className="py-12 text-center text-xs text-muted-foreground px-4">
-                        <p>{query ? "No matching notes found" : "No notes yet"}</p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={onCreateNote}
-                          className="mt-2 text-xs text-primary"
-                        >
-                          <Plus className="size-3 mr-1" />
-                          Create your first note
-                        </Button>
+                      <div className="py-12 text-center text-xs text-muted-foreground px-4 font-sans">
+                        <FileText className="size-7 mx-auto mb-2 opacity-30" />
+                        <p>{query || selectedTag ? "No matching notes found" : "No notes yet"}</p>
+                        {selectedTag && (
+                          <Button
+                            variant="link"
+                            size="xs"
+                            onClick={() => onSelectTag?.(null)}
+                            className="text-xs text-primary mt-1"
+                          >
+                            Clear #{selectedTag} filter
+                          </Button>
+                        )}
+                        {!query && !selectedTag && (
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={handleNewNoteClick}
+                            className="mt-3 text-xs rounded-none border-border/80"
+                          >
+                            <Plus className="size-3 mr-1" />
+                            Create your first note
+                          </Button>
+                        )}
                       </div>
                     );
                   }
                   return grouped.map((group) => (
-                    <div key={group.label}>
-                      <div className="px-2 py-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/60">
-                        {group.label}
+                    <div key={group.label} className="space-y-1 w-full min-w-0">
+                      <div className="px-1 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground/70 flex items-center justify-between">
+                        <span>{group.label}</span>
+                        <span className="text-[9px] font-normal opacity-60">({group.notes.length})</span>
                       </div>
-                      <div className="space-y-1">{group.notes.map(renderRow)}</div>
+                      <div className="space-y-1.5 w-full min-w-0">
+                        {group.notes.map((note) => (
+                          <NoteRow
+                            key={note.id}
+                            note={note}
+                            isActive={note.id === activeNoteId}
+                            onSelect={handleNoteClick}
+                            onTogglePin={onTogglePin}
+                            onDuplicate={handleDuplicate}
+                            onDelete={onDeleteNote}
+                            onSelectTag={onSelectTag}
+                            selectedTag={selectedTag}
+                          />
+                        ))}
+                      </div>
                     </div>
                   ));
                 })()}
               </div>
             )}
 
+            {/* Favorites Panel */}
             {activePanel === "favorites" && (
-              <div className="px-2 py-2 space-y-1">
+              <div className="p-2.5 space-y-1.5 w-full min-w-0">
                 {favoriteNotes.length === 0 ? (
-                  <div className="py-12 text-center">
-                    <Star className="size-8 text-muted-foreground/25 mx-auto mb-2" />
+                  <div className="py-12 text-center font-sans">
+                    <Star className="size-8 text-amber-500/20 mx-auto mb-2" />
                     <p className="text-xs text-muted-foreground">
-                      {query ? "No matching favorites" : "No favorites yet"}
+                      {query || selectedTag ? "No matching favorites" : "No pinned notes yet"}
                     </p>
-                    {!query && (
-                      <p className="text-[10px] text-muted-foreground/60 mt-1">
-                        Pin notes to add them here
+                    {!query && !selectedTag && (
+                      <p className="text-[10.5px] text-muted-foreground/60 mt-1">
+                        Pin important notes to keep them here
                       </p>
                     )}
                   </div>
                 ) : (
-                  favoriteNotes.map(renderRow)
+                  favoriteNotes.map((note) => (
+                    <NoteRow
+                      key={note.id}
+                      note={note}
+                      isActive={note.id === activeNoteId}
+                      onSelect={handleNoteClick}
+                      onTogglePin={onTogglePin}
+                      onDuplicate={handleDuplicate}
+                      onDelete={onDeleteNote}
+                      onSelectTag={onSelectTag}
+                      selectedTag={selectedTag}
+                    />
+                  ))
                 )}
               </div>
             )}
 
+            {/* Trash Panel */}
             {activePanel === "trash" && (
               <div className="flex flex-col h-full">
                 {trashedNotes.length > 0 && (
-                  <div className="flex items-center justify-between px-2 py-1.5 border-b border-border/40">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">
-                      {trashedNotes.length} deleted
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-border/50 bg-destructive/5">
+                    <span className="text-[10.5px] font-mono uppercase tracking-wider text-muted-foreground">
+                      {trashedNotes.length} deleted note{trashedNotes.length === 1 ? "" : "s"}
                     </span>
                     <Button
                       size="xs"
                       variant="ghost"
                       onClick={onEmptyTrash}
-                      className="text-[10px] text-destructive hover:text-destructive h-6"
+                      className="text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10 h-6 rounded-none px-2"
                     >
                       Empty Trash
                     </Button>
                   </div>
                 )}
-                <div className="p-2 space-y-1">
-                  {trashedNotes.length === 0 ? (
-                    <div className="py-12 text-center">
+                <div className="p-2.5 space-y-1.5 w-full min-w-0">
+                  {filteredTrashNotes.length === 0 ? (
+                    <div className="py-12 text-center font-sans">
                       <Trash2 className="size-8 text-muted-foreground/25 mx-auto mb-2" />
-                      <p className="text-xs text-muted-foreground">Trash is empty</p>
+                      <p className="text-xs text-muted-foreground">
+                        {query ? "No matching trashed notes" : "Trash is empty"}
+                      </p>
                     </div>
                   ) : (
-                    trashedNotes.map((note) => (
+                    filteredTrashNotes.map((note) => (
                       <div
                         key={note.id}
-                        className="p-2.5 rounded-none border border-border/50 bg-muted/20"
+                        className="p-2.5 rounded-none border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors relative w-full min-w-0 max-w-full box-border overflow-hidden"
                       >
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-xs font-medium text-foreground truncate flex-1">
                             {note.title || "Untitled"}
                           </span>
-                          <Button
-                            size="icon-xs"
-                            variant="ghost"
-                            onClick={() => onRestoreNote(note.id)}
-                            className="size-6 text-muted-foreground hover:text-foreground"
-                            title="Restore"
-                          >
-                            <RotateCcw className="size-3" />
-                          </Button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon-xs"
+                                  variant="outline"
+                                  onClick={() => onRestoreNote(note.id)}
+                                  className="size-6 rounded-none text-foreground hover:text-primary"
+                                  aria-label="Restore note"
+                                >
+                                  <RotateCcw className="size-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs font-sans">
+                                Restore note
+                              </TooltipContent>
+                            </Tooltip>
+
+                            {onPurgeNote && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon-xs"
+                                    variant="ghost"
+                                    onClick={() => onPurgeNote(note.id)}
+                                    className="size-6 rounded-none text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    aria-label="Delete permanently"
+                                  >
+                                    <Trash2 className="size-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs font-sans">
+                                  Delete permanently
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                         </div>
+                        <p className="text-[10.5px] text-muted-foreground/70 truncate mt-1">
+                          {getSnippet(note.content, 80)}
+                        </p>
                       </div>
                     ))
                   )}
@@ -596,80 +811,251 @@ export function AppSidebar({
               </div>
             )}
 
+            {/* Dedicated Settings & Library Data View */}
             {activePanel === "settings" && (
-              <div className="p-3 space-y-3">
-                <div className="border border-border/50 p-3 rounded-none bg-muted/20">
-                  <h4 className="text-xs font-semibold text-foreground mb-2">Writing Goal</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {[0, 250, 500, 1000].map((goal) => (
+              <div className="flex flex-col h-full font-sans">
+                {/* Header with back button */}
+                <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/20">
+                  <span className="text-xs font-semibold tracking-tight text-foreground">
+                    Preferences & Data
+                  </span>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => onSelectPanel("all")}
+                    className="h-6 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground rounded-none"
+                  >
+                    <ArrowLeft className="size-3" />
+                    <span>Back to Notes</span>
+                  </Button>
+                </div>
+
+                <div className="p-3 space-y-3">
+                  {/* Session Writing Goal */}
+                  <div className="border border-border/70 p-3 rounded-none bg-card/60 shadow-xs space-y-2 relative">
+                    <Corners size="sm" weight="thin" light />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Target className="size-3.5 text-primary" />
+                        <h4 className="text-xs font-semibold text-foreground">Session Word Goal</h4>
+                      </div>
+                      {writingGoal > 0 && (
+                        <span className="text-[10px] font-mono text-primary font-bold">
+                          {writingGoal}w active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10.5px] text-muted-foreground">
+                      Track your writing target for this session with a live progress indicator.
+                    </p>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {[0, 250, 500, 1000].map((goal) => (
+                        <Button
+                          key={goal}
+                          size="xs"
+                          variant={writingGoal === goal ? "default" : "outline"}
+                          onClick={() => onWritingGoalChange(goal)}
+                          className="text-[10.5px] h-6 px-2 font-mono rounded-none"
+                        >
+                          {goal === 0 ? "Free Write" : `${goal}w`}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Data Management */}
+                  <div className="border border-border/70 p-3 rounded-none bg-card/60 shadow-xs space-y-2 relative">
+                    <Corners size="sm" weight="thin" light />
+                    <div className="flex items-center gap-1.5">
+                      <Database className="size-3.5 text-primary" />
+                      <h4 className="text-xs font-semibold text-foreground">Data & Backups</h4>
+                    </div>
+                    <p className="text-[10.5px] text-muted-foreground">
+                      100% offline data. Export your vault or import notes anytime.
+                    </p>
+                    <div className="flex flex-col gap-1.5 pt-1">
+                      {onImportMarkdown && (
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={onImportMarkdown}
+                          className="text-[11px] h-7.5 justify-start rounded-none border-border/70 hover:bg-muted/70"
+                        >
+                          <Upload className="size-3.5 mr-2 text-primary" />
+                          Import Markdown (.md)
+                        </Button>
+                      )}
                       <Button
-                        key={goal}
                         size="xs"
-                        variant={writingGoal === goal ? "default" : "outline"}
-                        onClick={() => onWritingGoalChange(goal)}
-                        className="text-[10px] h-6 px-2"
+                        variant="outline"
+                        onClick={onExportAll}
+                        className="text-[11px] h-7.5 justify-start rounded-none border-border/70 hover:bg-muted/70"
                       >
-                        {goal === 0 ? "None" : goal}
+                        <Download className="size-3.5 mr-2 text-primary" />
+                        Backup All Notes (.json)
                       </Button>
-                    ))}
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={onImportBackup}
+                        className="text-[11px] h-7.5 justify-start rounded-none border-border/70 hover:bg-muted/70"
+                      >
+                        <Database className="size-3.5 mr-2 text-primary" />
+                        Restore JSON Backup
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                <div className="border border-border/50 p-3 rounded-none bg-muted/20">
-                  <h4 className="text-xs font-semibold text-foreground mb-2">Data</h4>
-                  <div className="flex flex-col gap-1">
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={onExportAll}
-                      className="text-[10px] h-7 justify-start"
-                    >
-                      <FileText className="size-3 mr-1.5" />
-                      Export All Notes
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={onImportBackup}
-                      className="text-[10px] h-7 justify-start"
-                    >
-                      <FileText className="size-3 mr-1.5" />
-                      Import Backup
-                    </Button>
+                  {/* Theme & Appearance */}
+                  <div className="border border-border/70 p-3 rounded-none bg-card/60 shadow-xs space-y-2 relative">
+                    <Corners size="sm" weight="thin" light />
+                    <div className="flex items-center gap-1.5">
+                      <Sun className="size-3.5 text-primary" />
+                      <h4 className="text-xs font-semibold text-foreground">Theme & Display</h4>
+                    </div>
+                    <div className="flex items-center gap-1 pt-1">
+                      <Button
+                        size="xs"
+                        variant={theme === "light" ? "default" : "outline"}
+                        onClick={() => setTheme("light")}
+                        className="flex-1 text-[10.5px] h-6 rounded-none gap-1"
+                      >
+                        <Sun className="size-3" />
+                        Light
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant={theme === "dark" ? "default" : "outline"}
+                        onClick={() => setTheme("dark")}
+                        className="flex-1 text-[10.5px] h-6 rounded-none gap-1"
+                      >
+                        <Moon className="size-3" />
+                        Dark
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant={theme === "system" ? "default" : "outline"}
+                        onClick={() => setTheme("system")}
+                        className="flex-1 text-[10.5px] h-6 rounded-none gap-1"
+                      >
+                        <Laptop className="size-3" />
+                        Auto
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                <div className="border border-border/50 p-3 rounded-none bg-muted/20">
-                  <h4 className="text-xs font-semibold text-foreground mb-2">About</h4>
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    Quill v1.5.0 — Offline-first markdown notes
-                  </p>
+                  {/* About Section */}
+                  <div className="border border-border/70 p-3 rounded-none bg-card/60 shadow-xs space-y-1.5 relative">
+                    <Corners size="sm" weight="thin" light />
+                    <h4 className="text-xs font-semibold text-foreground">About Quill</h4>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      Quill v1.5.0 — Offline-first Markdown desk with client-side indexing, revision histories, and zero telemetry.
+                    </p>
+                    <div className="flex items-center gap-2 pt-1 font-mono text-[9.5px] text-muted-foreground/80">
+                      <span>Total Notes: {notes.length}</span>
+                      <span>·</span>
+                      <span>Trash: {trashedNotes.length}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
           </ScrollArea>
 
-          {/* Footer tools */}
-          <div className="border-t border-border/50 px-2 py-1.5 flex items-center justify-between shrink-0">
+          {/* Footer Tools (Graph, Insights, Soundscapes, Settings) */}
+          <div className="h-10 border-t border-border/80 px-2 flex items-center justify-between shrink-0 bg-background/50 font-sans">
             <div className="flex items-center gap-0.5">
-              <FooterButton label="Graph View" onClick={onOpenGraph}>
-                <Network className="size-4" />
-              </FooterButton>
-              <FooterButton label="Writing Insights" onClick={onOpenInsights}>
-                <BarChart3 className="size-4" />
-              </FooterButton>
+              {/* Graph View */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onOpenGraph}
+                    aria-label="Knowledge Graph"
+                    className="size-7 rounded-none text-muted-foreground hover:text-foreground"
+                  >
+                    <Network className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="font-sans text-xs">
+                  Interactive Knowledge Graph
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Writing Insights */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={onOpenInsights}
+                    aria-label="Writing Insights"
+                    className="size-7 rounded-none text-muted-foreground hover:text-foreground"
+                  >
+                    <BarChart3 className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="font-sans text-xs">
+                  Writing Insights & Activity
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Ambient Soundscapes & Pomodoro */}
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label="Ambient Soundscapes"
+                        className="size-7 rounded-none text-muted-foreground hover:text-foreground"
+                      >
+                        <Headphones className="size-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="font-sans text-xs">
+                    Ambient Soundscapes & Pomodoro
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent
+                  side="top"
+                  align="start"
+                  className="p-0 border-none bg-transparent shadow-none w-auto"
+                >
+                  <AmbientSoundPlayer />
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <FooterButton
-              label="Settings"
-              active={activePanel === "settings"}
-              onClick={() => onSelectPanel(activePanel === "settings" ? "all" : "settings")}
-            >
-              <Settings className="size-4" />
-            </FooterButton>
+
+            {/* Settings Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => onSelectPanel(activePanel === "settings" ? "all" : "settings")}
+                  aria-label="Library Settings"
+                  className={cn(
+                    "size-7 rounded-none transition-colors",
+                    activePanel === "settings"
+                      ? "text-primary bg-muted/80"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Settings className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="font-sans text-xs">
+                {activePanel === "settings" ? "Back to Notes" : "Settings & Data"}
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
-        {/* Desktop resize handle (drag, double-click to reset, arrow keys to adjust) */}
+        {/* Desktop Resize Handle */}
         <div
           role="separator"
           aria-orientation="vertical"
@@ -692,8 +1078,8 @@ export function AppSidebar({
           className={cn(
             "absolute inset-y-0 right-0 z-20 hidden w-1.5 -mr-px cursor-col-resize touch-none md:block",
             "after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-transparent after:transition-colors",
-            "hover:after:bg-primary/40 focus-visible:after:bg-primary/60 focus-visible:outline-none",
-            isResizing && "after:w-0.5 after:bg-primary/60"
+            "hover:after:bg-primary/50 focus-visible:after:bg-primary/70 focus-visible:outline-none",
+            isResizing && "after:w-0.5 after:bg-primary"
           )}
         />
       </aside>

@@ -24,11 +24,25 @@ import {
   ListTree,
   History,
   Download,
+  Printer,
+  Headphones,
+  LayoutTemplate,
   Sun,
   Moon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { AmbientSoundPlayer } from "@/components/audio/ambient-sound-player";
 import { VersionHistoryDialog } from "@/components/history/version-history-dialog";
 import { TemplateDialog } from "@/components/templates/template-dialog";
 import { KnowledgeGraphModal } from "@/components/graph/knowledge-graph-modal";
@@ -336,94 +350,141 @@ export default function QuillPage() {
             activeNoteId={activeNoteId}
             onSelectNote={handleSelectNote}
             onCreateNote={createNote}
+            onOpenTemplates={() => setIsTemplateOpen(true)}
             onDeleteNote={deleteNote}
             onTogglePin={togglePinNote}
-            onDuplicateNote={duplicateNote}
+            onDuplicateNote={(id) => {
+              duplicateNote(id);
+              toast.success("Note duplicated");
+            }}
             onRestoreNote={restoreFromTrash}
+            onPurgeNote={purgeNote}
             onEmptyTrash={emptyTrash}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            selectedTag={selectedTag}
+            onSelectTag={setSelectedTag}
+            allTags={allTags}
             onOpenGraph={() => setIsGraphOpen(true)}
             onOpenInsights={() => setIsInsightsOpen(true)}
+            onOpenWelcome={() => setIsWelcomeOpen(true)}
             writingGoal={writingGoal}
             onWritingGoalChange={(goal) => {
               setWritingGoal(goal);
               if (goal > 0) {
                 toast.info(`Session writing goal: ${goal} words`);
+              } else {
+                toast.info("Session writing goal cleared");
               }
             }}
             onExportAll={handleBackupNotes}
             onImportBackup={() => jsonInputRef.current?.click()}
+            onImportMarkdown={() => markdownInputRef.current?.click()}
           />
 
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Top Bar */}
-            <div className="h-11 px-3 border-b border-border/50 flex items-center justify-between gap-3 shrink-0 bg-background/60">
-              {/* Left: sidebar toggle + note title + pin */}
-              <div className="flex items-center gap-1 min-w-0 flex-1">
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  onClick={() => setSideVisible((prev) => !prev)}
-                  className="size-7 text-muted-foreground hover:text-foreground shrink-0"
-                  aria-label={sideVisible ? "Hide sidebar" : "Show sidebar"}
-                  title={sideVisible ? "Hide sidebar (Ctrl+B)" : "Show sidebar (Ctrl+B)"}
-                >
-                  {sideVisible ? (
-                    <PanelLeftClose className="size-3.5" />
-                  ) : (
-                    <PanelLeftOpen className="size-3.5" />
-                  )}
-                </Button>
+            {/* Top Bar (Unified h-12 height matching sidebar) */}
+            <div className="h-12 px-3 border-b border-border/80 flex items-center justify-between gap-2.5 shrink-0 bg-background/70 backdrop-blur-xs select-none">
+              {/* Left: sidebar toggle + note title + pin + stats badge */}
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      onClick={() => setSideVisible((prev) => !prev)}
+                      className="size-7.5 rounded-none text-muted-foreground hover:text-foreground shrink-0"
+                      aria-label={sideVisible ? "Hide sidebar" : "Show sidebar"}
+                    >
+                      {sideVisible ? (
+                        <PanelLeftClose className="size-4" />
+                      ) : (
+                        <PanelLeftOpen className="size-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans text-xs">
+                    {sideVisible ? "Hide Library (Ctrl+B)" : "Show Library (Ctrl+B)"}
+                  </TooltipContent>
+                </Tooltip>
+
                 {activeNote && (
-                  <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    onClick={() => togglePinNote(activeNote.id)}
-                    className={cn(
-                      "size-7 shrink-0",
-                      activeNote.isPinned
-                        ? "text-amber-500 hover:text-amber-400"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                    aria-label={activeNote.isPinned ? "Unpin note" : "Pin note"}
-                    aria-pressed={activeNote.isPinned}
-                    title={activeNote.isPinned ? "Unpin note" : "Pin note"}
-                  >
-                    {activeNote.isPinned ? (
-                      <Pin className="size-3.5 fill-current" />
-                    ) : (
-                      <PinOff className="size-3.5" />
-                    )}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        onClick={() => togglePinNote(activeNote.id)}
+                        className={cn(
+                          "size-7 rounded-none shrink-0",
+                          activeNote.isPinned
+                            ? "text-amber-500 hover:text-amber-400"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                        aria-label={activeNote.isPinned ? "Unpin note" : "Pin note"}
+                      >
+                        {activeNote.isPinned ? (
+                          <Pin className="size-3.5 fill-current" />
+                        ) : (
+                          <PinOff className="size-3.5" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-xs">
+                      {activeNote.isPinned ? "Unpin from top" : "Pin to top"}
+                    </TooltipContent>
+                  </Tooltip>
                 )}
+
                 <span
-                  className="text-sm font-medium text-foreground truncate"
+                  className="text-xs font-semibold text-foreground truncate max-w-[200px] sm:max-w-xs font-sans tracking-tight"
                   title={activeNote?.title}
                 >
                   {activeNote?.title || "Untitled"}
                 </span>
+
+                {/* Word count & Reading time & Goal Progress Badge */}
+                <div className="relative hidden xl:inline-flex items-center gap-1.5 px-2 py-0.5 border border-border/70 bg-card/60 font-mono text-[10px] tracking-wider shrink-0 text-muted-foreground ml-1">
+                  <Corners size="sm" weight="thin" light />
+                  <span>{wordCount} {wordCount === 1 ? "word" : "words"}</span>
+                  <span className="opacity-40">·</span>
+                  <span>~{Math.max(1, Math.ceil(wordCount / 200))}m read</span>
+                  {writingGoal > 0 && (
+                    <>
+                      <span className="opacity-40">·</span>
+                      <span className="text-primary font-bold">
+                        🎯 {Math.min(100, Math.round((wordCount / writingGoal) * 100))}%
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Center: view mode switcher */}
-              <div className="relative flex items-center bg-muted/40 border border-border/50 p-0.5 shrink-0">
+              <div className="relative flex items-center bg-muted/40 border border-border/70 p-0.5 shrink-0 rounded-none shadow-xs">
                 <Corners size="sm" weight="thin" light />
                 <Button
                   size="xs"
                   variant={viewMode === "editor" ? "secondary" : "ghost"}
                   onClick={() => setViewMode("editor")}
-                  className="h-6 px-2 text-[11px] gap-1"
+                  className={cn(
+                    "h-6.5 px-2 text-[11px] font-sans gap-1 rounded-none",
+                    viewMode === "editor" && "shadow-xs border border-border/80 font-medium"
+                  )}
                   title="Editor (Ctrl+1)"
                 >
                   <PenLine className="size-3" />
-                  <span className="hidden sm:inline">Edit</span>
+                  <span className="hidden sm:inline">Write</span>
                 </Button>
                 <Button
                   size="xs"
                   variant={viewMode === "split" ? "secondary" : "ghost"}
                   onClick={() => setViewMode("split")}
-                  className="hidden sm:inline-flex h-6 px-2 text-[11px] gap-1"
+                  className={cn(
+                    "hidden sm:inline-flex h-6.5 px-2 text-[11px] font-sans gap-1 rounded-none",
+                    viewMode === "split" && "shadow-xs border border-border/80 font-medium"
+                  )}
                   title="Split (Ctrl+2)"
                 >
                   <Columns2 className="size-3" />
@@ -433,7 +494,10 @@ export default function QuillPage() {
                   size="xs"
                   variant={viewMode === "preview" ? "secondary" : "ghost"}
                   onClick={() => setViewMode("preview")}
-                  className="h-6 px-2 text-[11px] gap-1"
+                  className={cn(
+                    "h-6.5 px-2 text-[11px] font-sans gap-1 rounded-none",
+                    viewMode === "preview" && "shadow-xs border border-border/80 font-medium"
+                  )}
                   title="Preview (Ctrl+3)"
                 >
                   <Eye className="size-3" />
@@ -441,90 +505,180 @@ export default function QuillPage() {
                 </Button>
               </div>
 
-              {/* Right: actions */}
+              {/* Right: actions & tools */}
               <div className="flex items-center gap-0.5 shrink-0">
                 {/* Command palette */}
                 <Button
                   size="xs"
                   variant="ghost"
                   onClick={() => setIsCommandPaletteOpen(true)}
-                  className="h-7 px-2 text-[11px] gap-1.5 text-muted-foreground hover:text-foreground"
+                  className="h-7 px-2 text-[11px] gap-1.5 text-muted-foreground hover:text-foreground rounded-none"
                   title="Command palette (Ctrl+K)"
                 >
                   <Command className="size-3.5" />
-                  <span className="hidden sm:inline">Commands</span>
-                  <kbd className="hidden xl:inline-block font-mono text-[9px] px-1 py-0.5 rounded-xs bg-muted border border-border/60 text-muted-foreground">
+                  <span className="hidden sm:inline font-sans">Commands</span>
+                  <kbd className="hidden xl:inline-block font-mono text-[9px] px-1 py-0.2 rounded-none bg-muted border border-border/70 text-muted-foreground">
                     ⌘K
                   </kbd>
                 </Button>
 
+                {/* Templates picker button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      onClick={() => setIsTemplateOpen(true)}
+                      className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
+                      aria-label="Note Templates"
+                    >
+                      <LayoutTemplate className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans text-xs">
+                    Note Templates
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Ambient Soundscapes & Pomodoro Dropdown */}
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="icon-xs"
+                          variant="ghost"
+                          className="size-7 text-muted-foreground hover:text-foreground rounded-none"
+                          aria-label="Ambient Soundscapes & Focus"
+                        >
+                          <Headphones className="size-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-xs">
+                      Ambient Soundscapes & Focus Timer
+                    </TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent side="bottom" align="end" className="p-0 border-none bg-transparent shadow-none w-auto">
+                    <AmbientSoundPlayer />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 {/* Document outline */}
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  onClick={() => setIsTocOpen(true)}
-                  className="size-7 text-muted-foreground hover:text-foreground hidden sm:inline-flex"
-                  aria-label="Document outline"
-                  title="Document outline"
-                >
-                  <ListTree className="size-3.5" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      onClick={() => setIsTocOpen(true)}
+                      className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
+                      aria-label="Document outline"
+                    >
+                      <ListTree className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans text-xs">
+                    Document Outline
+                  </TooltipContent>
+                </Tooltip>
 
                 {/* Version history */}
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  onClick={() => setIsHistoryOpen(true)}
-                  className="size-7 text-muted-foreground hover:text-foreground hidden sm:inline-flex"
-                  aria-label="Version history"
-                  title="Version history"
-                >
-                  <History className="size-3.5" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      onClick={() => setIsHistoryOpen(true)}
+                      className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
+                      aria-label="Version history"
+                    >
+                      <History className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans text-xs">
+                    Snapshots & History
+                  </TooltipContent>
+                </Tooltip>
 
                 {/* Export markdown */}
                 {activeNote && (
-                  <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    onClick={() => {
-                      notesRepository.exportNote(activeNote);
-                      toast.success(`Exported "${activeNote.title || "Untitled"}.md"`);
-                    }}
-                    className="size-7 text-muted-foreground hover:text-foreground hidden sm:inline-flex"
-                    aria-label="Export note as Markdown"
-                    title="Export as .md"
-                  >
-                    <Download className="size-3.5" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        onClick={() => {
+                          notesRepository.exportNote(activeNote);
+                          toast.success(`Exported "${activeNote.title || "Untitled"}.md"`);
+                        }}
+                        className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
+                        aria-label="Export as Markdown"
+                      >
+                        <Download className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-sans text-xs">
+                      Export Note (.md)
+                    </TooltipContent>
+                  </Tooltip>
                 )}
 
-                {/* Zen mode */}
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  onClick={() => setIsZenMode(true)}
-                  className="size-7 text-muted-foreground hover:text-foreground hidden sm:inline-flex"
-                  aria-label="Focus mode"
-                  title="Focus mode (Ctrl+Shift+F)"
-                >
-                  <Maximize2 className="size-3.5" />
-                </Button>
+                {/* Print / PDF Export */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      onClick={() => window.print()}
+                      className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden md:inline-flex"
+                      aria-label="Print Note"
+                    >
+                      <Printer className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans text-xs">
+                    Print / Export PDF (Ctrl+P)
+                  </TooltipContent>
+                </Tooltip>
 
-                <div className="w-px h-4 bg-border/60 mx-0.5" />
+                {/* Zen mode */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      onClick={() => setIsZenMode(true)}
+                      className="size-7 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
+                      aria-label="Focus mode"
+                    >
+                      <Maximize2 className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans text-xs">
+                    Zen Focus Desk (Ctrl+Shift+F)
+                  </TooltipContent>
+                </Tooltip>
+
+                <div className="w-px h-4 bg-border/70 mx-0.5" />
 
                 {/* Theme toggle */}
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                  className="relative size-7 text-muted-foreground hover:text-foreground"
-                  aria-label="Toggle theme"
-                  title={resolvedTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-                >
-                  <Sun className="size-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <Moon className="absolute size-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon-xs"
+                      variant="ghost"
+                      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                      className="relative size-7 text-muted-foreground hover:text-foreground rounded-none"
+                      aria-label="Toggle theme"
+                    >
+                      <Sun className="size-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                      <Moon className="absolute size-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="font-sans text-xs">
+                    {resolvedTheme === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme"}
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
 
@@ -681,6 +835,9 @@ export default function QuillPage() {
           wordCount={wordCount}
           activeNoteTitle={activeNote?.title}
           tags={activeNote?.tags}
+          writingGoal={writingGoal}
+          selectedTag={selectedTag}
+          onSelectTag={setSelectedTag}
         />
 
         {/* Command Palette (Cmd+K / Ctrl+K) */}
