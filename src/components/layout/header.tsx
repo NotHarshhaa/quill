@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { QuillLogo } from "./quill-logo";
 import { Corners } from "@/components/frame";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -139,37 +140,52 @@ export function Header({
 
       {/* Center: View Mode Switcher */}
       {viewMode && onViewModeChange && (
-        <div className="relative flex items-center bg-card/80 p-0.5 border border-border/80 shadow-xs gap-0.5 shrink-0 select-none">
+        <div className="relative flex items-center bg-card/60 p-1 border border-border/80 shadow-xs gap-1 shrink-0 select-none">
           <Corners size="sm" offset="border" weight="thin" light />
           <Button
             size="xs"
             variant={viewMode === "editor" ? "default" : "ghost"}
             onClick={() => onViewModeChange("editor")}
-            className="h-6 px-1.5 sm:px-2 text-[11px] font-sans gap-1 rounded-none"
-            title="Write mode"
+            className={cn(
+              "h-7 sm:h-7.5 px-3 sm:px-3.5 text-xs font-mono font-medium tracking-wide gap-1.5 rounded-none transition-all",
+              viewMode === "editor"
+                ? "shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            )}
+            title="Write mode (Ctrl+1)"
           >
-            <Edit3 className="size-3" />
-            <span className="hidden lg:inline">Write</span>
+            <Edit3 className="size-3.5" />
+            <span className="hidden sm:inline">WRITE</span>
           </Button>
           <Button
             size="xs"
             variant={viewMode === "split" ? "default" : "ghost"}
             onClick={() => onViewModeChange("split")}
-            className="hidden md:inline-flex h-6 px-1.5 sm:px-2 text-[11px] font-sans gap-1 rounded-none"
-            title="Split mode"
+            className={cn(
+              "hidden sm:inline-flex h-7 sm:h-7.5 px-3 sm:px-3.5 text-xs font-mono font-medium tracking-wide gap-1.5 rounded-none transition-all",
+              viewMode === "split"
+                ? "shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            )}
+            title="Split mode (Ctrl+2)"
           >
-            <Columns className="size-3" />
-            <span className="hidden lg:inline">Split</span>
+            <Columns className="size-3.5" />
+            <span>SPLIT</span>
           </Button>
           <Button
             size="xs"
             variant={viewMode === "preview" ? "default" : "ghost"}
             onClick={() => onViewModeChange("preview")}
-            className="h-6 px-1.5 sm:px-2 text-[11px] font-sans gap-1 rounded-none"
-            title="Preview mode"
+            className={cn(
+              "h-7 sm:h-7.5 px-3 sm:px-3.5 text-xs font-mono font-medium tracking-wide gap-1.5 rounded-none transition-all",
+              viewMode === "preview"
+                ? "shadow-xs font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            )}
+            title="Preview mode (Ctrl+3)"
           >
-            <Eye className="size-3" />
-            <span className="hidden lg:inline">Preview</span>
+            <Eye className="size-3.5" />
+            <span className="hidden sm:inline">PREVIEW</span>
           </Button>
         </div>
       )}

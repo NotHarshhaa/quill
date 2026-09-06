@@ -443,7 +443,7 @@ export function AppSidebar({
             ? "transition-none"
             : "transition-[width,transform] duration-200 ease-out",
           // Mobile: off-canvas drawer
-          "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50",
+          "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:h-[100dvh]",
           "max-md:w-[min(320px,calc(100vw-2.5rem))]",
           open ? "max-md:translate-x-0 max-md:shadow-2xl" : "max-md:-translate-x-full",
           // Desktop: in-flow dock (Full width when open, sleek 48px icon rail when closed)
@@ -527,7 +527,7 @@ export function AppSidebar({
                     className={cn(
                       "relative size-8 flex items-center justify-center rounded-none transition-colors cursor-pointer",
                       activePanel === "all"
-                        ? "bg-card text-foreground font-semibold border border-border shadow-xs"
+                        ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                     aria-label={`All Notes (${notes.length})`}
@@ -553,13 +553,13 @@ export function AppSidebar({
                     className={cn(
                       "relative size-8 flex items-center justify-center rounded-none transition-colors cursor-pointer",
                       activePanel === "favorites"
-                        ? "bg-card text-foreground font-semibold border border-border shadow-xs"
+                        ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                     aria-label={`Pinned Notes (${pinnedCount})`}
                   >
                     {activePanel === "favorites" && <Corners size="sm" weight="thin" light />}
-                    <Pin className={cn("size-3.5", pinnedCount > 0 && "text-amber-500 fill-current")} />
+                    <Pin className={cn("size-3.5", activePanel === "favorites" ? "fill-current text-primary-foreground" : (pinnedCount > 0 && "text-amber-500 fill-current"))} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
@@ -579,7 +579,7 @@ export function AppSidebar({
                     className={cn(
                       "relative size-8 flex items-center justify-center rounded-none transition-colors cursor-pointer",
                       activePanel === "trash"
-                        ? "bg-card text-destructive font-semibold border border-border shadow-xs"
+                        ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                     aria-label={`Trash (${trashedNotes.length})`}
@@ -679,7 +679,7 @@ export function AppSidebar({
                     className={cn(
                       "relative size-8 flex items-center justify-center rounded-none transition-colors cursor-pointer",
                       activePanel === "settings"
-                        ? "bg-card text-primary font-semibold border border-border shadow-xs"
+                        ? "bg-primary text-primary-foreground font-semibold shadow-xs"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                     aria-label="Vault Preferences & Data"
@@ -806,11 +806,11 @@ export function AppSidebar({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="xs"
                     onClick={onOpenTemplates}
                     aria-label="Note Templates"
-                    className="relative h-8 px-2.5 rounded-none border-border/80 bg-background/80 hover:bg-muted/80 text-foreground text-xs gap-1 font-mono tracking-tight shrink-0 shadow-xs"
+                    className="relative h-8 px-2.5 rounded-none text-primary-foreground text-xs gap-1 font-mono tracking-tight shrink-0 shadow-xs"
                   >
                     <Corners size="sm" weight="thin" light />
                     <LayoutTemplate className="size-3.5" />
@@ -825,22 +825,22 @@ export function AppSidebar({
           </div>
 
           {/* Library Tabs (All / Favorites / Trash) */}
-          <div className="relative flex items-center gap-0.5 mx-2.5 p-0.5 bg-muted/40 border border-border/60 shrink-0">
+          <div className="relative flex items-center gap-1 mx-2.5 p-1 bg-card/60 border border-border/80 shrink-0 shadow-xs">
             <Corners size="sm" weight="thin" light />
             <button
               type="button"
               onClick={() => onSelectPanel("all")}
               aria-current={activePanel === "all" ? "page" : undefined}
               className={cn(
-                "flex-1 h-7 flex items-center justify-center gap-1 text-[10.5px] font-mono uppercase tracking-wider transition-colors rounded-none",
+                "flex-1 h-7.5 flex items-center justify-center gap-1.5 text-xs font-mono uppercase tracking-wider transition-all rounded-none cursor-pointer",
                 activePanel === "all"
-                  ? "bg-card text-foreground shadow-xs border border-border font-semibold"
-                  : "text-muted-foreground hover:text-foreground border border-transparent"
+                  ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
               )}
             >
-              <FileText className="size-3 shrink-0" />
-              <span>All</span>
-              <span className="text-[9.5px] opacity-70 font-mono">({notes.length})</span>
+              <FileText className="size-3.5 shrink-0" />
+              <span>ALL</span>
+              <span className={cn("text-[10px] font-mono", activePanel === "all" ? "text-primary-foreground/90 font-bold" : "opacity-70")}>({notes.length})</span>
             </button>
 
             <button
@@ -848,15 +848,15 @@ export function AppSidebar({
               onClick={() => onSelectPanel("favorites")}
               aria-current={activePanel === "favorites" ? "page" : undefined}
               className={cn(
-                "flex-1 h-7 flex items-center justify-center gap-1 text-[10.5px] font-mono uppercase tracking-wider transition-colors rounded-none",
+                "flex-1 h-7.5 flex items-center justify-center gap-1.5 text-xs font-mono uppercase tracking-wider transition-all rounded-none cursor-pointer",
                 activePanel === "favorites"
-                  ? "bg-card text-foreground shadow-xs border border-border font-semibold"
-                  : "text-muted-foreground hover:text-foreground border border-transparent"
+                  ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
               )}
             >
-              <Star className="size-3 shrink-0 text-amber-500" />
-              <span>Favs</span>
-              <span className="text-[9.5px] opacity-70 font-mono">({pinnedCount})</span>
+              <Star className={cn("size-3.5 shrink-0", activePanel === "favorites" ? "fill-current text-primary-foreground" : "text-amber-500")} />
+              <span>FAVS</span>
+              <span className={cn("text-[10px] font-mono", activePanel === "favorites" ? "text-primary-foreground/90 font-bold" : "opacity-70")}>({pinnedCount})</span>
             </button>
 
             <button
@@ -864,16 +864,16 @@ export function AppSidebar({
               onClick={() => onSelectPanel("trash")}
               aria-current={activePanel === "trash" ? "page" : undefined}
               className={cn(
-                "flex-1 h-7 flex items-center justify-center gap-1 text-[10.5px] font-mono uppercase tracking-wider transition-colors rounded-none",
+                "flex-1 h-7.5 flex items-center justify-center gap-1.5 text-xs font-mono uppercase tracking-wider transition-all rounded-none cursor-pointer",
                 activePanel === "trash"
-                  ? "bg-card text-destructive shadow-xs border border-border font-semibold"
-                  : "text-muted-foreground hover:text-foreground border border-transparent"
+                  ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
               )}
             >
-              <Trash2 className="size-3 shrink-0" />
-              <span>Trash</span>
+              <Trash2 className="size-3.5 shrink-0" />
+              <span>TRASH</span>
               {trashedNotes.length > 0 && (
-                <span className="text-[9.5px] font-mono text-destructive font-bold">
+                <span className={cn("text-[10px] font-mono font-bold", activePanel === "trash" ? "text-primary-foreground" : "text-destructive")}>
                   ({trashedNotes.length})
                 </span>
               )}
@@ -914,7 +914,7 @@ export function AppSidebar({
           {/* Dynamic Tag Filter Strip */}
           {activePanel !== "settings" && activePanel !== "trash" && allTags.length > 0 && (
             <div className="px-2.5 py-1 shrink-0 w-full min-w-0 overflow-hidden">
-              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none w-full [mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent_100%)]">
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none w-full touch-pan-x [mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent_100%)]">
                 <button
                   type="button"
                   onClick={() => onSelectTag?.(null)}
@@ -973,10 +973,10 @@ export function AppSidebar({
                         )}
                         {!query && !selectedTag && (
                           <Button
-                            variant="outline"
+                            variant="default"
                             size="xs"
                             onClick={handleNewNoteClick}
-                            className="mt-3 text-xs rounded-none border-border/80"
+                            className="mt-3 text-xs rounded-none shadow-xs"
                           >
                             <Plus className="size-3 mr-1" />
                             Create your first note
@@ -1087,9 +1087,9 @@ export function AppSidebar({
                               <TooltipTrigger asChild>
                                 <Button
                                   size="icon-xs"
-                                  variant="outline"
+                                  variant="default"
                                   onClick={() => onRestoreNote(note.id)}
-                                  className="size-6 rounded-none text-foreground hover:text-primary"
+                                  className="size-6 rounded-none"
                                   aria-label="Restore note"
                                 >
                                   <RotateCcw className="size-3" />
@@ -1196,30 +1196,30 @@ export function AppSidebar({
                       {onImportMarkdown && (
                         <Button
                           size="xs"
-                          variant="outline"
+                          variant="default"
                           onClick={onImportMarkdown}
-                          className="text-[11px] h-7.5 justify-start rounded-none border-border/70 hover:bg-muted/70"
+                          className="text-[11px] h-7.5 justify-start rounded-none"
                         >
-                          <Upload className="size-3.5 mr-2 text-primary" />
+                          <Upload className="size-3.5 mr-2" />
                           Import Markdown (.md)
                         </Button>
                       )}
                       <Button
                         size="xs"
-                        variant="outline"
+                        variant="default"
                         onClick={onExportAll}
-                        className="text-[11px] h-7.5 justify-start rounded-none border-border/70 hover:bg-muted/70"
+                        className="text-[11px] h-7.5 justify-start rounded-none"
                       >
-                        <Download className="size-3.5 mr-2 text-primary" />
+                        <Download className="size-3.5 mr-2" />
                         Backup All Notes (.json)
                       </Button>
                       <Button
                         size="xs"
-                        variant="outline"
+                        variant="default"
                         onClick={onImportBackup}
-                        className="text-[11px] h-7.5 justify-start rounded-none border-border/70 hover:bg-muted/70"
+                        className="text-[11px] h-7.5 justify-start rounded-none"
                       >
-                        <Database className="size-3.5 mr-2 text-primary" />
+                        <Database className="size-3.5 mr-2" />
                         Restore JSON Backup
                       </Button>
                     </div>
@@ -1235,7 +1235,7 @@ export function AppSidebar({
                     <div className="flex items-center gap-1 pt-1">
                       <Button
                         size="xs"
-                        variant={theme === "light" ? "default" : "outline"}
+                        variant={theme === "light" ? "default" : "secondary"}
                         onClick={() => setTheme("light")}
                         className="flex-1 text-[10.5px] h-6 rounded-none gap-1"
                       >
@@ -1244,7 +1244,7 @@ export function AppSidebar({
                       </Button>
                       <Button
                         size="xs"
-                        variant={theme === "dark" ? "default" : "outline"}
+                        variant={theme === "dark" ? "default" : "secondary"}
                         onClick={() => setTheme("dark")}
                         className="flex-1 text-[10.5px] h-6 rounded-none gap-1"
                       >
@@ -1253,7 +1253,7 @@ export function AppSidebar({
                       </Button>
                       <Button
                         size="xs"
-                        variant={theme === "system" ? "default" : "outline"}
+                        variant={theme === "system" ? "default" : "secondary"}
                         onClick={() => setTheme("system")}
                         className="flex-1 text-[10.5px] h-6 rounded-none gap-1"
                       >

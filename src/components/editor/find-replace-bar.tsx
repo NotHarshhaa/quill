@@ -260,7 +260,7 @@ export function FindReplaceBar({
           <div className="flex items-center gap-1">
             <Button
               type="button"
-              variant="outline"
+              variant="default"
               size="xs"
               onClick={handleReplaceOne}
               disabled={matches.length === 0}
@@ -271,7 +271,7 @@ export function FindReplaceBar({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="default"
               size="xs"
               onClick={handleReplaceAll}
               disabled={matches.length === 0}

@@ -116,12 +116,15 @@ export default function QuillPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       if (window.innerWidth < 768) {
+        // Mobile phones: start in clean preview, sidebar off-canvas
         setViewMode("preview");
         setSideVisible(false);
       } else if (window.innerWidth < 1024) {
+        // Tablet devices (768px-1023px): start with sleek 48px rail + split view
         setViewMode("split");
-        setSideVisible(true);
+        setSideVisible(false);
       } else {
+        // Desktop monitors (1024px+): full expanded library + split view
         setViewMode("split");
         setSideVisible(true);
       }
@@ -463,48 +466,54 @@ export default function QuillPage() {
                 </div>
               </div>
 
-              {/* Zone 2: Center (view mode switcher - mathematically centered) */}
+              {/* Zone 2: Center (view mode switcher - spacious & default variant) */}
               <div className="flex items-center justify-center shrink-0">
-                <div className="relative flex items-center bg-card/40 border border-border/70 p-0.5 shrink-0 rounded-none shadow-2xs">
+                <div className="relative flex items-center bg-card/60 border border-border/80 p-1 gap-1 shrink-0 rounded-none shadow-xs">
                   <Corners size="sm" weight="thin" light />
                   <Button
                     size="xs"
-                    variant={viewMode === "editor" ? "secondary" : "ghost"}
+                    variant={viewMode === "editor" ? "default" : "ghost"}
                     onClick={() => setViewMode("editor")}
                     className={cn(
-                      "h-6.5 px-2.5 text-[11px] font-sans gap-1 rounded-none transition-colors",
-                      viewMode === "editor" && "shadow-xs border border-border/80 font-medium bg-background text-foreground"
+                      "h-7 sm:h-7.5 px-3 sm:px-3.5 text-xs font-mono font-medium tracking-wide gap-1.5 rounded-none transition-all",
+                      viewMode === "editor"
+                        ? "shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                     )}
                     title="Editor (Ctrl+1)"
                   >
-                    <PenLine className="size-3" />
-                    <span className="hidden sm:inline font-mono tracking-tight text-[10.5px]">WRITE</span>
+                    <PenLine className="size-3.5" />
+                    <span className="hidden sm:inline">WRITE</span>
                   </Button>
                   <Button
                     size="xs"
-                    variant={viewMode === "split" ? "secondary" : "ghost"}
+                    variant={viewMode === "split" ? "default" : "ghost"}
                     onClick={() => setViewMode("split")}
                     className={cn(
-                      "hidden sm:inline-flex h-6.5 px-2.5 text-[11px] font-sans gap-1 rounded-none transition-colors",
-                      viewMode === "split" && "shadow-xs border border-border/80 font-medium bg-background text-foreground"
+                      "hidden sm:inline-flex h-7 sm:h-7.5 px-3 sm:px-3.5 text-xs font-mono font-medium tracking-wide gap-1.5 rounded-none transition-all",
+                      viewMode === "split"
+                        ? "shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                     )}
                     title="Split (Ctrl+2)"
                   >
-                    <Columns2 className="size-3" />
-                    <span className="font-mono tracking-tight text-[10.5px]">SPLIT</span>
+                    <Columns2 className="size-3.5" />
+                    <span>SPLIT</span>
                   </Button>
                   <Button
                     size="xs"
-                    variant={viewMode === "preview" ? "secondary" : "ghost"}
+                    variant={viewMode === "preview" ? "default" : "ghost"}
                     onClick={() => setViewMode("preview")}
                     className={cn(
-                      "h-6.5 px-2.5 text-[11px] font-sans gap-1 rounded-none transition-colors",
-                      viewMode === "preview" && "shadow-xs border border-border/80 font-medium bg-background text-foreground"
+                      "h-7 sm:h-7.5 px-3 sm:px-3.5 text-xs font-mono font-medium tracking-wide gap-1.5 rounded-none transition-all",
+                      viewMode === "preview"
+                        ? "shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                     )}
                     title="Preview (Ctrl+3)"
                   >
-                    <Eye className="size-3" />
-                    <span className="hidden sm:inline font-mono tracking-tight text-[10.5px]">PREVIEW</span>
+                    <Eye className="size-3.5" />
+                    <span className="hidden sm:inline">PREVIEW</span>
                   </Button>
                 </div>
               </div>
@@ -777,9 +786,9 @@ export default function QuillPage() {
                     </div>
                     <Button
                       size="xs"
-                      variant="outline"
+                      variant="default"
                       onClick={() => setIsZenMode(false)}
-                      className="h-5 px-2 text-[10px] border-border/50 ml-1"
+                      className="h-5 px-2 text-[10px] ml-1 shadow-2xs"
                     >
                       Exit
                     </Button>
