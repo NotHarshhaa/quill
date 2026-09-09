@@ -142,6 +142,16 @@ export default function QuillPage() {
     }
   }, []);
 
+  // Synchronize Android native status bar icon appearance when theme changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const isDark = resolvedTheme === "dark";
+        (window as any).AndroidBridge?.setDarkMode?.(isDark);
+      } catch {}
+    }
+  }, [resolvedTheme]);
+
   // Sync local editor content when active note switches
   useEffect(() => {
     if (activeNote) {
@@ -388,9 +398,15 @@ export default function QuillPage() {
 
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Top Bar (Unified h-12 height matching sidebar, balanced 3-zone layout) */}
-            <div className="h-12 px-3 border-b border-border/80 flex items-center justify-between gap-3 shrink-0 bg-background/80 backdrop-blur-xs select-none">
-              {/* Zone 1: Left (Sidebar toggle, Note title, Pin, Wordcount) */}
+            {/* Top Bar (Edge-to-edge header with safe-area clearance for camera cutout/status bar) */}
+            <header
+              className="border-b border-border/80 shrink-0 bg-background/95 backdrop-blur-xs select-none"
+              style={{
+                paddingTop: "var(--safe-top)",
+              }}
+            >
+              <div className="h-12 px-3 flex items-center justify-between gap-3 shrink-0">
+                {/* Zone 1: Left (Sidebar toggle, Note title, Pin, Wordcount) */}
               <div className="flex items-center gap-2 min-w-0 flex-1 basis-0 justify-start">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -702,13 +718,20 @@ export default function QuillPage() {
                 </Tooltip>
               </div>
             </div>
+          </header>
 
             {/* Editor/Preview Content */}
             <div className="flex-1 flex min-h-0">
               {isZenMode ? (
                 /* Zen Mode - Centered Focus */
                 <div className="flex-1 flex flex-col h-full bg-drafting-grid relative overflow-hidden">
-                  <div className="flex-1 flex items-center justify-center p-4 sm:p-8 h-full min-h-0 overflow-hidden">
+                  <div
+                    className="flex-1 flex items-center justify-center p-4 sm:p-8 h-full min-h-0 overflow-hidden"
+                    style={{
+                      paddingTop: "max(1rem, var(--safe-top))",
+                      paddingBottom: "max(3.5rem, calc(3.5rem + var(--safe-bottom)))",
+                    }}
+                  >
                     <div className="w-full max-w-3xl h-full bg-card border border-border/80 shadow-2xl relative flex flex-col overflow-hidden">
                       {zenViewMode === "editor" && (
                         <MarkdownEditor
@@ -750,7 +773,12 @@ export default function QuillPage() {
                   </div>
 
                   {/* Zen Mode Bottom Bar */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-card/95 border border-border/80 shadow-lg px-3 py-1.5 text-xs">
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-card/95 border border-border/80 shadow-lg px-3 py-1.5 text-xs"
+                    style={{
+                      bottom: "calc(1rem + var(--safe-bottom))",
+                    }}
+                  >
                     <span className="font-medium text-foreground truncate max-w-[200px]">
                       {activeNote?.title || "Untitled"}
                     </span>

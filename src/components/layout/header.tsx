@@ -98,7 +98,12 @@ export function Header({
   };
 
   return (
-    <header className="w-full h-12 border-b border-border/70 px-2 sm:px-4 md:px-6 flex items-center justify-between bg-background/80 backdrop-blur-xs select-none font-sans shrink-0 gap-1.5 sm:gap-2">
+    <header
+      className="w-full min-h-12 border-b border-border/70 px-2 sm:px-4 md:px-6 flex items-center justify-between bg-background/80 backdrop-blur-xs select-none font-sans shrink-0 gap-1.5 sm:gap-2"
+      style={{
+        paddingTop: "var(--safe-top)",
+      }}
+    >
       {/* Left: Sidebar Toggle, Logo & Quick Command Palette Trigger */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0">
         {onToggleSidebar && (

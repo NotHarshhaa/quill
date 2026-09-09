@@ -397,50 +397,57 @@ export function KnowledgeGraphModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col font-sans select-none animate-in fade-in duration-200">
-      {/* Top Bar */}
-      <div className="h-12 border-b border-border/80 px-4 flex items-center justify-between bg-card/90 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <Network className="size-4 text-primary" />
-          <span className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
-            Interactive Knowledge Graph
-          </span>
-          <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 rounded-none">
-            {graphData.nodes.length} Notes · {graphData.edges.length} Links
-          </Badge>
-          {isolatedCount > 0 && (
-            <Badge variant="secondary" className="text-[10px] font-mono px-1.5 py-0 rounded-none hidden sm:inline-flex">
-              {isolatedCount} Isolated
+      {/* Top Bar (Safe-area clearance) */}
+      <div
+        className="border-b border-border/80 bg-card/90 shrink-0"
+        style={{
+          paddingTop: "var(--safe-top)",
+        }}
+      >
+        <div className="h-12 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Network className="size-4 text-primary" />
+            <span className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
+              Interactive Knowledge Graph
+            </span>
+            <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 rounded-none">
+              {graphData.nodes.length} Notes · {graphData.edges.length} Links
             </Badge>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Search Filter */}
-          <div className="hidden sm:flex items-center gap-1.5 bg-background border border-border px-2 py-0.5 text-xs">
-            <Search className="size-3 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search graph..."
-              className="bg-transparent text-foreground focus:outline-none font-mono text-[11px] w-28"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="text-muted-foreground hover:text-foreground">
-                <X className="size-3" />
-              </button>
+            {isolatedCount > 0 && (
+              <Badge variant="secondary" className="text-[10px] font-mono px-1.5 py-0 rounded-none hidden sm:inline-flex">
+                {isolatedCount} Isolated
+              </Badge>
             )}
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={onClose}
-            className="h-7 w-7 rounded-none text-muted-foreground hover:text-foreground"
-            aria-label="Close Graph View"
-          >
-            <X className="size-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Search Filter */}
+            <div className="hidden sm:flex items-center gap-1.5 bg-background border border-border px-2 py-0.5 text-xs">
+              <Search className="size-3 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search graph..."
+                className="bg-transparent text-foreground focus:outline-none font-mono text-[11px] w-28"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="text-muted-foreground hover:text-foreground">
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={onClose}
+              className="h-7 w-7 rounded-none text-muted-foreground hover:text-foreground"
+              aria-label="Close Graph View"
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
 

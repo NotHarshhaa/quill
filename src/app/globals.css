@@ -5,6 +5,16 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Safe Area Insets (Hardware cutouts, camera punch-hole, status bar, gesture pills) */
+  --safe-area-top: 0px;
+  --safe-area-bottom: 0px;
+  --safe-area-left: 0px;
+  --safe-area-right: 0px;
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-bottom, 0px));
+  --safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-left, 0px));
+  --safe-right: max(env(safe-area-inset-right, 0px), var(--safe-area-right, 0px));
+
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);

@@ -73,30 +73,42 @@ export function TableOfContents({
     <div className="fixed inset-y-0 right-0 z-50 w-80 max-w-[85vw] bg-card/95 backdrop-blur-md border-l border-border/80 shadow-2xl flex flex-col font-sans select-none animate-in slide-in-from-right duration-200">
       <Corners size="sm" offset="border" weight="thin" light />
 
-      {/* Header */}
-      <div className="h-12 px-4 border-b border-border/70 flex items-center justify-between bg-muted/30 shrink-0">
-        <div className="flex items-center gap-2">
-          <ListTree className="size-4 text-primary" />
-          <span className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
-            Document Outline
-          </span>
-          <span className="text-[10.5px] font-mono text-muted-foreground">
-            ({headings.length})
-          </span>
+      {/* Header (Edge-to-edge safe area clearance) */}
+      <div
+        className="border-b border-border/70 bg-muted/30 shrink-0"
+        style={{
+          paddingTop: "var(--safe-top)",
+        }}
+      >
+        <div className="h-12 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ListTree className="size-4 text-primary" />
+            <span className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
+              Document Outline
+            </span>
+            <span className="text-[10.5px] font-mono text-muted-foreground">
+              ({headings.length})
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={onClose}
+            className="h-7 w-7 rounded-none text-muted-foreground hover:text-foreground"
+            aria-label="Close Outline"
+          >
+            <X className="size-4" />
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={onClose}
-          className="h-7 w-7 rounded-none text-muted-foreground hover:text-foreground"
-          aria-label="Close Outline"
-        >
-          <X className="size-4" />
-        </Button>
       </div>
 
       {/* Headings List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1">
+      <div
+        className="flex-1 overflow-y-auto p-3 space-y-1"
+        style={{
+          paddingBottom: "max(0.75rem, var(--safe-bottom))",
+        }}
+      >
         {headings.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/60 p-4">
             <Hash className="size-8 mb-2 opacity-30" />

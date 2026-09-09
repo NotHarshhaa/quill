@@ -452,7 +452,13 @@ export function AppSidebar({
       >
         {!open ? (
           /* Collapsed Mini Rail (Desktop) */
-          <div className="hidden md:flex flex-col h-full w-12 items-center py-2 shrink-0 select-none overflow-y-auto no-scrollbar">
+          <div
+            className="hidden md:flex flex-col h-full w-12 items-center py-2 shrink-0 select-none overflow-y-auto no-scrollbar"
+            style={{
+              paddingTop: "var(--safe-top)",
+              paddingBottom: "var(--safe-bottom)",
+            }}
+          >
             {/* Brand Logo / Monogram */}
             <div className="h-10 flex items-center justify-center shrink-0 mb-1">
               <Tooltip>
@@ -735,9 +741,15 @@ export function AppSidebar({
         ) : (
           /* Expanded Sidebar Content */
           <div className="flex flex-col h-full w-full min-w-0 overflow-hidden box-border">
-            {/* Brand header (Unified h-12 height) */}
-            <div className="h-12 px-3 border-b border-border/80 flex items-center justify-between gap-2 shrink-0 bg-background/50">
-              <QuillLogo />
+            {/* Brand header (Unified h-12 height + safe area top) */}
+            <div
+              className="border-b border-border/80 shrink-0 bg-background/50 select-none"
+              style={{
+                paddingTop: "var(--safe-top)",
+              }}
+            >
+              <div className="h-12 px-3 flex items-center justify-between gap-2 shrink-0">
+                <QuillLogo />
 
               <div className="flex items-center gap-1 shrink-0">
                 {onOpenWelcome && (
@@ -788,6 +800,7 @@ export function AppSidebar({
                 </Button>
               </div>
             </div>
+          </div>
 
           {/* Primary Actions: New Note + Templates Combo */}
           <div className="p-2.5 pb-2 shrink-0 flex items-center gap-1.5">
@@ -1282,95 +1295,102 @@ export function AppSidebar({
           </ScrollArea>
 
           {/* Footer Tools (Graph, Insights, Soundscapes, Settings) */}
-          <div className="h-10 border-t border-border/80 px-2 flex items-center justify-between shrink-0 bg-background/50 font-sans">
-            <div className="flex items-center gap-0.5">
-              {/* Graph View */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={onOpenGraph}
-                    aria-label="Knowledge Graph"
-                    className="size-7 rounded-none text-muted-foreground hover:text-foreground"
-                  >
-                    <Network className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="font-sans text-xs">
-                  Interactive Knowledge Graph
-                </TooltipContent>
-              </Tooltip>
-
-              {/* Writing Insights */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={onOpenInsights}
-                    aria-label="Writing Insights"
-                    className="size-7 rounded-none text-muted-foreground hover:text-foreground"
-                  >
-                    <BarChart3 className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="font-sans text-xs">
-                  Writing Insights & Activity
-                </TooltipContent>
-              </Tooltip>
-
-              {/* Ambient Soundscapes & Pomodoro */}
-              <DropdownMenu>
+          <div
+            className="border-t border-border/80 px-2 shrink-0 bg-background/50 font-sans select-none"
+            style={{
+              paddingBottom: "var(--safe-bottom)",
+            }}
+          >
+            <div className="h-10 flex items-center justify-between">
+              <div className="flex items-center gap-0.5">
+                {/* Graph View */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label="Ambient Soundscapes"
-                        className="size-7 rounded-none text-muted-foreground hover:text-foreground"
-                      >
-                        <Headphones className="size-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={onOpenGraph}
+                      aria-label="Knowledge Graph"
+                      className="size-7 rounded-none text-muted-foreground hover:text-foreground"
+                    >
+                      <Network className="size-3.5" />
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="font-sans text-xs">
-                    Ambient Soundscapes & Pomodoro
+                    Interactive Knowledge Graph
                   </TooltipContent>
                 </Tooltip>
-                <DropdownMenuContent
-                  side="top"
-                  align="start"
-                  className="p-0 border-none bg-transparent shadow-none w-auto"
-                >
-                  <AmbientSoundPlayer />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
 
-            {/* Settings Button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => onSelectPanel(activePanel === "settings" ? "all" : "settings")}
-                  aria-label="Library Settings"
-                  className={cn(
-                    "size-7 rounded-none transition-colors",
-                    activePanel === "settings"
-                      ? "text-primary bg-muted/80"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Settings className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="font-sans text-xs">
-                {activePanel === "settings" ? "Back to Notes" : "Settings & Data"}
-              </TooltipContent>
-            </Tooltip>
+                {/* Writing Insights */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={onOpenInsights}
+                      aria-label="Writing Insights"
+                      className="size-7 rounded-none text-muted-foreground hover:text-foreground"
+                    >
+                      <BarChart3 className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="font-sans text-xs">
+                    Writing Insights & Activity
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Ambient Soundscapes & Pomodoro */}
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label="Ambient Soundscapes"
+                          className="size-7 rounded-none text-muted-foreground hover:text-foreground"
+                        >
+                          <Headphones className="size-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="font-sans text-xs">
+                      Ambient Soundscapes & Pomodoro
+                    </TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent
+                    side="top"
+                    align="start"
+                    className="p-0 border-none bg-transparent shadow-none w-auto"
+                  >
+                    <AmbientSoundPlayer />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Settings Button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => onSelectPanel(activePanel === "settings" ? "all" : "settings")}
+                    aria-label="Library Settings"
+                    className={cn(
+                      "size-7 rounded-none transition-colors",
+                      activePanel === "settings"
+                        ? "text-primary bg-muted/80"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Settings className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="font-sans text-xs">
+                  {activePanel === "settings" ? "Back to Notes" : "Settings & Data"}
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </div>
       )}
