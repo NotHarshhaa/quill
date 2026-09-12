@@ -248,13 +248,13 @@ export function WelcomeModal({
                 <div className="relative p-2.5 sm:p-3 bg-muted/20 border border-border flex flex-col justify-between">
                   <Corners size="sm" offset="border" weight="thin" light />
                   <div className="flex items-center gap-1.5 mb-1">
-                    <PenLine className="size-3.5 sm:size-4 text-amber-700 dark:text-amber-500 shrink-0" />
+                    <Sparkles className="size-3.5 sm:size-4 text-amber-700 dark:text-amber-500 shrink-0" />
                     <span className="font-mono text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase text-foreground">
-                      Tactile Craft
+                      Local AI Engine
                     </span>
                   </div>
                   <p className="text-[10px] sm:text-[11px] text-muted-foreground leading-snug">
-                    Live split-screen preview, paper typography, and drafting grids designed for deep focus.
+                    WebGPU-accelerated summaries, action item checklists, and auto-tags with 0 API keys.
                   </p>
                 </div>
 
@@ -340,15 +340,16 @@ export function WelcomeModal({
                 <div className="relative p-2.5 sm:p-3 bg-muted/20 border border-border">
                   <Corners size="sm" offset="border" weight="thin" light />
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase text-foreground">
-                      Offline Media Storage
+                    <span className="font-mono text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase text-foreground flex items-center gap-1">
+                      <Sparkles className="size-3 sm:size-3.5 text-amber-500 shrink-0" />
+                      Offline AI Assistant
                     </span>
-                    <Badge variant="outline" className="font-mono text-[9px] px-1 py-0 rounded-none border-border">
-                      DRAG & DROP
+                    <Badge variant="outline" className="font-mono text-[9px] px-1 py-0 rounded-none border-border text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
+                      WEBGPU
                     </Badge>
                   </div>
                   <p className="text-[10px] sm:text-[11px] text-muted-foreground leading-relaxed">
-                    Paste or drop image attachments directly into notes. Media is indexed locally in IndexedDB with zoomable lightbox.
+                    100% on-device AI. Generate TL;DR summaries, extract interactive checklists (<code className="text-foreground font-mono bg-muted px-1">- [ ]</code>), auto-suggest tags, and polish markdown with 0 API keys.
                   </p>
                 </div>
               </div>

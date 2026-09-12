@@ -116,7 +116,7 @@ export function AIAssistantMenu({
             size="xs"
             variant="ghost"
             disabled={disabled || isProcessing}
-            className="relative h-7 px-2 border border-border/70 bg-card/40 hover:bg-muted/50 hover:border-border text-xs font-mono text-muted-foreground hover:text-foreground transition-all shadow-2xs rounded-none cursor-pointer group shrink-0 gap-1.5"
+            className="relative h-7 px-1.5 sm:px-2 border border-border/70 bg-card/40 hover:bg-muted/50 hover:border-border text-xs font-mono text-muted-foreground hover:text-foreground transition-all shadow-2xs rounded-none cursor-pointer group shrink-0 gap-1.5 min-w-[28px]"
             aria-label="Offline AI Assistant"
           >
             <Corners
@@ -126,11 +126,11 @@ export function AIAssistantMenu({
               className="opacity-30 group-hover:opacity-100 transition-opacity"
             />
             {isProcessing ? (
-              <Loader2 className="size-3.5 text-primary animate-spin" />
+              <Loader2 className="size-3.5 text-primary animate-spin shrink-0" />
             ) : (
-              <Sparkles className="size-3.5 text-amber-500 group-hover:text-amber-400 transition-colors" />
+              <Sparkles className="size-3.5 text-amber-500 group-hover:text-amber-400 transition-colors shrink-0" />
             )}
-            <span className="hidden md:inline font-sans text-xs text-foreground/80 group-hover:text-foreground">
+            <span className="hidden sm:inline font-sans text-xs text-foreground/80 group-hover:text-foreground">
               {isProcessing
                 ? progress.status === "downloading"
                   ? `${progress.progress || 0}%`
@@ -142,12 +142,12 @@ export function AIAssistantMenu({
 
         <DropdownMenuContent
           align="end"
-          className="w-56 p-1.5 bg-card border-border/80 shadow-xl rounded-none font-sans text-xs relative"
+          className="w-56 max-w-[calc(100vw-1.5rem)] p-1.5 bg-card border-border/80 shadow-xl rounded-none font-sans text-xs relative"
         >
           <Corners size="sm" weight="thin" light />
 
           <DropdownMenuLabel className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-            <span>Offline AI (WebGPU)</span>
+            <span>Offline AI</span>
             <span className="text-emerald-500 font-bold">100% Local</span>
           </DropdownMenuLabel>
 
@@ -156,7 +156,7 @@ export function AIAssistantMenu({
           <DropdownMenuItem
             onClick={() => handleAction("summarize")}
             disabled={isProcessing}
-            className="cursor-pointer gap-2 py-1.5 px-2 rounded-none hover:bg-muted/50 focus:bg-muted/50"
+            className="cursor-pointer gap-2.5 py-2 sm:py-1.5 px-2.5 sm:px-2 rounded-none hover:bg-muted/50 focus:bg-muted/50 min-h-[36px] sm:min-h-0"
           >
             <FileText className="size-3.5 text-primary shrink-0" />
             <div className="flex flex-col">
@@ -168,7 +168,7 @@ export function AIAssistantMenu({
           <DropdownMenuItem
             onClick={() => handleAction("action_items")}
             disabled={isProcessing}
-            className="cursor-pointer gap-2 py-1.5 px-2 rounded-none hover:bg-muted/50 focus:bg-muted/50"
+            className="cursor-pointer gap-2.5 py-2 sm:py-1.5 px-2.5 sm:px-2 rounded-none hover:bg-muted/50 focus:bg-muted/50 min-h-[36px] sm:min-h-0"
           >
             <CheckSquare className="size-3.5 text-primary shrink-0" />
             <div className="flex flex-col">
@@ -180,7 +180,7 @@ export function AIAssistantMenu({
           <DropdownMenuItem
             onClick={() => handleAction("polish")}
             disabled={isProcessing}
-            className="cursor-pointer gap-2 py-1.5 px-2 rounded-none hover:bg-muted/50 focus:bg-muted/50"
+            className="cursor-pointer gap-2.5 py-2 sm:py-1.5 px-2.5 sm:px-2 rounded-none hover:bg-muted/50 focus:bg-muted/50 min-h-[36px] sm:min-h-0"
           >
             <Wand2 className="size-3.5 text-primary shrink-0" />
             <div className="flex flex-col">
@@ -192,7 +192,7 @@ export function AIAssistantMenu({
           <DropdownMenuItem
             onClick={() => handleAction("tags")}
             disabled={isProcessing}
-            className="cursor-pointer gap-2 py-1.5 px-2 rounded-none hover:bg-muted/50 focus:bg-muted/50"
+            className="cursor-pointer gap-2.5 py-2 sm:py-1.5 px-2.5 sm:px-2 rounded-none hover:bg-muted/50 focus:bg-muted/50 min-h-[36px] sm:min-h-0"
           >
             <Hash className="size-3.5 text-primary shrink-0" />
             <div className="flex flex-col">

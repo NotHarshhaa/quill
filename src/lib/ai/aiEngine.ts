@@ -13,6 +13,14 @@ import {
 
 type ProgressListener = (progress: AIModelProgress) => void;
 
+export function isMobileOrCapacitor(): boolean {
+  if (typeof window === "undefined") return false;
+  const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
+  const isMobileUA = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+  const isSmallScreen = window.innerWidth < 768;
+  return isCapacitor || isMobileUA || isSmallScreen;
+}
+
 class AIEngine {
   private worker: Worker | null = null;
   private workerReady = false;
@@ -25,7 +33,7 @@ class AIEngine {
     status: "idle",
     message: "Ready"
   };
-  private preferredProvider: AIProvider = "webgpu";
+  private preferredProvider: AIProvider = "heuristic";
 
   constructor() {
     // Check preferred provider from localStorage if available
@@ -33,6 +41,11 @@ class AIEngine {
       const saved = localStorage.getItem("quill_ai_preferred_provider") as AIProvider | null;
       if (saved && ["webgpu", "window_ai", "heuristic"].includes(saved)) {
         this.preferredProvider = saved;
+      } else {
+        // Desktop with WebGPU gets webgpu by default; mobile/APK gets instant heuristic
+        const isMobile = isMobileOrCapacitor();
+        const hasGpu = !!(navigator as any).gpu;
+        this.preferredProvider = !isMobile && hasGpu ? "webgpu" : "heuristic";
       }
     }
   }
@@ -147,17 +160,24 @@ class AIEngine {
         };
 
         this.worker.onerror = (err) => {
-          console.error("AI Worker error:", err);
+          console.warn("AI Worker error in webview/browser:", err);
           this.notify({
             status: "error",
             error: "Worker initialization error"
           });
+          try {
+            this.worker?.terminate();
+          } catch {}
+          this.worker = null;
+          this.workerReady = false;
           reject(err);
         };
 
         this.workerReady = true;
         resolve(this.worker);
       } catch (err) {
+        this.worker = null;
+        this.workerReady = false;
         reject(err);
       }
     });

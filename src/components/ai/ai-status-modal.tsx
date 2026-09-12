@@ -63,7 +63,7 @@ export function AIStatusModal({ open, onOpenChange }: AIStatusModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-card border-border/80 shadow-2xl p-6 rounded-none font-sans">
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[360px] sm:max-w-md max-h-[88vh] overflow-y-auto bg-card border-border/80 shadow-2xl p-4 sm:p-6 rounded-none font-sans">
         <Corners size="default" weight="normal" />
 
         <DialogHeader className="space-y-1.5 text-left">
