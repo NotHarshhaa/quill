@@ -52,6 +52,7 @@ interface CommandPaletteProps {
   onOpenToc?: () => void;
   onOpenInsights?: () => void;
   onOpenWelcome?: () => void;
+  onOpenAIStatus?: () => void;
 }
 
 type ActionItem = {
@@ -93,6 +94,7 @@ export function CommandPalette({
   onOpenToc,
   onOpenInsights,
   onOpenWelcome,
+  onOpenAIStatus,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -292,6 +294,20 @@ export function CommandPalette({
         icon: HelpCircle,
         handler: () => {
           onOpenWelcome();
+          onClose();
+        },
+      });
+    }
+
+    if (onOpenAIStatus) {
+      list.push({
+        id: "action-ai-status",
+        type: "action",
+        title: "Offline AI (WebGPU) Engine Settings",
+        subtitle: "Check hardware WebGPU acceleration, manage on-device models, or pre-load offline weights",
+        icon: Sparkles,
+        handler: () => {
+          onOpenAIStatus();
           onClose();
         },
       });

@@ -54,6 +54,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { AppSidebar, SidebarPanel } from "@/components/layout/app-sidebar";
 import { StatusBar } from "@/components/layout/status-bar";
 import { Corners } from "@/components/frame";
+import { AIAssistantMenu } from "@/components/ai/ai-assistant-menu";
+import { AIStatusModal } from "@/components/ai/ai-status-modal";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -107,6 +109,7 @@ export default function QuillPage() {
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
+  const [isAIStatusOpen, setIsAIStatusOpen] = useState(false);
 
   // Hidden file inputs for .md import and JSON restore
   const markdownInputRef = useRef<HTMLInputElement>(null);
@@ -551,6 +554,13 @@ export default function QuillPage() {
                   </kbd>
                 </button>
 
+                {/* Offline AI Assistant (WebGPU / Local) */}
+                <AIAssistantMenu
+                  content={localContent}
+                  onChangeContent={handleEditorChange}
+                  disabled={!activeNote}
+                />
+
                 {/* Framed Action Tools Cluster */}
                 <div className="relative flex items-center bg-card/40 border border-border/70 p-0.5 shadow-2xs rounded-none shrink-0">
                   <Corners size="sm" weight="thin" light />
@@ -921,6 +931,7 @@ export default function QuillPage() {
           onOpenToc={() => setIsTocOpen(true)}
           onOpenInsights={() => setIsInsightsOpen(true)}
           onOpenWelcome={() => setIsWelcomeOpen(true)}
+          onOpenAIStatus={() => setIsAIStatusOpen(true)}
         />
 
         {/* Version History Dialog */}
@@ -990,6 +1001,12 @@ export default function QuillPage() {
               selectNote(welcomeNote.id);
             }
           }}
+        />
+
+        {/* Offline AI Model Manager & WebGPU Status Dialog */}
+        <AIStatusModal
+          open={isAIStatusOpen}
+          onOpenChange={setIsAIStatusOpen}
         />
 
         {/* In-App Update Notifier (Only active in native mobile app) */}
