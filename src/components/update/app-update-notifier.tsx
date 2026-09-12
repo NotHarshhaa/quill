@@ -160,6 +160,9 @@ export function AppUpdateNotifier() {
 
   const handleDismissBanner = () => {
     setIsBannerVisible(false);
+    if (updateInfo?.latestVersion && typeof window !== "undefined") {
+      localStorage.setItem(DISMISSED_UPDATE_KEY, updateInfo.latestVersion);
+    }
   };
 
   const handleDownloadApk = () => {
@@ -191,9 +194,12 @@ export function AppUpdateNotifier() {
 
   return (
     <>
-      {/* 1. Sleek Floating Blueprint Pill Notification (Non-Intrusive) */}
+      {/* 1. Sleek Floating Blueprint Pill Notification (Non-Intrusive, Safe-Area aware) */}
       {isBannerVisible && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 max-w-[95vw] w-auto animate-in fade-in slide-in-from-top-3 duration-300">
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-50 max-w-[95vw] w-auto animate-in fade-in slide-in-from-top-3 duration-300"
+          style={{ top: "calc(var(--safe-top, 0px) + 0.75rem)" }}
+        >
           <div className="relative bg-card/95 backdrop-blur-md border border-amber-600/40 dark:border-amber-500/50 shadow-2xl p-2 sm:p-2.5 flex items-center gap-2 sm:gap-3 text-foreground font-sans">
             <Corners size="sm" offset="border" weight="thin" light />
 

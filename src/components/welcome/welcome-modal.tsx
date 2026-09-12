@@ -126,7 +126,7 @@ export function WelcomeModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="w-[calc(100vw-1.5rem)] max-w-[360px] sm:max-w-[520px] md:max-w-2xl h-[480px] sm:h-[470px] md:h-[490px] max-h-[88vh] p-0 flex flex-col border border-border bg-card shadow-2xl rounded-none font-sans select-none overflow-hidden"
+        className="w-[calc(100vw-1.5rem)] max-w-[360px] sm:max-w-[520px] md:max-w-2xl h-[480px] max-h-[calc(100dvh-var(--safe-top,0px)-var(--safe-bottom,0px)-2rem)] sm:h-[470px] md:h-[490px] p-0 flex flex-col border border-border bg-card shadow-2xl rounded-none font-sans select-none overflow-hidden"
       >
         {/* Outer Frame Corner Brackets */}
         <Corners
