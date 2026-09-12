@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 
-export const CURRENT_APP_VERSION = "1.6.0";
+export const CURRENT_APP_VERSION =
+  process.env.NEXT_PUBLIC_APP_VERSION || "1.6.0";
 export const GITHUB_REPO = "NotHarshhaa/quill";
 export const DISMISSED_UPDATE_KEY = "quill_dismissed_update_version";
 

@@ -1,4 +1,13 @@
 apply plugin: 'com.android.application'
+import groovy.json.JsonSlurper
+
+def packageJsonFile = new File(projectDir, "../../package.json")
+def packageJson = new JsonSlurper().parseText(packageJsonFile.text)
+def appVersion = packageJson.version as String
+
+// Automatically calculate integer versionCode from semver (e.g. 1.6.0 -> 10600)
+def versionParts = appVersion.tokenize('.').collect { it.replaceAll("[^0-9]", "") as int }
+def appVersionCode = (versionParts.size() >= 3) ? (versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]) : 160
 
 android {
     namespace = "com.quill.notes"
@@ -7,8 +16,8 @@ android {
         applicationId "com.quill.notes"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 160
-        versionName "1.6.0"
+        versionCode appVersionCode
+        versionName appVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

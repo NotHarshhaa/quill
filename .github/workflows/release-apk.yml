@@ -38,6 +38,17 @@ jobs:
           java-version: '21'
           cache: 'gradle'
 
+      - name: Sync Git Tag Version to package.json
+        run: |
+          RAW_TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          VERSION="${RAW_TAG#v}"
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+ ]]; then
+            echo "Auto-syncing package.json version to $VERSION from release tag $RAW_TAG"
+            npm version "$VERSION" --no-git-tag-version --allow-same-version
+          else
+            echo "No semantic tag found ($RAW_TAG), keeping existing package.json version"
+          fi
+
       - name: Build Next.js Static Export & Sync Capacitor
         run: npm run build:apk
 
