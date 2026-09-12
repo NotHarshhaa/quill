@@ -8,14 +8,18 @@
 [![GitHub Release](https://img.shields.io/github/v/release/NotHarshhaa/quill?style=flat-square&label=Latest%20Release&color=amber)](https://github.com/NotHarshhaa/quill/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-amber.svg?style=flat-square)](./LICENSE)
 [![Offline First](https://img.shields.io/badge/Storage-100%25%20Offline%20First-success?style=flat-square)](#offline-first--privacy)
+[![Offline AI](https://img.shields.io/badge/AI-100%25%20Offline%20WebGPU-purple?style=flat-square)](#-offline-ai-assistant-webgpu)
 
-> A fast, elegant, offline-first Markdown notebook featuring a split editor, live-rendered preview, interactive checklists, and a tactile warm paper aesthetic. Available as both a web application and a native Android APK.
+> A fast, elegant, offline-first Markdown notebook featuring a split editor, live-rendered preview, interactive checklists, on-device WebGPU AI intelligence, and a tactile warm paper aesthetic. Available as both a web application and a native Android APK.
 
-Built with a custom zero-dependency Markdown parser—no external markdown libraries, no remote servers, no account registration. Everything stays in your browser.
+Built with a custom zero-dependency Markdown parser—no external markdown libraries, no remote servers, no account registration, and zero API keys required. Everything stays on your local device.
 
 ---
 
 ## ✨ Features
+
+- 🧠 **Offline AI Assistant (WebGPU & Heuristic NLP)**  
+  One-click on-device writing intelligence powered by WebGPU and `@huggingface/transformers` (`SmolLM2-135M-Instruct`). Generate **TL;DR bullet summaries**, extract actionable checklists (`- [ ]`), auto-suggest topic `#tags`, and polish markdown structure with **zero API keys, zero cloud servers, and complete privacy**. Includes an instant (<5ms) zero-weight fallback engine for mobile and low-spec devices.
 
 - 📝 **Split Editor & Real-Time Preview**  
   Type Markdown on the left and see it rendered immediately on the right. Responsive layout adapts between **Write**, **Split**, and **Preview** modes across mobile, tablet, and desktop screens.
@@ -81,6 +85,32 @@ Built with a custom zero-dependency Markdown parser—no external markdown libra
 
 - 🛡️ **Zero-Dependency Markdown Engine**  
   Custom block tokenizer and inline parser turn raw text into a safe Abstract Syntax Tree (AST), rendered natively via React JSX—completely avoiding `dangerouslySetInnerHTML`.
+
+---
+
+## 🧠 Offline AI Assistant (WebGPU)
+
+Quill integrates a **100% offline, privacy-first AI engine** directly inside your browser and native Android app. It requires **zero API keys, zero cloud servers, and zero monthly subscriptions**.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│              Quill Offline AI Engine Architecture        │
+├──────────────────────────┬───────────────────────────────┤
+│    Tier 1: WebGPU LLM    │     Tier 2: Instant Heuristic │
+├──────────────────────────┼───────────────────────────────┤
+│ • SmolLM2-135M-Instruct  │ • TextRank extractive summary │
+│ • Hardware-accelerated   │ • Action verb checklist parser│
+│ • Runs in Web Worker     │ • TF-IDF concept hashtagging  │
+│ • Cached offline in IDB  │ • Instant (<5ms),0 MB download│
+└──────────────────────────┴───────────────────────────────┘
+```
+
+### ✨ Capabilities
+- **📝 TL;DR Summary**: Distill long meeting notes or research drafts into structured `> [!NOTE] TL;DR` callout blocks.
+- **⚡ Action Items Extractor**: Scans freeform notes and appends actionable `- [ ]` interactive checklists.
+- **🪄 Polish Structure**: Automatically refines headings, blank line cadence, and list syntax.
+- **🏷️ Topic Tagging**: Derives salient keywords into clickable `#tags`.
+- **⚙️ Model & Hardware Manager**: Inspect WebGPU hardware acceleration, choose between local inference modes, or pre-load model weights for offline field work.
 
 ---
 
@@ -219,6 +249,8 @@ Quill's hand-written parser translates standard Markdown directly into React com
 - **UI Library**: [React 19](https://react.dev/)
 - **Language**: [TypeScript 5](https://www.typescriptlang.org/)
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) with custom CSS custom properties
+- **On-Device AI Engine**: [Transformers.js v3](https://huggingface.co/docs/transformers.js) (`@huggingface/transformers`) with WebGPU & ONNX Runtime Web
+- **Mobile Packaging**: [Capacitor 8](https://capacitorjs.com/) for native Android APK export
 - **Components & Icons**: [Radix UI](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/)
 - **Theming**: [next-themes](https://github.com/pacocoursey/next-themes)
 - **Toasts**: [Sonner](https://sonner.emilkowal.ski/)
