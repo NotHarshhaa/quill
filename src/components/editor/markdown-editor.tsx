@@ -766,7 +766,7 @@ export function MarkdownEditor({
           onDrop={handleDrop}
           placeholder="Start typing in markdown, or type / for quick elements..."
           spellCheck={false}
-          className="w-full h-full resize-none bg-transparent text-foreground placeholder:text-muted-foreground/40 font-mono text-[14px] leading-relaxed focus:outline-none"
+          className="w-full h-full resize-none bg-transparent text-foreground placeholder:text-muted-foreground/40 font-mono text-[16px] sm:text-[14px] leading-relaxed focus:outline-none"
         />
 
         {/* Floating Slash Command Menu */}

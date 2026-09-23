@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",
+    "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.1",
     "@huggingface/transformers": "^4.2.0",
     "@radix-ui/react-dialog": "^1.1.6",

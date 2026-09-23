@@ -187,7 +187,7 @@ function NoteRow({
                 variant="ghost"
                 size="icon-xs"
                 onClick={(e) => e.stopPropagation()}
-                className="size-5.5 rounded-none text-muted-foreground hover:text-foreground"
+                className="size-7 md:size-5.5 rounded-none text-muted-foreground hover:text-foreground"
                 aria-label="Note options"
               >
                 <MoreVertical className="size-3" />

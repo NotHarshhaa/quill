@@ -21,6 +21,7 @@ public class MainActivity extends BridgeActivity {
     private int lastBottomDp = 0;
     private int lastLeftDp = 0;
     private int lastRightDp = 0;
+    private int lastImeDp = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,6 +72,10 @@ public class MainActivity extends BridgeActivity {
             Insets navInsets = windowInsets.getInsets(
                 WindowInsetsCompat.Type.navigationBars() | WindowInsetsCompat.Type.displayCutout()
             );
+            // Keyboard (IME) insets: with edge-to-edge on API 30+ the window no longer
+            // resizes natively when the keyboard opens, so expose the keyboard height
+            // to the web layer instead and let the app shell shrink above it
+            Insets imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime());
 
             float density = getResources().getDisplayMetrics().density;
             if (density <= 0) density = 1f;
@@ -79,6 +84,7 @@ public class MainActivity extends BridgeActivity {
             int bottomDp = (int) Math.ceil(navInsets.bottom / density);
             int leftDp = (int) Math.ceil(statusInsets.left / density);
             int rightDp = (int) Math.ceil(statusInsets.right / density);
+            int imeDp = (int) Math.ceil(imeInsets.bottom / density);
 
             // Ensure fallback is respected if insets reported 0
             if (topDp <= 0 && lastTopDp > 0) {
@@ -91,6 +97,7 @@ public class MainActivity extends BridgeActivity {
             lastRightDp = rightDp;
 
             applySafeAreaToWebView(topDp, bottomDp, leftDp, rightDp);
+            applyKeyboardHeightToWebView(imeDp);
 
             return windowInsets;
         });
@@ -188,6 +195,34 @@ public class MainActivity extends BridgeActivity {
             "  }" +
             "})();",
             topDp, bottomDp, leftDp, rightDp
+        );
+
+        webView.post(() -> webView.evaluateJavascript(js, null));
+    }
+
+    /**
+     * Publishes the on-screen keyboard height as a CSS variable. Only API 30+:
+     * under edge-to-edge the window stops resizing natively there, while on older
+     * APIs adjustResize still shrinks the window (and ime() insets are unreliable),
+     * so injecting the height too would shrink the layout twice.
+     */
+    private void applyKeyboardHeightToWebView(int imeDp) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return;
+        if (imeDp == lastImeDp) return;
+        lastImeDp = imeDp;
+
+        if (getBridge() == null) return;
+        WebView webView = getBridge().getWebView();
+        if (webView == null) return;
+
+        String js = String.format(
+            "(function() {" +
+            "  var root = document.documentElement;" +
+            "  if (root) {" +
+            "    root.style.setProperty('--kb-height', '%dpx');" +
+            "  }" +
+            "})();",
+            imeDp
         );
 
         webView.post(() -> webView.evaluateJavascript(js, null));

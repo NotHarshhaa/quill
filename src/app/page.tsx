@@ -236,6 +236,62 @@ export default function QuillPage() {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [isZenMode, sideVisible, createNote]);
 
+  // Android hardware back button: close the topmost overlay first (mirrors the
+  // Escape behavior), then close the mobile drawer / zen mode, and only exit
+  // the app when nothing is left to close — like a native app
+  useEffect(() => {
+    const cap = (window as any).Capacitor;
+    if (!cap?.isNativePlatform?.()) return;
+
+    let cancelled = false;
+    let handle: { remove: () => void } | null = null;
+
+    import("@capacitor/app")
+      .then(({ App }) => {
+        if (cancelled) return;
+        App.addListener("backButton", () => {
+          if (isAIStatusOpen) return setIsAIStatusOpen(false);
+          if (isWelcomeOpen) return setIsWelcomeOpen(false);
+          if (isInsightsOpen) return setIsInsightsOpen(false);
+          if (isTocOpen) return setIsTocOpen(false);
+          if (isGraphOpen) return setIsGraphOpen(false);
+          if (isTemplateOpen) return setIsTemplateOpen(false);
+          if (isHistoryOpen) return setIsHistoryOpen(false);
+          if (isCommandPaletteOpen) return setIsCommandPaletteOpen(false);
+          if (isZenMode) return setIsZenMode(false);
+          if (
+            sideVisible &&
+            typeof window !== "undefined" &&
+            window.matchMedia("(max-width: 767px)").matches
+          ) {
+            return setSideVisible(false);
+          }
+          App.exitApp();
+        }).then((h) => {
+          handle = h;
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+      try {
+        handle?.remove?.();
+      } catch {}
+    };
+  }, [
+    isAIStatusOpen,
+    isWelcomeOpen,
+    isInsightsOpen,
+    isTocOpen,
+    isGraphOpen,
+    isTemplateOpen,
+    isHistoryOpen,
+    isCommandPaletteOpen,
+    isZenMode,
+    sideVisible,
+  ]);
+
   // Debounced autosave to repository + periodic revision snapshots + activity tracking
   const { status: saveStatus } = useAutosave(
     localContent,
@@ -357,7 +413,17 @@ export default function QuillPage() {
 
   return (
     <ErrorBoundary>
-      <div className="h-screen h-[100dvh] w-screen flex flex-col bg-background text-foreground overflow-hidden">
+      {/* App shell: shrinks above the on-screen keyboard (Android injects --kb-height)
+          and avoids landscape display cutouts via safe-left/right padding. h-screen is
+          the fallback for WebViews without dvh support (invalid calc ignores the style). */}
+      <div
+        className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden"
+        style={{
+          height: "calc(100dvh - var(--kb-height, 0px))",
+          paddingLeft: "var(--safe-left)",
+          paddingRight: "var(--safe-right)",
+        }}
+      >
         {/* Hidden File Inputs for Import & Restore */}
         <input
           type="file"
