@@ -53,6 +53,7 @@ import { QuillLogo, QuillIcon } from "./quill-logo";
 import { AmbientSoundPlayer } from "@/components/audio/ambient-sound-player";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
+import { CURRENT_APP_VERSION } from "@/lib/updater/update-checker";
 
 export type SidebarPanel = "all" | "favorites" | "trash" | "settings";
 
@@ -1281,7 +1282,7 @@ export function AppSidebar({
                     <Corners size="sm" weight="thin" light />
                     <h4 className="text-xs font-semibold text-foreground">About Quill</h4>
                     <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      Quill v1.5.0 — Offline-first Markdown desk with client-side indexing, revision histories, and zero telemetry.
+                      Quill v{CURRENT_APP_VERSION} — Offline-first Markdown desk with client-side indexing, revision histories, and zero telemetry.
                     </p>
                     <div className="flex items-center gap-2 pt-1 font-mono text-[9.5px] text-muted-foreground/80">
                       <span>Total Notes: {notes.length}</span>

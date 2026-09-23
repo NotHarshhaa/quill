@@ -260,19 +260,27 @@ class AIEngine {
       });
 
       // Timeout fallback after 25s if first download takes too long or device stalls
-      const timeoutPromise = new Promise<{ result: string; device: string }>((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout")), 25000)
-      );
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<{ result: string; device: string }>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Timeout")), 25000);
+      });
 
-      const { result, device } = await Promise.race([responsePromise, timeoutPromise]);
-      this.notify({ status: "ready", message: `Completed on ${device.toUpperCase()}` });
+      try {
+        const { result, device } = await Promise.race([responsePromise, timeoutPromise]);
+        this.notify({ status: "ready", message: `Completed on ${device.toUpperCase()}` });
 
-      return {
-        action,
-        content: result,
-        provider: "webgpu",
-        durationMs: Math.round(performance.now() - startTime)
-      };
+        return {
+          action,
+          content: result,
+          provider: "webgpu",
+          durationMs: Math.round(performance.now() - startTime)
+        };
+      } finally {
+        // Prevent an unhandled rejection when the timeout fires after success,
+        // and drop abandoned pending requests
+        if (timeoutId) clearTimeout(timeoutId);
+        this.pendingRequests.delete(id);
+      }
     } catch (err: any) {
       console.warn("WebGPU generation failed or timed out, using heuristic fallback:", err);
       this.notify({

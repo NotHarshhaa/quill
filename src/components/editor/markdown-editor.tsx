@@ -76,6 +76,12 @@ export function MarkdownEditor({
   // Sync history if note was switched externally
   useEffect(() => {
     if (!isInternalChangeRef.current) {
+      // Drop any pending history push from the previous note so it can't
+      // contaminate the new note's undo stack
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
       historyRef.current = [content];
       historyIndexRef.current = 0;
       setCanUndo(false);
@@ -170,16 +176,19 @@ export function MarkdownEditor({
     const textarea = textareaRef.current;
     if (!textarea) return;
 
+    // Read the live DOM value: `content` can be stale in async flows (e.g. image
+    // upload finishing after the user kept typing)
+    const liveContent = textarea.value;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const selectedText = content.substring(start, end) || placeholder;
+    const selectedText = liveContent.substring(start, end) || placeholder;
 
     const newContent =
-      content.substring(0, start) +
+      liveContent.substring(0, start) +
       before +
       selectedText +
       after +
-      content.substring(end);
+      liveContent.substring(end);
 
     pushHistory(newContent, true);
 
@@ -236,9 +245,10 @@ export function MarkdownEditor({
 
     const start = slashMenu.slashIndex >= 0 ? slashMenu.slashIndex : textarea.selectionStart;
     const end = textarea.selectionStart;
+    const liveContent = textarea.value;
 
-    const before = content.substring(0, start);
-    const after = content.substring(end);
+    const before = liveContent.substring(0, start);
+    const after = liveContent.substring(end);
     const snippet = cmd.snippet;
     const newContent = before + snippet + after;
 
@@ -344,7 +354,7 @@ export function MarkdownEditor({
       return;
     }
 
-    if (e.key === "Tab") {
+    if (e.key === "Tab" && !slashMenu.isOpen) {
       e.preventDefault();
       insertSnippet("  ");
       return;
@@ -717,10 +727,12 @@ export function MarkdownEditor({
         onClose={() => setIsFindOpen(false)}
         content={content}
         onReplace={(newVal) => pushHistory(newVal, true)}
-        onHighlightMatch={(start, end) => {
+        onHighlightMatch={(start, end, focusEditor = true) => {
           const textarea = textareaRef.current;
           if (textarea) {
-            textarea.focus();
+            if (focusEditor) {
+              textarea.focus();
+            }
             textarea.setSelectionRange(start, end);
           }
         }}

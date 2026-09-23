@@ -276,6 +276,7 @@
 /* Print & PDF Export Stylesheet */
 @media print {
   header,
+  footer,
   aside,
   .no-print,
   button,

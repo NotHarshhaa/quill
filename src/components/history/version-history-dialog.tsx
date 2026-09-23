@@ -28,7 +28,11 @@ export function VersionHistoryDialog({
 
   useEffect(() => {
     if (isOpen && revisions.length > 0) {
-      setSelectedRevisionId(revisions[0].id);
+      // Keep the user's selection while the dialog is open (revisions array gets
+      // a new identity on every autosave); only reset if it no longer exists
+      setSelectedRevisionId((prev) =>
+        revisions.some((r) => r.id === prev) ? prev : revisions[0].id
+      );
     }
   }, [isOpen, revisions]);
 

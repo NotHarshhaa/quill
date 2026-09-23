@@ -64,6 +64,7 @@ export function KnowledgeGraphModal({
   const isDraggingCanvasRef = useRef(false);
   const draggedNodeRef = useRef<GraphNode | null>(null);
   const dragStartPosRef = useRef({ x: 0, y: 0 });
+  const didDragRef = useRef(false);
 
   // Extract all unique tags
   const allTags = useMemo(() => {
@@ -156,6 +157,19 @@ export function KnowledgeGraphModal({
       canvas.height = rect.height * dpr;
     };
     handleResize();
+    window.addEventListener("resize", handleResize);
+
+    // Wheel zoom needs a non-passive native listener; React's onWheel is passive
+    // and would warn/fail on preventDefault
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      transformRef.current.scale = Math.min(
+        3,
+        Math.max(0.3, transformRef.current.scale * zoomFactor)
+      );
+    };
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
 
     const simulateAndRender = () => {
       const nodes = nodesRef.current;
@@ -304,7 +318,11 @@ export function KnowledgeGraphModal({
     };
 
     animId = requestAnimationFrame(simulateAndRender);
-    return () => cancelAnimationFrame(animId);
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("resize", handleResize);
+      canvas.removeEventListener("wheel", handleWheel);
+    };
   }, [isOpen, graphData, hoveredNode, searchQuery, selectedTag]);
 
   // Mouse Interaction: Pan, Drag Node & Hover Detection
@@ -336,6 +354,7 @@ export function KnowledgeGraphModal({
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getCanvasCoords(e.clientX, e.clientY);
     const node = findNodeAt(x, y);
+    didDragRef.current = false;
     if (node) {
       draggedNodeRef.current = node;
     } else {
@@ -348,6 +367,7 @@ export function KnowledgeGraphModal({
     const { x, y } = getCanvasCoords(e.clientX, e.clientY);
 
     if (draggedNodeRef.current) {
+      didDragRef.current = true;
       draggedNodeRef.current.x = x;
       draggedNodeRef.current.y = y;
       draggedNodeRef.current.vx = 0;
@@ -355,6 +375,9 @@ export function KnowledgeGraphModal({
     } else if (isDraggingCanvasRef.current) {
       const dx = e.clientX - dragStartPosRef.current.x;
       const dy = e.clientY - dragStartPosRef.current.y;
+      if (dx !== 0 || dy !== 0) {
+        didDragRef.current = true;
+      }
       transformRef.current.x += dx;
       transformRef.current.y += dy;
       dragStartPosRef.current = { x: e.clientX, y: e.clientY };
@@ -372,19 +395,18 @@ export function KnowledgeGraphModal({
   };
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Ignore clicks that ended a node-drag or canvas pan so releasing a drag
+    // doesn't accidentally open a note
+    if (didDragRef.current) {
+      didDragRef.current = false;
+      return;
+    }
     const { x, y } = getCanvasCoords(e.clientX, e.clientY);
     const node = findNodeAt(x, y);
     if (node) {
       onSelectNote(node.id);
       onClose();
     }
-  };
-
-  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-    const newScale = Math.min(3, Math.max(0.3, transformRef.current.scale * zoomFactor));
-    transformRef.current.scale = newScale;
   };
 
   const handleResetView = () => {
@@ -459,7 +481,6 @@ export function KnowledgeGraphModal({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onClick={handleClick}
-          onWheel={handleWheel}
           className="w-full h-full cursor-grab active:cursor-grabbing"
         />
 

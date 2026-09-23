@@ -41,11 +41,21 @@ export function slugify(text: string): string {
 }
 
 export function parseMarkdown(markdown: string): MarkdownDocument {
+  return parseMarkdownInternal(markdown, { taskCounter: 0 });
+}
+
+/**
+ * Internal parser with a shared task-counter context so that tasks nested in
+ * blockquotes/callouts (parsed via recursion) keep unique, document-order indices.
+ */
+function parseMarkdownInternal(
+  markdown: string,
+  ctx: { taskCounter: number }
+): MarkdownDocument {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const blocks: BlockNode[] = [];
   const headingCounts = new Map<string, number>();
   let index = 0;
-  let taskCounter = 0;
 
   while (index < lines.length) {
     const line = lines[index];
@@ -120,12 +130,12 @@ export function parseMarkdown(markdown: string): MarkdownDocument {
           type: "callout",
           variant,
           title,
-          children: parseMarkdown(quoteLines.slice(1).join("\n")),
+          children: parseMarkdownInternal(quoteLines.slice(1).join("\n"), ctx),
         });
       } else {
         blocks.push({
           type: "blockquote",
-          children: parseMarkdown(quoteLines.join("\n")),
+          children: parseMarkdownInternal(quoteLines.join("\n"), ctx),
         });
       }
       continue;
@@ -184,7 +194,7 @@ export function parseMarkdown(markdown: string): MarkdownDocument {
           const taskMatch = content.match(/^\[([ xX])\](?:\s+(.*))?$/);
           if (taskMatch) {
             checked = taskMatch[1].toLowerCase() === "x";
-            taskIndex = taskCounter++;
+            taskIndex = ctx.taskCounter++;
             text = taskMatch[2] || "";
           }
 
@@ -250,7 +260,9 @@ export function parseMarkdown(markdown: string): MarkdownDocument {
 }
 
 /**
- * Toggles a checklist item's state [ ] <-> [x] by its 0-based sequential task index
+ * Toggles a checklist item's state [ ] <-> [x] by its 0-based sequential task index.
+ * The pattern must stay in sync with how parseMarkdown assigns taskIndex: it counts
+ * tasks in unordered AND ordered lists, including blockquote-prefixed lines.
  */
 export function toggleTaskInMarkdown(markdown: string, targetTaskIndex: number): string {
   const lines = markdown.split("\n");
@@ -258,7 +270,9 @@ export function toggleTaskInMarkdown(markdown: string, targetTaskIndex: number):
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const match = line.match(/^([ \t]*[-*+][ \t]+\[)([ xX])(\](?:[ \t]+.*)?)$/);
+    const match = line.match(
+      /^([ \t]*(?:>[ \t]*)*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\](?:[ \t]+.*)?)$/
+    );
     if (match) {
       if (currentTaskIdx === targetTaskIndex) {
         const isChecked = match[2].toLowerCase() === "x";

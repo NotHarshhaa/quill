@@ -155,14 +155,27 @@ export default function QuillPage() {
     }
   }, [resolvedTheme]);
 
-  // Sync local editor content when active note switches
+  // Latest editor content & active note, readable from effect cleanups
+  const latestEditorRef = useRef({ id: activeNoteId, content: localContent, note: activeNote });
   useEffect(() => {
-    if (activeNote) {
-      setLocalContent(activeNote.content);
-    } else {
-      setLocalContent("");
-    }
-  }, [activeNoteId, activeNote]);
+    latestEditorRef.current = { id: activeNoteId, content: localContent, note: activeNote };
+  });
+
+  // Sync local editor content when the active note switches. Deliberately keyed on
+  // activeNoteId only: re-syncing on every activeNote identity change would clobber
+  // keystrokes typed while an autosave is committing. The cleanup flushes unsaved
+  // edits of the outgoing note so the autosave debounce can't drop them.
+  useEffect(() => {
+    setLocalContent(activeNote ? activeNote.content : "");
+    return () => {
+      const { id, content, note } = latestEditorRef.current;
+      if (note && id && content !== note.content) {
+        updateNote(id, { content }, true);
+        activityTracker.logWords(countWords(content));
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNoteId]);
 
   // Enhanced keyboard shortcuts
   useEffect(() => {
@@ -266,17 +279,26 @@ export default function QuillPage() {
 
     Array.from(files).forEach((file) => {
       const reader = new FileReader();
+      const finish = () => {
+        processed++;
+        if (processed === files.length) {
+          importNotes(importedNotes);
+          if (importedNotes.length > 0) {
+            toast.success(
+              `Imported ${importedNotes.length} note${importedNotes.length > 1 ? "s" : ""}`
+            );
+          }
+        }
+      };
       reader.onload = (event) => {
         const text = (event.target?.result as string) || "";
         const note = notesRepository.createNoteFromMarkdown(file.name, text);
         importedNotes.push(note);
-        processed++;
-        if (processed === files.length) {
-          importNotes(importedNotes);
-          toast.success(
-            `Imported ${importedNotes.length} note${importedNotes.length > 1 ? "s" : ""}`
-          );
-        }
+        finish();
+      };
+      reader.onerror = () => {
+        toast.error(`Failed to read "${file.name}"`);
+        finish();
       };
       reader.readAsText(file);
     });
@@ -784,7 +806,7 @@ export default function QuillPage() {
 
                   {/* Zen Mode Bottom Bar */}
                   <div
-                    className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-card/95 border border-border/80 shadow-lg px-3 py-1.5 text-xs"
+                    className="no-print absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-card/95 border border-border/80 shadow-lg px-3 py-1.5 text-xs"
                     style={{
                       bottom: "calc(1rem + var(--safe-bottom))",
                     }}
@@ -838,7 +860,7 @@ export default function QuillPage() {
                   {/* Editor Pane */}
                   <div
                     className={cn(
-                      "h-full min-w-0 flex flex-col",
+                      "editor-pane h-full min-w-0 flex flex-col",
                       viewMode === "editor"
                         ? "flex-1"
                         : viewMode === "split"
@@ -867,7 +889,7 @@ export default function QuillPage() {
                   {/* Preview Pane */}
                   <div
                     className={cn(
-                      "h-full min-w-0 overflow-y-auto",
+                      "preview-pane h-full min-w-0 overflow-y-auto",
                       viewMode === "preview"
                         ? "flex-1"
                         : viewMode === "split"

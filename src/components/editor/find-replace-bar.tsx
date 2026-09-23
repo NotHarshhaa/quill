@@ -17,7 +17,8 @@ interface FindReplaceBarProps {
   onClose: () => void;
   content: string;
   onReplace: (newContent: string) => void;
-  onHighlightMatch?: (start: number, end: number) => void;
+  /** focusEditor=false while the user is typing in the bar so the textarea never steals focus */
+  onHighlightMatch?: (start: number, end: number, focusEditor?: boolean) => void;
 }
 
 export function FindReplaceBar({
@@ -80,24 +81,35 @@ export function FindReplaceBar({
     }
   }, [matches.length, matchIndex]);
 
-  // Highlight active match in editor
+  // Highlight active match in editor WITHOUT stealing focus while typing in the bar
   useEffect(() => {
     if (matches.length > 0 && onHighlightMatch) {
-      const current = matches[matchIndex];
+      const current = matches[Math.min(matchIndex, matches.length - 1)];
       if (current) {
-        onHighlightMatch(current.start, current.end);
+        onHighlightMatch(current.start, current.end, false);
       }
     }
   }, [matchIndex, matches, onHighlightMatch]);
 
+  const highlightCurrent = (index: number) => {
+    const current = matches[index];
+    if (current && onHighlightMatch) {
+      onHighlightMatch(current.start, current.end, true);
+    }
+  };
+
   const handleNext = () => {
     if (matches.length === 0) return;
-    setMatchIndex((prev) => (prev + 1) % matches.length);
+    const next = (matchIndex + 1) % matches.length;
+    setMatchIndex(next);
+    highlightCurrent(next);
   };
 
   const handlePrev = () => {
     if (matches.length === 0) return;
-    setMatchIndex((prev) => (prev - 1 + matches.length) % matches.length);
+    const prev = (matchIndex - 1 + matches.length) % matches.length;
+    setMatchIndex(prev);
+    highlightCurrent(prev);
   };
 
   const handleReplaceOne = () => {
