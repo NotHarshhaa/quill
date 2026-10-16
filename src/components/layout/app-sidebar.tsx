@@ -17,13 +17,9 @@ import {
   MoreVertical,
   RotateCcw,
   Star,
-  Network,
-  BarChart3,
   Settings,
   FileText,
   LayoutTemplate,
-  Headphones,
-  HelpCircle,
   ArrowLeft,
   Upload,
   Download,
@@ -50,7 +46,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Corners } from "@/components/frame";
 import { QuillLogo, QuillIcon } from "./quill-logo";
-import { AmbientSoundPlayer } from "@/components/audio/ambient-sound-player";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { CURRENT_APP_VERSION } from "@/lib/updater/update-checker";
@@ -298,9 +293,6 @@ export interface AppSidebarProps {
   selectedTag?: string | null;
   onSelectTag?: (tag: string | null) => void;
   allTags?: string[];
-  onOpenGraph: () => void;
-  onOpenInsights: () => void;
-  onOpenWelcome?: () => void;
   onOpen?: () => void;
   writingGoal: number;
   onWritingGoalChange: (goal: number) => void;
@@ -332,9 +324,6 @@ export function AppSidebar({
   selectedTag,
   onSelectTag,
   allTags = [],
-  onOpenGraph,
-  onOpenInsights,
-  onOpenWelcome,
   writingGoal,
   onWritingGoalChange,
   onExportAll,
@@ -601,74 +590,6 @@ export function AppSidebar({
               </Tooltip>
             </div>
 
-            {/* Divider */}
-            <div className="w-5 h-px bg-border/60 my-1.5 shrink-0" />
-
-            {/* Tools / Features */}
-            <div className="flex flex-col items-center gap-1 shrink-0">
-              {onOpenGraph && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={onOpenGraph}
-                      className="size-8 text-muted-foreground hover:text-foreground rounded-none"
-                      aria-label="Knowledge Graph"
-                    >
-                      <Network className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
-                    Knowledge Graph (Ctrl+G)
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
-              {onOpenInsights && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={onOpenInsights}
-                      className="size-8 text-muted-foreground hover:text-foreground rounded-none"
-                      aria-label="Writing Analytics"
-                    >
-                      <BarChart3 className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
-                    Writing Analytics & Insights
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
-              {/* Ambient Soundscapes in Rail */}
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        className="size-8 text-muted-foreground hover:text-foreground rounded-none"
-                        aria-label="Ambient Soundscapes"
-                      >
-                        <Headphones className="size-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
-                    Ambient Soundscapes & Focus
-                  </TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent side="right" align="start" className="p-0 border-none bg-transparent shadow-none w-auto">
-                  <AmbientSoundPlayer />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
             {/* Flexible Spacer */}
             <div className="flex-1 min-h-2" />
 
@@ -699,26 +620,6 @@ export function AppSidebar({
                   Vault Preferences & Data
                 </TooltipContent>
               </Tooltip>
-
-              {/* Quick Guide */}
-              {onOpenWelcome && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={onOpenWelcome}
-                      className="size-8 text-muted-foreground hover:text-foreground rounded-none"
-                      aria-label="Quick Guide"
-                    >
-                      <HelpCircle className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
-                    Quick Guide & Launchpad
-                  </TooltipContent>
-                </Tooltip>
-              )}
 
               {/* Expand Library Toggle */}
               <Tooltip>
@@ -753,25 +654,6 @@ export function AppSidebar({
                 <QuillLogo />
 
               <div className="flex items-center gap-1 shrink-0">
-                {onOpenWelcome && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={onOpenWelcome}
-                        aria-label="Quick Guide"
-                        className="size-7 rounded-none text-muted-foreground hover:text-foreground"
-                      >
-                        <HelpCircle className="size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-xs">
-                      Quick Guide & Launchpad
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-
                 {/* Desktop collapse button */}
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1295,80 +1177,14 @@ export function AppSidebar({
             )}
           </ScrollArea>
 
-          {/* Footer Tools (Graph, Insights, Soundscapes, Settings) */}
+          {/* Footer: single Settings utility entry (Graph/Insights/Ambient now live in the More menu + Command Palette) */}
           <div
             className="border-t border-border/80 px-2 shrink-0 bg-background/50 font-sans select-none"
             style={{
               paddingBottom: "var(--safe-bottom)",
             }}
           >
-            <div className="h-10 flex items-center justify-between">
-              <div className="flex items-center gap-0.5">
-                {/* Graph View */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={onOpenGraph}
-                      aria-label="Knowledge Graph"
-                      className="size-7 rounded-none text-muted-foreground hover:text-foreground"
-                    >
-                      <Network className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="font-sans text-xs">
-                    Interactive Knowledge Graph
-                  </TooltipContent>
-                </Tooltip>
-
-                {/* Writing Insights */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={onOpenInsights}
-                      aria-label="Writing Insights"
-                      className="size-7 rounded-none text-muted-foreground hover:text-foreground"
-                    >
-                      <BarChart3 className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="font-sans text-xs">
-                    Writing Insights & Activity
-                  </TooltipContent>
-                </Tooltip>
-
-                {/* Ambient Soundscapes & Pomodoro */}
-                <DropdownMenu>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          aria-label="Ambient Soundscapes"
-                          className="size-7 rounded-none text-muted-foreground hover:text-foreground"
-                        >
-                          <Headphones className="size-3.5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="font-sans text-xs">
-                      Ambient Soundscapes & Pomodoro
-                    </TooltipContent>
-                  </Tooltip>
-                  <DropdownMenuContent
-                    side="top"
-                    align="start"
-                    className="p-0 border-none bg-transparent shadow-none w-auto"
-                  >
-                    <AmbientSoundPlayer />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
+            <div className="h-10 flex items-center justify-end">
               {/* Settings Button */}
               <Tooltip>
                 <TooltipTrigger asChild>

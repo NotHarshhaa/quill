@@ -1,36 +1,12 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import {
-  Bold,
-  Italic,
-  Strikethrough,
-  Code,
-  List,
-  ListTodo,
-  Quote,
-  Heading1,
-  Heading2,
-  Table,
-  Feather,
-  Undo2,
-  Redo2,
-  Image as ImageIcon,
-  Search as SearchIcon,
-} from "lucide-react";
 import { Corners } from "@/components/frame";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { SlashCommandMenu, SlashCommand } from "./slash-command-menu";
 import { FindReplaceBar } from "./find-replace-bar";
+import { EditorToolbar } from "./editor-toolbar";
+import { subscribeEditorCommands } from "@/lib/editor/editorCommands";
 import { mediaRepository } from "@/lib/storage/mediaRepository";
 import { toast } from "sonner";
 
@@ -98,6 +74,14 @@ export function MarkdownEditor({
         debounceTimerRef.current = null;
       }
     };
+  }, []);
+
+  // Let app-level surfaces (More menu / Command Palette) trigger editor commands
+  useEffect(() => {
+    return subscribeEditorCommands((command) => {
+      if (command === "find") setIsFindOpen(true);
+      if (command === "typewriter") setIsTypewriter((prev) => !prev);
+    });
   }, []);
 
   // Push new state to history
@@ -384,342 +368,18 @@ export function MarkdownEditor({
       />
 
       {/* Editor Header Bar with comfortable mobile height */}
-      <div className="h-14 sm:h-10 px-2 sm:px-3 md:px-4 border-b border-border/70 flex items-center justify-between select-none bg-background/50 gap-2 min-w-0">
-        {/* Left Badge: hidden on mobile/tablet to maximize toolbar space */}
-        <Badge
-          variant="outline"
-          className="relative text-[10px] tracking-widest font-mono font-semibold px-1.5 py-0.5 border border-border shrink-0 shadow-xs rounded-none bg-card/60 hidden lg:flex items-center"
-        >
-          <Corners size="sm" offset="border" weight="thin" light />
-          <span className="hidden xl:inline">WRITE · </span>MARKDOWN
-        </Badge>
-
-        {/* Action Toolbar with Touch Targets, Full Side Scrollbar, & Blueprint Corners */}
-        <TooltipProvider delayDuration={150}>
-          <div className="flex-1 min-w-0 flex items-center justify-start sm:justify-end">
-            <div className="horizontal-toolbar-scroll max-w-full py-2 sm:py-0.5 px-1.5">
-              <div className="relative flex items-center gap-1 sm:gap-1.5 bg-card/85 p-0.5 border border-border/80 shadow-xs rounded-none w-max">
-                <Corners size="sm" offset="border" weight="thin" light />
-
-                {/* Group 1: Undo / Redo */}
-                <div className="flex items-center gap-0.5 shrink-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={handleUndo}
-                        disabled={!canUndo}
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:hover:bg-transparent"
-                        aria-label="Undo"
-                      >
-                        <Undo2 className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Undo (Ctrl+Z)</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={handleRedo}
-                        disabled={!canRedo}
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:hover:bg-transparent"
-                        aria-label="Redo"
-                      >
-                        <Redo2 className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Redo (Ctrl+Y)</span>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-
-                <Separator orientation="vertical" className="h-4 mx-0.5 sm:mx-1 shrink-0 opacity-60" />
-
-                {/* Group 2: Headings */}
-                <div className="flex items-center gap-0.5 shrink-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => insertSnippet("# ", "", "Heading")}
-                        className="h-8 w-8 sm:h-7 sm:w-6.5 shrink-0 rounded-none text-muted-foreground hover:text-foreground font-mono font-bold text-xs sm:text-[11px]"
-                        aria-label="Heading 1"
-                      >
-                        H1
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Heading 1</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => insertSnippet("## ", "", "Heading")}
-                        className="h-8 w-8 sm:h-7 sm:w-6.5 shrink-0 rounded-none text-muted-foreground hover:text-foreground font-mono font-semibold text-xs sm:text-[11px]"
-                        aria-label="Heading 2"
-                      >
-                        H2
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Heading 2</span>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-
-                <Separator orientation="vertical" className="h-4 mx-0.5 sm:mx-1 shrink-0 opacity-60" />
-
-                {/* Group 3: Inline Text Formatting */}
-                <div className="flex items-center gap-0.5 shrink-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => insertSnippet("**", "**", "bold text")}
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
-                        aria-label="Bold"
-                      >
-                        <Bold className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Bold (Ctrl+B)</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => insertSnippet("*", "*", "italic text")}
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
-                        aria-label="Italic"
-                      >
-                        <Italic className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Italic (Ctrl+I)</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => insertSnippet("~~", "~~", "strikethrough text")}
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
-                        aria-label="Strikethrough"
-                      >
-                        <Strikethrough className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Strikethrough (~~text~~)</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => insertSnippet("`", "`", "code")}
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
-                        aria-label="Inline Code"
-                      >
-                        <Code className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Inline Code (`code`)</span>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-
-                <Separator orientation="vertical" className="h-4 mx-0.5 sm:mx-1 shrink-0 opacity-60" />
-
-                {/* Group 4: Structure, Tables & Media */}
-                <div className="flex items-center gap-0.5 shrink-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => insertSnippet("- ", "", "item")}
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
-                        aria-label="Bullet List"
-                      >
-                        <List className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Bullet List</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => insertSnippet("- [ ] ", "", "task")}
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
-                        aria-label="Checklist Task"
-                      >
-                        <ListTodo className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Task Checklist (- [ ])</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => insertSnippet("> ", "", "quote")}
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
-                        aria-label="Blockquote"
-                      >
-                        <Quote className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Blockquote (&gt; text)</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() =>
-                          insertSnippet(
-                            "\n| Column 1 | Column 2 |\n| :--- | :--- |\n| Row 1 | Data |\n| Row 2 | Data |\n",
-                            "",
-                            ""
-                          )
-                        }
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
-                        aria-label="Table"
-                      >
-                        <Table className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Data Table</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => insertSnippet("[[", "]]", "Note Title")}
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-primary hover:text-primary hover:bg-primary/10 flex items-center justify-center font-mono text-[10.5px] sm:text-[10px] font-bold"
-                        aria-label="Wiki-link"
-                      >
-                        {"[[]]"}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Wiki-link ([[Note Title]])</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {/* Insert Image */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => imageInputRef.current?.click()}
-                        className="h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none text-muted-foreground hover:text-foreground"
-                        aria-label="Insert Image"
-                      >
-                        <ImageIcon className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Insert Image (Upload or Paste)</span>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {/* Find & Replace */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setIsFindOpen((prev) => !prev)}
-                        className={`h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none transition-colors ${
-                          isFindOpen ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
-                        }`}
-                        aria-label="Find and Replace"
-                      >
-                        <SearchIcon className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>Find & Replace (Ctrl+F)</span>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-
-                <Separator orientation="vertical" className="h-4 mx-0.5 sm:mx-1 shrink-0 opacity-60" />
-
-                {/* Group 5: Focus / Typewriter Mode */}
-                <div className="flex items-center shrink-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setIsTypewriter((prev) => !prev)}
-                        className={`h-8 w-8 sm:h-7 sm:w-7 shrink-0 rounded-none flex items-center justify-center transition-all ${
-                          isTypewriter
-                            ? "bg-primary/15 text-primary border border-primary/40 font-medium"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                        aria-label="Typewriter Scrolling"
-                      >
-                        <Feather className="size-4 sm:size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-[11px]">
-                      <span>
-                        {isTypewriter
-                          ? "Disable Typewriter Mode"
-                          : "Enable Typewriter Scrolling Mode"}
-                      </span>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
-            </div>
-          </div>
-        </TooltipProvider>
-      </div>
+      <EditorToolbar
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onInsert={insertSnippet}
+        onInsertImage={() => imageInputRef.current?.click()}
+        isTypewriter={isTypewriter}
+        onToggleTypewriter={() => setIsTypewriter((prev) => !prev)}
+        isFindOpen={isFindOpen}
+        onToggleFind={() => setIsFindOpen((prev) => !prev)}
+      />
 
       {/* Find & Replace Bar Dock */}
       <FindReplaceBar

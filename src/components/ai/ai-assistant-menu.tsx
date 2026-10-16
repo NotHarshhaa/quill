@@ -130,7 +130,7 @@ export function AIAssistantMenu({
             ) : (
               <Sparkles className="size-3.5 text-amber-500 group-hover:text-amber-400 transition-colors shrink-0" />
             )}
-            <span className="hidden sm:inline font-sans text-xs text-foreground/80 group-hover:text-foreground">
+            <span className="hidden 2xl:inline font-sans text-xs text-foreground/80 group-hover:text-foreground">
               {isProcessing
                 ? progress.status === "downloading"
                   ? `${progress.progress || 0}%`

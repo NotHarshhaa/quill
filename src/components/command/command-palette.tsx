@@ -23,6 +23,14 @@ import {
   ListTree,
   BarChart3,
   HelpCircle,
+  PenLine,
+  Columns2,
+  Eye,
+  PanelLeft,
+  Settings,
+  Target,
+  Star,
+  Trash2,
   X,
 } from "lucide-react";
 import { Corners } from "@/components/frame";
@@ -53,7 +61,14 @@ interface CommandPaletteProps {
   onOpenInsights?: () => void;
   onOpenWelcome?: () => void;
   onOpenAIStatus?: () => void;
+  onViewModeChange?: (mode: ViewMode) => void;
+  currentViewMode?: ViewMode;
+  onToggleSidebar?: () => void;
+  onSetWritingGoal?: (goal: number) => void;
+  onSelectPanel?: (panel: "all" | "favorites" | "trash" | "settings") => void;
 }
+
+type ViewMode = "editor" | "split" | "preview";
 
 type ActionItem = {
   id: string;
@@ -95,6 +110,11 @@ export function CommandPalette({
   onOpenInsights,
   onOpenWelcome,
   onOpenAIStatus,
+  onViewModeChange,
+  currentViewMode,
+  onToggleSidebar,
+  onSetWritingGoal,
+  onSelectPanel,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -341,6 +361,133 @@ export function CommandPalette({
       },
     });
 
+    // View mode switching (primary, mirrored from the top bar)
+    if (onViewModeChange) {
+      list.push({
+        id: "action-view-editor",
+        type: "action",
+        title: "Switch to Write Mode",
+        subtitle: currentViewMode === "editor" ? "Currently active" : "Single distraction-free editor pane",
+        icon: PenLine,
+        shortcut: "Ctrl+1",
+        handler: () => {
+          onViewModeChange("editor");
+          onClose();
+        },
+      });
+      list.push({
+        id: "action-view-split",
+        type: "action",
+        title: "Switch to Split Mode",
+        subtitle: currentViewMode === "split" ? "Currently active" : "Editor and live preview side by side",
+        icon: Columns2,
+        shortcut: "Ctrl+2",
+        handler: () => {
+          onViewModeChange("split");
+          onClose();
+        },
+      });
+      list.push({
+        id: "action-view-preview",
+        type: "action",
+        title: "Switch to Preview Mode",
+        subtitle: currentViewMode === "preview" ? "Currently active" : "Rendered markdown reading view",
+        icon: Eye,
+        shortcut: "Ctrl+3",
+        handler: () => {
+          onViewModeChange("preview");
+          onClose();
+        },
+      });
+    }
+
+    // Library sidebar toggle
+    if (onToggleSidebar) {
+      list.push({
+        id: "action-toggle-sidebar",
+        type: "action",
+        title: "Toggle Library Sidebar",
+        subtitle: "Show or hide the notes library",
+        icon: PanelLeft,
+        shortcut: "Ctrl+B",
+        handler: () => {
+          onToggleSidebar();
+          onClose();
+        },
+      });
+    }
+
+    // Library panel navigation
+    if (onSelectPanel) {
+      list.push({
+        id: "action-open-all",
+        type: "action",
+        title: "Open All Notes",
+        subtitle: "Browse the full library",
+        icon: FileText,
+        handler: () => {
+          onSelectPanel("all");
+          onClose();
+        },
+      });
+      list.push({
+        id: "action-open-favorites",
+        type: "action",
+        title: "Open Pinned / Favorites",
+        subtitle: "Jump to your pinned notes",
+        icon: Star,
+        handler: () => {
+          onSelectPanel("favorites");
+          onClose();
+        },
+      });
+      list.push({
+        id: "action-open-trash",
+        type: "action",
+        title: "Open Trash",
+        subtitle: "Restore or permanently delete notes",
+        icon: Trash2,
+        handler: () => {
+          onSelectPanel("trash");
+          onClose();
+        },
+      });
+      list.push({
+        id: "action-open-settings",
+        type: "action",
+        title: "Open Preferences & Data",
+        subtitle: "Writing goal, backups, theme, and about",
+        icon: Settings,
+        handler: () => {
+          onSelectPanel("settings");
+          onClose();
+        },
+      });
+    }
+
+    // Writing goal presets
+    if (onSetWritingGoal) {
+      const goals: { value: number; label: string }[] = [
+        { value: 0, label: "None (Free Write)" },
+        { value: 250, label: "250 words (Quick Note)" },
+        { value: 500, label: "500 words (Standard Reflection)" },
+        { value: 1000, label: "1,000 words (Deep Essay)" },
+      ];
+      goals.forEach((goal) => {
+        list.push({
+          id: `action-goal-${goal.value}`,
+          type: "action",
+          title: `Set Session Goal: ${goal.label}`,
+          subtitle: "Track progress in the status bar",
+          icon: Target,
+          handler: () => {
+            onSetWritingGoal(goal.value);
+            onClose();
+          },
+        });
+      });
+    }
+
     return list;
   }, [
     activeNote,
@@ -362,6 +509,11 @@ export function CommandPalette({
     onOpenInsights,
     onOpenWelcome,
     onOpenAIStatus,
+    onViewModeChange,
+    currentViewMode,
+    onToggleSidebar,
+    onSetWritingGoal,
+    onSelectPanel,
     setTheme,
     onClose,
   ]);

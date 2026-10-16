@@ -15,34 +15,19 @@ import {
   Eye,
   PenLine,
   Columns2,
-  Maximize2,
   Command,
   PanelLeftClose,
   PanelLeftOpen,
   Pin,
   PinOff,
-  ListTree,
-  History,
-  Download,
-  Printer,
-  Headphones,
-  LayoutTemplate,
-  Sun,
-  Moon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AmbientSoundPlayer } from "@/components/audio/ambient-sound-player";
 import { VersionHistoryDialog } from "@/components/history/version-history-dialog";
 import { TemplateDialog } from "@/components/templates/template-dialog";
 import { KnowledgeGraphModal } from "@/components/graph/knowledge-graph-modal";
@@ -53,9 +38,12 @@ import { AppUpdateNotifier } from "@/components/update/app-update-notifier";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AppSidebar, SidebarPanel } from "@/components/layout/app-sidebar";
 import { StatusBar } from "@/components/layout/status-bar";
+import { MoreMenu } from "@/components/layout/more-menu";
+import { DocumentPanel } from "@/components/layout/document-panel";
 import { Corners } from "@/components/frame";
 import { AIAssistantMenu } from "@/components/ai/ai-assistant-menu";
 import { AIStatusModal } from "@/components/ai/ai-status-modal";
+import { emitEditorCommand } from "@/lib/editor/editorCommands";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -102,7 +90,7 @@ export default function QuillPage() {
   const [hasNotifiedGoal, setHasNotifiedGoal] = useState(false);
   const [activePanel, setActivePanel] = useState<SidebarPanel>("all");
   const [sideVisible, setSideVisible] = useState(true);
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   // New Feature Modals State
   const [isGraphOpen, setIsGraphOpen] = useState(false);
@@ -110,6 +98,8 @@ export default function QuillPage() {
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
   const [isAIStatusOpen, setIsAIStatusOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isDocPanelOpen, setIsDocPanelOpen] = useState(false);
 
   // Hidden file inputs for .md import and JSON restore
   const markdownInputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +120,7 @@ export default function QuillPage() {
         // Desktop monitors (1024px+): full expanded library + split view
         setViewMode("split");
         setSideVisible(true);
+        setIsDocPanelOpen(true);
       }
 
       // Show welcome popup modal by default unless user opted out
@@ -251,6 +242,7 @@ export default function QuillPage() {
         if (cancelled) return;
         App.addListener("backButton", () => {
           if (isAIStatusOpen) return setIsAIStatusOpen(false);
+          if (isMoreOpen) return setIsMoreOpen(false);
           if (isWelcomeOpen) return setIsWelcomeOpen(false);
           if (isInsightsOpen) return setIsInsightsOpen(false);
           if (isTocOpen) return setIsTocOpen(false);
@@ -281,6 +273,7 @@ export default function QuillPage() {
     };
   }, [
     isAIStatusOpen,
+    isMoreOpen,
     isWelcomeOpen,
     isInsightsOpen,
     isTocOpen,
@@ -389,6 +382,22 @@ export default function QuillPage() {
     e.target.value = "";
   };
 
+  // Export the active note as a .md file (used by the More menu)
+  const handleExportActiveNote = () => {
+    if (!activeNote) return;
+    notesRepository.exportNote(activeNote);
+    toast.success(`Exported "${activeNote.title || "Untitled"}.md"`);
+  };
+
+  // Outline: dock the desktop document panel, or open the drawer on smaller screens
+  const handleOpenOutline = () => {
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+      setIsDocPanelOpen((prev) => !prev);
+    } else {
+      setIsTocOpen(true);
+    }
+  };
+
   const wordCount = countWords(localContent);
 
   // Trigger celebration toast once when session writing goal is reached
@@ -470,9 +479,6 @@ export default function QuillPage() {
             selectedTag={selectedTag}
             onSelectTag={setSelectedTag}
             allTags={allTags}
-            onOpenGraph={() => setIsGraphOpen(true)}
-            onOpenInsights={() => setIsInsightsOpen(true)}
-            onOpenWelcome={() => setIsWelcomeOpen(true)}
             writingGoal={writingGoal}
             onWritingGoalChange={(goal) => {
               setWritingGoal(goal);
@@ -550,27 +556,11 @@ export default function QuillPage() {
                 )}
 
                 <span
-                  className="text-xs font-semibold text-foreground truncate max-w-[160px] sm:max-w-xs font-sans tracking-tight"
+                  className="min-w-0 text-xs font-semibold text-foreground truncate max-w-[160px] sm:max-w-xs font-sans tracking-tight"
                   title={activeNote?.title}
                 >
                   {activeNote?.title || "Untitled"}
                 </span>
-
-                {/* Word count & Reading time & Goal Progress Badge */}
-                <div className="relative hidden 2xl:inline-flex items-center gap-1.5 px-2 py-0.5 border border-border/70 bg-card/60 font-mono text-[10px] tracking-wider shrink-0 text-muted-foreground ml-1">
-                  <Corners size="sm" weight="thin" light />
-                  <span>{wordCount} {wordCount === 1 ? "word" : "words"}</span>
-                  <span className="opacity-40">·</span>
-                  <span>~{Math.max(1, Math.ceil(wordCount / 200))}m read</span>
-                  {writingGoal > 0 && (
-                    <>
-                      <span className="opacity-40">·</span>
-                      <span className="text-primary font-bold">
-                        🎯 {Math.min(100, Math.round((wordCount / writingGoal) * 100))}%
-                      </span>
-                    </>
-                  )}
-                </div>
               </div>
 
               {/* Zone 2: Center (view mode switcher - spacious & default variant) */}
@@ -590,14 +580,14 @@ export default function QuillPage() {
                     title="Editor (Ctrl+1)"
                   >
                     <PenLine className="size-3.5" />
-                    <span className="hidden sm:inline">WRITE</span>
+                    <span className="hidden md:inline">WRITE</span>
                   </Button>
                   <Button
                     size="xs"
                     variant={viewMode === "split" ? "default" : "ghost"}
                     onClick={() => setViewMode("split")}
                     className={cn(
-                      "hidden sm:inline-flex h-7 sm:h-7.5 px-3 sm:px-3.5 text-xs font-mono font-medium tracking-wide gap-1.5 rounded-none transition-all",
+                      "hidden md:inline-flex h-7 sm:h-7.5 px-3 sm:px-3.5 text-xs font-mono font-medium tracking-wide gap-1.5 rounded-none transition-all",
                       viewMode === "split"
                         ? "shadow-xs font-semibold"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
@@ -620,12 +610,12 @@ export default function QuillPage() {
                     title="Preview (Ctrl+3)"
                   >
                     <Eye className="size-3.5" />
-                    <span className="hidden sm:inline">PREVIEW</span>
+                    <span className="hidden md:inline">PREVIEW</span>
                   </Button>
                 </div>
               </div>
 
-              {/* Zone 3: Right (Framed Commands, Action Tools Cluster, and Theme Switcher) */}
+              {/* Zone 3: Right (Command palette, Offline AI, and More menu) */}
               <div className="flex items-center gap-2 min-w-0 flex-1 basis-0 justify-end">
                 {/* Command palette */}
                 <button
@@ -637,7 +627,7 @@ export default function QuillPage() {
                   <Corners size="sm" weight="thin" light className="opacity-30 group-hover:opacity-100 transition-opacity" />
                   <Command className="size-3.5 text-primary shrink-0" />
                   <span className="hidden xl:inline font-sans text-xs text-foreground/80 group-hover:text-foreground">Commands</span>
-                  <kbd className="hidden sm:inline-flex items-center font-mono text-[9px] px-1 py-0.2 bg-muted/60 border border-border/70 text-muted-foreground">
+                  <kbd className="hidden lg:inline-flex items-center font-mono text-[9px] px-1 py-0.2 bg-muted/60 border border-border/70 text-muted-foreground">
                     ⌘K
                   </kbd>
                 </button>
@@ -649,171 +639,29 @@ export default function QuillPage() {
                   disabled={!activeNote}
                 />
 
-                {/* Framed Action Tools Cluster */}
-                <div className="relative flex items-center bg-card/40 border border-border/70 p-0.5 shadow-2xs rounded-none shrink-0">
-                  <Corners size="sm" weight="thin" light />
+                {/* Secondary actions — Templates, Outline, History, Export, Print, Zen, Ambient, Goal */}
+                <MoreMenu
+                  open={isMoreOpen}
+                  onOpenChange={setIsMoreOpen}
+                  activeNote={activeNote}
+                  onOpenTemplates={() => setIsTemplateOpen(true)}
+                  onOpenOutline={handleOpenOutline}
+                  onOpenHistory={() => setIsHistoryOpen(true)}
+                  onFindReplace={() => emitEditorCommand("find")}
+                  onExportNote={handleExportActiveNote}
+                  onPrintNote={() => window.print()}
+                  onToggleZen={() => setIsZenMode(true)}
+                  writingGoal={writingGoal}
+                  onSetWritingGoal={(goal) => {
+                    setWritingGoal(goal);
+                    if (goal > 0) {
+                      toast.info(`Session writing goal: ${goal} words`);
+                    } else {
+                      toast.info("Session writing goal cleared");
+                    }
+                  }}
+                />
 
-                  {/* Templates picker button */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon-xs"
-                        variant="ghost"
-                        onClick={() => setIsTemplateOpen(true)}
-                        className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
-                        aria-label="Note Templates"
-                      >
-                        <LayoutTemplate className="size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-xs">
-                      Note Templates
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {/* Ambient Soundscapes & Pomodoro Dropdown */}
-                  <DropdownMenu>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="icon-xs"
-                            variant="ghost"
-                            className="size-6.5 text-muted-foreground hover:text-foreground rounded-none"
-                            aria-label="Ambient Soundscapes & Focus"
-                          >
-                            <Headphones className="size-3.5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="font-sans text-xs">
-                        Ambient Soundscapes & Focus Timer
-                      </TooltipContent>
-                    </Tooltip>
-                    <DropdownMenuContent side="bottom" align="end" className="p-0 border-none bg-transparent shadow-none w-auto">
-                      <AmbientSoundPlayer />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <div className="w-px h-3.5 bg-border/40 mx-0.5 hidden sm:block" />
-
-                  {/* Document outline */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon-xs"
-                        variant="ghost"
-                        onClick={() => setIsTocOpen(true)}
-                        className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
-                        aria-label="Document outline"
-                      >
-                        <ListTree className="size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-xs">
-                      Document Outline
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {/* Version history */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon-xs"
-                        variant="ghost"
-                        onClick={() => setIsHistoryOpen(true)}
-                        className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
-                        aria-label="Version history"
-                      >
-                        <History className="size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-xs">
-                      Snapshots & History
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {/* Export markdown */}
-                  {activeNote && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="icon-xs"
-                          variant="ghost"
-                          onClick={() => {
-                            notesRepository.exportNote(activeNote);
-                            toast.success(`Exported "${activeNote.title || "Untitled"}.md"`);
-                          }}
-                          className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden md:inline-flex"
-                          aria-label="Export as Markdown"
-                        >
-                          <Download className="size-3.5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="font-sans text-xs">
-                        Export Note (.md)
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-
-                  {/* Print / PDF Export */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon-xs"
-                        variant="ghost"
-                        onClick={() => window.print()}
-                        className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden md:inline-flex"
-                        aria-label="Print Note"
-                      >
-                        <Printer className="size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-xs">
-                      Print / Export PDF (Ctrl+P)
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <div className="w-px h-3.5 bg-border/40 mx-0.5 hidden sm:block" />
-
-                  {/* Zen mode */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon-xs"
-                        variant="ghost"
-                        onClick={() => setIsZenMode(true)}
-                        className="size-6.5 text-muted-foreground hover:text-foreground rounded-none hidden sm:inline-flex"
-                        aria-label="Focus mode"
-                      >
-                        <Maximize2 className="size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-xs">
-                      Zen Focus Desk (Ctrl+Shift+F)
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-
-                {/* Theme toggle */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                      className="relative size-7.5 border border-border/70 bg-card/40 hover:bg-muted/50 hover:border-border rounded-none text-muted-foreground hover:text-foreground shadow-2xs group transition-all shrink-0"
-                      aria-label="Toggle theme"
-                    >
-                      <Corners size="sm" weight="thin" light className="opacity-30 group-hover:opacity-100 transition-opacity" />
-                      <Sun className="size-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                      <Moon className="absolute size-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="font-sans text-xs">
-                    {resolvedTheme === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme"}
-                  </TooltipContent>
-                </Tooltip>
               </div>
             </div>
           </header>
@@ -970,6 +818,19 @@ export default function QuillPage() {
                       backlinks={backlinks}
                     />
                   </div>
+
+                  {/* Document Panel (desktop): outline, backlinks, stats, history */}
+                  {isDocPanelOpen && (
+                    <DocumentPanel
+                      className="hidden lg:flex"
+                      content={localContent}
+                      wordCount={wordCount}
+                      backlinks={backlinks}
+                      onNavigateWikiLink={navigateOrCreateWikiLink}
+                      onOpenHistory={() => setIsHistoryOpen(true)}
+                      onClose={() => setIsDocPanelOpen(false)}
+                    />
+                  )}
                 </>
               )}
             </div>
@@ -1006,20 +867,27 @@ export default function QuillPage() {
               toast.success("Note duplicated");
             }
           }}
-          onExportNote={() => {
-            if (activeNote) {
-              notesRepository.exportNote(activeNote);
-              toast.success(`Exported "${activeNote.title || "Untitled"}.md"`);
-            }
-          }}
+          onExportNote={handleExportActiveNote}
           onImportMarkdown={() => markdownInputRef.current?.click()}
           onBackupNotes={handleBackupNotes}
           onRestoreBackup={() => jsonInputRef.current?.click()}
           onOpenGraph={() => setIsGraphOpen(true)}
-          onOpenToc={() => setIsTocOpen(true)}
+          onOpenToc={handleOpenOutline}
           onOpenInsights={() => setIsInsightsOpen(true)}
           onOpenWelcome={() => setIsWelcomeOpen(true)}
           onOpenAIStatus={() => setIsAIStatusOpen(true)}
+          onViewModeChange={setViewMode}
+          currentViewMode={viewMode}
+          onToggleSidebar={() => setSideVisible((prev) => !prev)}
+          onSetWritingGoal={(goal) => {
+            setWritingGoal(goal);
+            if (goal > 0) {
+              toast.info(`Session writing goal: ${goal} words`);
+            } else {
+              toast.info("Session writing goal cleared");
+            }
+          }}
+          onSelectPanel={setActivePanel}
         />
 
         {/* Version History Dialog */}

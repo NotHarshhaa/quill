@@ -4,13 +4,9 @@ import React, { useMemo } from "react";
 import { ListTree, Hash, X, ChevronRight } from "lucide-react";
 import { Corners } from "@/components/frame";
 import { Button } from "@/components/ui/button";
-import { slugify } from "@/lib/markdown/parser";
+import { extractHeadings, type TocHeading } from "@/lib/markdown/outline";
 
-export interface TocHeading {
-  id: string;
-  text: string;
-  level: number;
-}
+export type { TocHeading };
 
 interface TableOfContentsProps {
   isOpen: boolean;
@@ -26,27 +22,7 @@ export function TableOfContents({
   onJumpToHeading,
 }: TableOfContentsProps) {
   // Extract all headings from markdown
-  const headings = useMemo(() => {
-    const lines = content.replace(/\r\n/g, "\n").split("\n");
-    const list: TocHeading[] = [];
-    const counts = new Map<string, number>();
-
-    for (const line of lines) {
-      const match = line.match(/^(#{1,6})\s+(.*)$/);
-      if (match) {
-        const level = match[1].length;
-        const text = match[2].trim().replace(/[*_~`]/g, "");
-        if (text) {
-          const baseSlug = slugify(text);
-          const count = counts.get(baseSlug) || 0;
-          counts.set(baseSlug, count + 1);
-          const id = count === 0 ? baseSlug : `${baseSlug}-${count}`;
-          list.push({ id, text, level });
-        }
-      }
-    }
-    return list;
-  }, [content]);
+  const headings = useMemo(() => extractHeadings(content), [content]);
 
   const handleHeadingClick = (id: string) => {
     if (onJumpToHeading) {
