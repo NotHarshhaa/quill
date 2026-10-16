@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useTheme } from "next-themes";
+import React from "react";
 import {
   ListTree,
   History,
   Search as SearchIcon,
   Download,
-  Printer,
   Maximize2,
   Maximize,
   Minimize,
@@ -15,15 +13,7 @@ import {
   Headphones,
   Network,
   BarChart3,
-  Sun,
-  Moon,
-  Laptop,
   MoreHorizontal,
-  X,
-  Command,
-  PenLine,
-  Columns2,
-  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +29,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AmbientSoundPlayer } from "@/components/audio/ambient-sound-player";
 import { Note } from "@/lib/storage/schema";
 import { topBarButtonClass, TopBarGlyph } from "@/components/layout/top-bar";
@@ -52,30 +41,15 @@ export interface MoreMenuProps {
   onOpenOutline?: () => void;
   onOpenHistory?: () => void;
   onFindReplace?: () => void;
-  onExportNote?: () => void;
-  onPrintNote?: () => void;
+  /** Opens the shared Export sheet (download / print / backup). */
+  onOpenExport?: () => void;
   onToggleZen?: () => void;
   onToggleFullscreen?: () => void;
   fullscreen?: boolean;
   onOpenGraph?: () => void;
   onOpenInsights?: () => void;
-  onOpenCommandPalette?: () => void;
   onToggleTypewriter?: () => void;
   typewriter?: boolean;
-  viewMode?: string;
-  onChangeViewMode?: (mode: string) => void;
-}
-
-function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
-    const update = () => setIsMobile(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-  return isMobile;
 }
 
 const groupLabelClass =
@@ -86,11 +60,11 @@ const shortcutClass =
   "ml-auto font-mono text-[10px] tracking-normal text-muted-foreground/60 group-focus/dropdown-menu-item:text-foreground";
 
 /**
- * App-level "⋯" overflow menu. Holds SECONDARY actions only (formatting lives
- * in the editor toolbar; tertiary actions live in the Command Palette +
- * Settings). Renders a keyboard-navigable popover on >=640px and a bottom
- * sheet on phones. Radix supplies arrow-key navigation, Esc-to-close, focus
- * trapping and outside-click dismissal.
+ * App-level "⋯" overflow popover for desktop and tablet (≥768px). Holds
+ * SECONDARY actions only — formatting lives in the editor toolbar, tertiary
+ * actions live in the Command Palette + Settings. Phones get the same action
+ * set from the bottom-sheet variant. Radix supplies arrow-key navigation,
+ * Esc-to-close, focus trapping and outside-click dismissal.
  */
 export function MoreMenu({
   open,
@@ -99,23 +73,15 @@ export function MoreMenu({
   onOpenOutline,
   onOpenHistory,
   onFindReplace,
-  onExportNote,
-  onPrintNote,
+  onOpenExport,
   onToggleZen,
   onToggleFullscreen,
   fullscreen = false,
   onOpenGraph,
   onOpenInsights,
-  onOpenCommandPalette,
   onToggleTypewriter,
   typewriter = false,
-  viewMode,
-  onChangeViewMode,
 }: MoreMenuProps) {
-  const isMobile = useIsMobile();
-  const { theme, setTheme } = useTheme();
-  const [ambientExpanded, setAmbientExpanded] = useState(false);
-
   const close = () => onOpenChange(false);
   const run = (fn?: () => void) => () => {
     fn?.();
@@ -134,135 +100,6 @@ export function MoreMenu({
     </Button>
   );
 
-  /* ---------------------------------- Mobile: bottom sheet ---------------------------------- */
-  if (isMobile) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent
-          showCloseButton={false}
-          aria-describedby={undefined}
-          className="fixed left-0 right-0 bottom-0 top-auto z-50 w-full max-w-none translate-x-0 translate-y-0 gap-0 rounded-none border-t border-border/80 bg-card p-0 font-sans"
-          style={{ top: "auto", bottom: 0, maxHeight: "85dvh", paddingBottom: "var(--safe-bottom)" }}
-        >
-          <DialogTitle className="sr-only">More actions</DialogTitle>
-
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 shrink-0">
-            <div className="flex items-center gap-2">
-              <MoreHorizontal className="size-4 text-primary" strokeWidth={1.75} />
-              <span className="font-mono text-xs font-semibold uppercase tracking-wider">More</span>
-              {activeNote && (
-                <span className="text-[10.5px] font-mono text-muted-foreground truncate max-w-[160px]">
-                  · {activeNote.title || "Untitled"}
-                </span>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={close}
-              aria-label="Close menu"
-              className="size-9 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              <X className="size-4" strokeWidth={1.75} />
-            </Button>
-          </div>
-
-          <div className="overflow-y-auto px-1 py-1.5">
-            <SheetRow icon={Command} label="Command Palette" hint="Ctrl+K" onClick={run(onOpenCommandPalette)} />
-
-            {onChangeViewMode && (
-              <>
-                <SheetLabel>Layout</SheetLabel>
-                <SheetRow
-                  icon={PenLine}
-                  label="Write"
-                  hint={viewMode === "editor" ? "ON" : undefined}
-                  onClick={run(() => onChangeViewMode("editor"))}
-                />
-                <SheetRow
-                  icon={Columns2}
-                  label="Split"
-                  hint={viewMode === "split" ? "ON" : undefined}
-                  onClick={run(() => onChangeViewMode("split"))}
-                />
-                <SheetRow
-                  icon={Eye}
-                  label="Preview"
-                  hint={viewMode === "preview" ? "ON" : undefined}
-                  onClick={run(() => onChangeViewMode("preview"))}
-                />
-              </>
-            )}
-
-            <SheetLabel>View</SheetLabel>
-            <SheetRow icon={ListTree} label="Outline" onClick={run(onOpenOutline)} />
-            <SheetRow icon={Maximize2} label="Zen Focus Mode" hint="Ctrl+Shift+F" onClick={run(onToggleZen)} />
-            <SheetRow
-              icon={fullscreen ? Minimize : Maximize}
-              label={fullscreen ? "Exit Fullscreen" : "Fullscreen"}
-              onClick={run(onToggleFullscreen)}
-            />
-            <SheetRow
-              icon={Feather}
-              label="Typewriter scrolling"
-              hint={typewriter ? "ON" : undefined}
-              onClick={run(onToggleTypewriter)}
-            />
-
-            <SheetLabel>Note</SheetLabel>
-            <SheetRow icon={History} label="Version history" onClick={run(onOpenHistory)} />
-            <SheetRow icon={SearchIcon} label="Find & Replace" hint="Ctrl+F" onClick={run(onFindReplace)} />
-
-            <SheetLabel>Export</SheetLabel>
-            <SheetRow
-              icon={Download}
-              label="Download .md"
-              disabled={!activeNote}
-              onClick={run(onExportNote)}
-            />
-            <SheetRow icon={Printer} label="Print/PDF" hint="Ctrl+P" onClick={run(onPrintNote)} />
-
-            <SheetLabel>Tools</SheetLabel>
-            <SheetRow icon={Network} label="Knowledge Graph" onClick={run(onOpenGraph)} />
-            <SheetRow icon={BarChart3} label="Writing Analytics" onClick={run(onOpenInsights)} />
-            <button
-              type="button"
-              onClick={() => setAmbientExpanded((v) => !v)}
-              aria-expanded={ambientExpanded}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-sans text-foreground hover:bg-muted/50 transition-colors"
-            >
-              <Headphones className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-              <span className="flex-1 text-left">Ambient Sounds</span>
-              <span className="text-[10px] font-mono text-muted-foreground">
-                {ambientExpanded ? "–" : "+"}
-              </span>
-            </button>
-            {ambientExpanded && (
-              <div className="px-2 pb-2 overflow-x-auto">
-                <AmbientSoundPlayer />
-              </div>
-            )}
-
-            <div className="h-px bg-border/60 my-1.5" />
-
-            {/* Theme (header toggle is hidden on phones) */}
-            <div className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-sans text-foreground">
-              <Sun className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-              <span className="flex-1">Theme</span>
-            </div>
-            <div className="flex items-center gap-1 px-3 pb-2">
-              <ThemeButton value="light" current={theme} onSelect={setTheme} icon={Sun} label="Light" />
-              <ThemeButton value="dark" current={theme} onSelect={setTheme} icon={Moon} label="Dark" />
-              <ThemeButton value="system" current={theme} onSelect={setTheme} icon={Laptop} label="Auto" />
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  /* ---------------------------------- Desktop / tablet: popover ---------------------------------- */
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <Tooltip>
@@ -310,11 +147,10 @@ export function MoreMenu({
         <DropdownMenuLabel className={groupLabelClass}>Export</DropdownMenuLabel>
         <MenuItem
           icon={Download}
-          label="Download .md"
+          label="Export…"
           disabled={!activeNote}
-          onSelect={run(onExportNote)}
+          onSelect={run(onOpenExport)}
         />
-        <MenuItem icon={Printer} label="Print/PDF" hint="Ctrl+P" onSelect={run(onPrintNote)} />
 
         <DropdownMenuSeparator className="border-border/50" />
 
@@ -355,66 +191,5 @@ function MenuItem({
       <span className="flex-1">{label}</span>
       {hint && <DropdownMenuShortcut className={shortcutClass}>{hint}</DropdownMenuShortcut>}
     </DropdownMenuItem>
-  );
-}
-
-function SheetLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="px-3 pt-3 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground/60">
-      {children}
-    </div>
-  );
-}
-
-function SheetRow({
-  icon: Icon,
-  label,
-  hint,
-  disabled,
-  onClick,
-}: {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  label: string;
-  hint?: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-sans text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-    >
-      <Icon className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.75} />
-      <span className="flex-1 text-left">{label}</span>
-      {hint && <span className="text-[9.5px] font-mono text-muted-foreground">{hint}</span>}
-    </button>
-  );
-}
-
-function ThemeButton({
-  value,
-  current,
-  onSelect,
-  icon: Icon,
-  label,
-}: {
-  value: string;
-  current?: string;
-  onSelect: (v: string) => void;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  label: string;
-}) {
-  return (
-    <Button
-      size="xs"
-      variant={current === value ? "default" : "secondary"}
-      onClick={() => onSelect(value)}
-      className="flex-1 text-[10.5px] h-7 rounded-none gap-1 normal-case tracking-normal"
-    >
-      <Icon className="size-3" strokeWidth={1.75} />
-      {label}
-    </Button>
   );
 }

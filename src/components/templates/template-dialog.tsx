@@ -3,10 +3,9 @@
 import React, { useState } from "react";
 import { NOTE_TEMPLATES, NoteTemplate } from "@/lib/templates/noteTemplates";
 import { Corners } from "@/components/frame";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Users, Sun, Compass, Calendar, FileText, Check, Sparkles, X } from "lucide-react";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
+import { Users, Sun, Compass, Calendar, FileText, Check, Sparkles } from "lucide-react";
 
 interface TemplateDialogProps {
   isOpen: boolean;
@@ -22,6 +21,10 @@ const ICON_MAP: Record<string, React.ElementType> = {
   FileText,
 };
 
+/**
+ * Template picker. Bottom sheet on phones and a right-side drawer on desktop,
+ * sharing the same list + preview content.
+ */
 export function TemplateDialog({
   isOpen,
   onClose,
@@ -40,50 +43,37 @@ export function TemplateDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent
-        showCloseButton={false}
-        className="w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-3xl h-[75vh] flex flex-col p-0 gap-0 border border-border bg-background shadow-2xl rounded-none font-sans overflow-hidden"
-      >
-        <Corners size="sm" offset="border" weight="thin" light />
-
-        {/* Dialog Header */}
-        <div className="h-12 px-3 sm:px-5 border-b border-border flex items-center justify-between bg-muted/40 select-none shrink-0 gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <Sparkles className="size-4 text-primary shrink-0" />
-            <DialogTitle className="text-sm font-semibold text-foreground font-sans truncate">
-              Choose Note Template
-            </DialogTitle>
-            <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 border border-border rounded-none shrink-0">
-              {NOTE_TEMPLATES.length} TEMPLATES
-            </Badge>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Button
-              size="xs"
-              variant="default"
-              onClick={handleApply}
-              className="gap-1.5 font-sans rounded-none h-7 px-3 text-xs"
-            >
-              <Check className="size-3" />
-              <span>Use Template</span>
-            </Button>
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              onClick={onClose}
-              className="h-7 w-7 rounded-none text-muted-foreground hover:text-foreground"
-              aria-label="Close dialog"
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Template List & Preview Split */}
-        <div className="flex-1 flex min-h-0">
-          {/* List (Left) */}
-          <div className="w-60 sm:w-72 border-r border-border/70 overflow-y-auto bg-muted/20 select-none p-2 space-y-1.5 shrink-0">
+    <ResponsiveSheet
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      title="Choose Note Template"
+      icon={<Sparkles className="size-4 shrink-0 text-primary" strokeWidth={1.75} />}
+      badge={
+        <span className="shrink-0 border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+          {NOTE_TEMPLATES.length} TEMPLATES
+        </span>
+      }
+      headerActions={
+        <Button
+          size="xs"
+          variant="default"
+          onClick={handleApply}
+          className="h-7 gap-1.5 rounded-none px-2.5 text-xs font-sans sm:px-3"
+        >
+          <Check className="size-3" />
+          <span className="hidden min-[420px]:inline">Use Template</span>
+          <span className="min-[420px]:hidden">Use</span>
+        </Button>
+      }
+      drawerWidth="lg"
+      snapPoints={["half", "full"]}
+      initialSnap="full"
+      bodyClassName="flex min-h-0 flex-col overflow-hidden p-0"
+    >
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        {/* Template list — horizontal cards on phones, vertical column on desktop */}
+        <div className="shrink-0 border-b border-border/70 bg-muted/20 p-2 select-none md:w-72 md:overflow-y-auto md:border-r md:border-b-0">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 md:flex-col md:gap-1.5 md:overflow-visible md:pb-0">
             {NOTE_TEMPLATES.map((tmpl) => {
               const isSelected = tmpl.id === selectedId;
               const IconComp = ICON_MAP[tmpl.iconName] || FileText;
@@ -92,25 +82,29 @@ export function TemplateDialog({
                 <button
                   key={tmpl.id}
                   onClick={() => setSelectedId(tmpl.id)}
-                  className={`relative w-full text-left p-3 transition-colors border ${
+                  className={`relative w-[13rem] shrink-0 border p-3 text-left transition-colors md:w-full ${
                     isSelected
-                      ? "bg-card border-border shadow-xs text-foreground"
-                      : "bg-transparent border-transparent hover:bg-muted/40 text-muted-foreground"
+                      ? "border-border bg-card text-foreground shadow-xs"
+                      : "border-transparent bg-transparent text-muted-foreground hover:bg-muted/40"
                   }`}
                 >
                   {isSelected && <Corners size="sm" offset="border" weight="thin" light />}
                   <div className="flex items-center gap-2">
-                    <IconComp className={`size-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
-                    <span className="text-xs font-semibold text-foreground">{tmpl.title}</span>
+                    <IconComp
+                      className={`size-4 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`}
+                    />
+                    <span className="truncate text-xs font-semibold text-foreground">
+                      {tmpl.title}
+                    </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground/80 mt-1 line-clamp-2 font-sans">
+                  <p className="mt-1 line-clamp-2 font-sans text-[11px] text-muted-foreground/80">
                     {tmpl.description}
                   </p>
-                  <div className="flex items-center gap-1 mt-2 flex-wrap">
+                  <div className="mt-2 flex flex-wrap items-center gap-1">
                     {tmpl.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="text-[9px] font-mono text-muted-foreground/70 bg-muted/50 px-1 py-0.2 border border-border/40"
+                        className="border border-border/40 bg-muted/50 px-1 py-0.2 font-mono text-[9px] text-muted-foreground/70"
                       >
                         #{tag}
                       </span>
@@ -120,13 +114,13 @@ export function TemplateDialog({
               );
             })}
           </div>
-
-          {/* Preview (Right) */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-background font-mono text-xs text-foreground/90 whitespace-pre-wrap leading-relaxed">
-            {selectedTemplate.content}
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {/* Preview */}
+        <div className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap bg-background p-4 font-mono text-xs leading-relaxed text-foreground/90 sm:p-6">
+          {selectedTemplate.content}
+        </div>
+      </div>
+    </ResponsiveSheet>
   );
 }

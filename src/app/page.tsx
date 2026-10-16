@@ -50,12 +50,15 @@ import { MobileHeader } from "@/components/layout/mobile-header";
 import { MobileTabBar, MobileTab } from "@/components/layout/mobile-tab-bar";
 import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet";
 import { MobileAISheet } from "@/components/layout/mobile-ai-sheet";
+import { ExportSheet } from "@/components/layout/export-sheet";
 import { KeyboardAccessoryBar } from "@/components/editor/keyboard-accessory-bar";
 import { emitEditorCommand } from "@/lib/editor/editorCommands";
 import { useEditorState } from "@/hooks/useEditorState";
 import { useIsMobileShell } from "@/hooks/useMediaQuery";
 import { useKeyboardInset } from "@/hooks/useKeyboardInset";
+import { useHorizontalSwipe } from "@/hooks/useHorizontalSwipe";
 import { hapticTap } from "@/lib/ui/haptics";
+import { closeTopOverlay, overlayDepth } from "@/lib/ui/overlayStack";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -126,6 +129,7 @@ export default function QuillPage() {
   const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
   const [isAIStatusOpen, setIsAIStatusOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
   const [isDocPanelOpen, setIsDocPanelOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -215,6 +219,26 @@ export default function QuillPage() {
     setSideVisible(next === "notes");
   };
 
+  // Swipe the editor surface horizontally to flip Write ↔ Preview on touch
+  // devices. Disabled while typing (focused editable / open keyboard) and in
+  // zen mode, so caret placement and text selection are never hijacked.
+  const editorSwipe = useHorizontalSwipe({
+    enabled: isMobileShell && !isZenMode && !keyboardVisible,
+    threshold: 56,
+    maxDrag: 96,
+    slop: 14,
+    trackOffset: false,
+    ignoreFocusedEditable: true,
+    onSwipeLeft: () => {
+      hapticTap();
+      setViewMode("preview");
+    },
+    onSwipeRight: () => {
+      hapticTap();
+      setViewMode("editor");
+    },
+  });
+
   // Latest editor content & active note, readable from effect cleanups
   const latestEditorRef = useRef({ id: activeNoteId, content: localContent, note: activeNote });
   useEffect(() => {
@@ -283,8 +307,8 @@ export default function QuillPage() {
       if (e.key === "Escape") {
         if (isZenMode) {
           setIsZenMode(false);
-        } else if (isMobileMoreOpen || isMobileAIOpen) {
-          // The bottom sheet owns Escape (Radix closes it) — don't also navigate
+        } else if (overlayDepth() > 0) {
+          // An open sheet/drawer owns Escape (Radix closes it) — don't navigate
         } else if (isMobileViewport() && mobileView === "editor") {
           setMobileView("notes");
           setSideVisible(true);
@@ -311,8 +335,11 @@ export default function QuillPage() {
       .then(({ App }) => {
         if (cancelled) return;
         App.addListener("backButton", () => {
+          // Any sheet/drawer registered on the overlay stack closes first
+          if (closeTopOverlay()) return;
           if (isMobileMoreOpen) return setIsMobileMoreOpen(false);
           if (isMobileAIOpen) return setIsMobileAIOpen(false);
+          if (isExportOpen) return setIsExportOpen(false);
           if (isAIStatusOpen) return setIsAIStatusOpen(false);
           if (isMoreOpen) return setIsMoreOpen(false);
           if (isWelcomeOpen) return setIsWelcomeOpen(false);
@@ -345,6 +372,7 @@ export default function QuillPage() {
   }, [
     isMobileMoreOpen,
     isMobileAIOpen,
+    isExportOpen,
     isAIStatusOpen,
     isMoreOpen,
     isWelcomeOpen,
@@ -722,18 +750,14 @@ export default function QuillPage() {
                   onOpenOutline={handleOpenOutline}
                   onOpenHistory={() => setIsHistoryOpen(true)}
                   onFindReplace={() => emitEditorCommand("find")}
-                  onExportNote={handleExportActiveNote}
-                  onPrintNote={() => window.print()}
+                  onOpenExport={() => setIsExportOpen(true)}
                   onToggleZen={() => setIsZenMode(true)}
                   onToggleFullscreen={handleToggleFullscreen}
                   fullscreen={isFullscreen}
                   onOpenGraph={() => setIsGraphOpen(true)}
                   onOpenInsights={() => setIsInsightsOpen(true)}
-                  onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
                   onToggleTypewriter={() => emitEditorCommand("typewriter")}
                   typewriter={editorState.typewriter}
-                  viewMode={viewMode}
-                  onChangeViewMode={(m) => setViewMode(m as ViewMode)}
                 />
 
                 {/* Theme quick-toggle (hidden on phone widths — available in ⋯ More + Settings) */}
@@ -760,7 +784,7 @@ export default function QuillPage() {
             />
 
             {/* Editor/Preview Content */}
-            <div className="flex-1 flex min-h-0">
+            <div className="flex-1 flex min-h-0" {...editorSwipe.bind}>
               {isZenMode ? (
                 /* Zen Mode - Centered Focus */
                 <div className="flex-1 flex flex-col h-full bg-drafting-grid relative overflow-hidden">
@@ -867,7 +891,7 @@ export default function QuillPage() {
                   {/* Editor Pane */}
                   <div
                     className={cn(
-                      "editor-pane h-full min-w-0 flex flex-col",
+                      "editor-pane h-full min-w-0 flex flex-col touch-pan-y",
                       viewMode === "editor"
                         ? "flex-1"
                         : viewMode === "split"
@@ -1105,13 +1129,22 @@ export default function QuillPage() {
           onOpenOutline={handleOpenOutline}
           onOpenHistory={() => setIsHistoryOpen(true)}
           onFindReplace={() => emitEditorCommand("find")}
-          onExportNote={handleExportActiveNote}
-          onPrintNote={() => window.print()}
+          onOpenExport={() => setIsExportOpen(true)}
           onToggleZen={() => setIsZenMode(true)}
           onToggleFullscreen={handleToggleFullscreen}
           fullscreen={isFullscreen}
           onToggleTypewriter={() => emitEditorCommand("typewriter")}
           typewriter={editorState.typewriter}
+        />
+
+        {/* Export sheet (phone bottom sheet · desktop right drawer) */}
+        <ExportSheet
+          open={isExportOpen}
+          onOpenChange={setIsExportOpen}
+          activeNote={activeNote}
+          onDownloadMarkdown={handleExportActiveNote}
+          onPrint={() => window.print()}
+          onBackupAll={handleBackupNotes}
         />
 
         {/* In-App Update Notifier (Only active in native mobile app) */}

@@ -49,6 +49,10 @@ import { QuillLogo, QuillIcon } from "./quill-logo";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { CURRENT_APP_VERSION } from "@/lib/updater/update-checker";
+import { useHorizontalSwipe } from "@/hooks/useHorizontalSwipe";
+import { useIsMobileShell } from "@/hooks/useMediaQuery";
+import { hapticTap } from "@/lib/ui/haptics";
+import { NoteActionsSheet } from "./note-actions-sheet";
 
 export type SidebarPanel = "all" | "favorites" | "trash" | "settings";
 
@@ -115,6 +119,8 @@ interface NoteRowProps {
   onTogglePin: (id: string) => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Touch devices: open the "···" actions in a bottom sheet instead. */
+  onRequestActions?: (note: Note) => void;
   onSelectTag?: (tag: string | null) => void;
   selectedTag?: string | null;
 }
@@ -126,21 +132,87 @@ function NoteRow({
   onTogglePin,
   onDuplicate,
   onDelete,
+  onRequestActions,
   onSelectTag,
   selectedTag,
 }: NoteRowProps) {
   const snippet = getSnippet(note.content);
+  const isMobileShell = useIsMobileShell();
+
+  const handlePinSwipe = () => {
+    const wasPinned = !!note.isPinned;
+    hapticTap();
+    onTogglePin(note.id);
+    toast(wasPinned ? "Unpinned" : "Pinned to top", {
+      duration: 5000,
+      action: { label: "Undo", onClick: () => onTogglePin(note.id) },
+    });
+  };
+
+  const handleTrashSwipe = () => {
+    hapticTap("medium");
+    onDelete(note.id);
+  };
+
+  const swipe = useHorizontalSwipe({
+    threshold: 72,
+    maxDrag: 104,
+    ignoreSelector: "[data-swipe-ignore]",
+    onSwipeLeft: handleTrashSwipe,
+    onSwipeRight: handlePinSwipe,
+  });
+
+  const revealOpacity = (value: number) => Math.min(1, Math.max(0, value / 64));
+
+  const handleRowClick = () => {
+    // A committed swipe should never double as a tap-to-open
+    if (swipe.swipedRef.current) {
+      swipe.swipedRef.current = false;
+      return;
+    }
+    onSelect(note.id);
+  };
 
   return (
-    <div
-      onClick={() => onSelect(note.id)}
-      className={cn(
-        "group relative w-full min-w-0 max-w-full text-left p-3 rounded-none transition-all cursor-pointer font-sans select-none box-border",
-        isActive
-          ? "bg-card shadow-xs border border-border text-foreground"
-          : "bg-card/40 hover:bg-muted/40 text-foreground/80 hover:text-foreground border border-border/60 hover:border-border/90"
-      )}
-    >
+    <div className="relative w-full min-w-0 max-w-full overflow-hidden">
+      {/* Swipe reveal layers (only visible while dragging) */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 flex w-1/2 items-center gap-1.5 bg-amber-500/15 pl-3 text-amber-700 dark:text-amber-400"
+        style={{ opacity: revealOpacity(swipe.dx) }}
+      >
+        {note.isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-wider">
+          {note.isPinned ? "Unpin" : "Pin"}
+        </span>
+      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 flex w-1/2 items-center justify-end gap-1.5 bg-destructive/15 pr-3 text-destructive"
+        style={{ opacity: revealOpacity(-swipe.dx) }}
+      >
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-wider">
+          Trash
+        </span>
+        <Trash2 className="size-3.5" />
+      </div>
+
+      <div
+        {...swipe.bind}
+        onClick={handleRowClick}
+        style={{
+          transform: swipe.dx ? `translateX(${swipe.dx}px)` : undefined,
+          transition: swipe.dragging
+            ? "none"
+            : "transform 200ms cubic-bezier(0.32, 0.72, 0, 1)",
+        }}
+        className={cn(
+          "group relative w-full min-w-0 max-w-full text-left p-3 rounded-none transition-all cursor-pointer font-sans select-none box-border touch-pan-y",
+          isActive
+            ? "bg-card shadow-xs border border-border text-foreground"
+            : "bg-card/40 hover:bg-muted/40 text-foreground/80 hover:text-foreground border border-border/60 hover:border-border/90"
+        )}
+      >
       <Corners
         size="sm"
         offset="border"
@@ -176,52 +248,69 @@ function NoteRow({
               : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
           )}
         >
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={(e) => e.stopPropagation()}
-                className="size-7 md:size-5.5 rounded-none text-muted-foreground hover:text-foreground"
-                aria-label="Note options"
-              >
-                <MoreVertical className="size-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-36 font-sans text-xs rounded-none border-border/80">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTogglePin(note.id);
-                }}
-                className="gap-2 text-xs cursor-pointer"
-              >
-                {note.isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-                <span>{note.isPinned ? "Unpin" : "Pin to Top"}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDuplicate(note.id);
-                }}
-                className="gap-2 text-xs cursor-pointer"
-              >
-                <Copy className="size-3.5" />
-                <span>Duplicate</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(note.id);
-                }}
-                className="gap-2 text-xs text-destructive focus:text-destructive cursor-pointer"
-              >
-                <Trash2 className="size-3.5" />
-                <span>Move to Trash</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isMobileShell && onRequestActions ? (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              data-swipe-ignore
+              onClick={(e) => {
+                e.stopPropagation();
+                onRequestActions(note);
+              }}
+              className="size-7 rounded-none text-muted-foreground hover:text-foreground"
+              aria-label="Note options"
+            >
+              <MoreVertical className="size-3" />
+            </Button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  data-swipe-ignore
+                  onClick={(e) => e.stopPropagation()}
+                  className="size-7 md:size-5.5 rounded-none text-muted-foreground hover:text-foreground"
+                  aria-label="Note options"
+                >
+                  <MoreVertical className="size-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-36 font-sans text-xs rounded-none border-border/80">
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTogglePin(note.id);
+                  }}
+                  className="gap-2 text-xs cursor-pointer"
+                >
+                  {note.isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+                  <span>{note.isPinned ? "Unpin" : "Pin to Top"}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDuplicate(note.id);
+                  }}
+                  className="gap-2 text-xs cursor-pointer"
+                >
+                  <Copy className="size-3.5" />
+                  <span>Duplicate</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(note.id);
+                  }}
+                  className="gap-2 text-xs text-destructive focus:text-destructive cursor-pointer"
+                >
+                  <Trash2 className="size-3.5" />
+                  <span>Move to Trash</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
@@ -238,6 +327,7 @@ function NoteRow({
               <button
                 key={tag}
                 type="button"
+                data-swipe-ignore
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectTag?.(selectedTag === tag ? null : tag);
@@ -266,6 +356,7 @@ function NoteRow({
         <span className="text-[9.5px] font-mono text-muted-foreground/50 shrink-0">
           {formatDate(note.updatedAt)}
         </span>
+      </div>
       </div>
     </div>
   );
@@ -340,6 +431,8 @@ export function AppSidebar({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
+  /** Note whose "···" actions are open in the touch bottom sheet. */
+  const [actionsNote, setActionsNote] = useState<Note | null>(null);
   const { theme, setTheme } = useTheme();
 
   // Restore persisted width
@@ -423,6 +516,14 @@ export function AppSidebar({
   const handleDuplicate = (id: string) => {
     onDuplicateNote(id);
     toast.success("Note duplicated");
+  };
+
+  const handleMoveToTrash = (id: string) => {
+    onDeleteNote(id);
+    toast("Moved to Trash", {
+      duration: 6000,
+      action: { label: "Undo", onClick: () => onRestoreNote(id) },
+    });
   };
 
   return (
@@ -902,7 +1003,8 @@ export function AppSidebar({
                             onSelect={handleNoteClick}
                             onTogglePin={onTogglePin}
                             onDuplicate={handleDuplicate}
-                            onDelete={onDeleteNote}
+                            onDelete={handleMoveToTrash}
+                            onRequestActions={setActionsNote}
                             onSelectTag={onSelectTag}
                             selectedTag={selectedTag}
                           />
@@ -938,7 +1040,8 @@ export function AppSidebar({
                       onSelect={handleNoteClick}
                       onTogglePin={onTogglePin}
                       onDuplicate={handleDuplicate}
-                      onDelete={onDeleteNote}
+                      onDelete={handleMoveToTrash}
+                      onRequestActions={setActionsNote}
                       onSelectTag={onSelectTag}
                       selectedTag={selectedTag}
                     />
@@ -1243,6 +1346,18 @@ export function AppSidebar({
           />
         )}
       </aside>
+
+      {/* Touch devices: the note "···" actions open as a bottom sheet */}
+      <NoteActionsSheet
+        open={!!actionsNote}
+        onOpenChange={(next) => {
+          if (!next) setActionsNote(null);
+        }}
+        note={actionsNote ?? undefined}
+        onTogglePin={onTogglePin}
+        onDuplicate={handleDuplicate}
+        onMoveToTrash={handleMoveToTrash}
+      />
     </>
   );
 }

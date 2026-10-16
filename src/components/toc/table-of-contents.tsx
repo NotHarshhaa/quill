@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { ListTree, Hash, X, ChevronRight } from "lucide-react";
-import { Corners } from "@/components/frame";
-import { Button } from "@/components/ui/button";
+import { ListTree, Hash, ChevronRight } from "lucide-react";
+import { ResponsiveSheet } from "@/components/ui/responsive-sheet";
 import { extractHeadings, type TocHeading } from "@/lib/markdown/outline";
+import { cn } from "@/lib/utils";
 
 export type { TocHeading };
 
@@ -15,6 +15,10 @@ interface TableOfContentsProps {
   onJumpToHeading?: (id: string) => void;
 }
 
+/**
+ * Document outline. Bottom sheet on phones and a right-side drawer on tablets
+ * (desktop ≥1024px docks the persistent DocumentPanel instead).
+ */
 export function TableOfContents({
   isOpen,
   onClose,
@@ -34,93 +38,71 @@ export function TableOfContents({
         el.classList.add("bg-primary/10", "transition-colors", "duration-500");
         setTimeout(() => {
           el.classList.remove("bg-primary/10");
-        }, 1500);
+        }, 1200);
       }
     }
-    // On small screens, close after jump
+    // On small screens, close after jump so the note is visible again
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       onClose();
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-80 max-w-[85vw] bg-card/95 backdrop-blur-md border-l border-border/80 shadow-2xl flex flex-col font-sans select-none animate-in slide-in-from-right duration-200">
-      <Corners size="sm" offset="border" weight="thin" light />
-
-      {/* Header (Edge-to-edge safe area clearance) */}
-      <div
-        className="border-b border-border/70 bg-muted/30 shrink-0"
-        style={{
-          paddingTop: "var(--safe-top)",
-        }}
-      >
-        <div className="h-12 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ListTree className="size-4 text-primary" />
-            <span className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
-              Document Outline
-            </span>
-            <span className="text-[10.5px] font-mono text-muted-foreground">
-              ({headings.length})
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={onClose}
-            className="h-7 w-7 rounded-none text-muted-foreground hover:text-foreground"
-            aria-label="Close Outline"
-          >
-            <X className="size-4" />
-          </Button>
+    <ResponsiveSheet
+      open={isOpen}
+      onOpenChange={(open) => !open && onClose()}
+      title="Document Outline"
+      icon={<ListTree className="size-4 shrink-0 text-primary" strokeWidth={1.75} />}
+      badge={
+        <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground">
+          ({headings.length})
+        </span>
+      }
+      drawerWidth="md"
+      snapPoints={["half", "full"]}
+      initialSnap="half"
+      bodyClassName="p-3"
+    >
+      {headings.length === 0 ? (
+        <div className="flex h-full min-h-[8rem] flex-col items-center justify-center p-4 text-center text-muted-foreground/60">
+          <Hash className="mb-2 size-8 opacity-30" />
+          <p className="text-xs">No headings found in this document.</p>
+          <p className="mt-1 text-[11px] text-muted-foreground/50">
+            Add headings with #, ##, or ### to generate an outline.
+          </p>
         </div>
-      </div>
-
-      {/* Headings List */}
-      <div
-        className="flex-1 overflow-y-auto p-3 space-y-1"
-        style={{
-          paddingBottom: "max(0.75rem, var(--safe-bottom))",
-        }}
-      >
-        {headings.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/60 p-4">
-            <Hash className="size-8 mb-2 opacity-30" />
-            <p className="text-xs">No headings found in this document.</p>
-            <p className="text-[11px] text-muted-foreground/50 mt-1">
-              Add headings with #, ##, or ### to generate an outline.
-            </p>
-          </div>
-        ) : (
-          headings.map((heading, idx) => {
+      ) : (
+        <div className="space-y-1">
+          {headings.map((heading, idx) => {
             const indentClass =
               heading.level === 1
                 ? "pl-2 font-semibold text-foreground"
                 : heading.level === 2
-                ? "pl-5 text-foreground/90 font-medium"
-                : heading.level === 3
-                ? "pl-8 text-foreground/80"
-                : "pl-11 text-muted-foreground";
+                  ? "pl-5 text-foreground/90 font-medium"
+                  : heading.level === 3
+                    ? "pl-8 text-foreground/80"
+                    : "pl-11 text-muted-foreground";
 
             return (
               <button
                 key={`${heading.id}-${idx}`}
                 type="button"
                 onClick={() => handleHeadingClick(heading.id)}
-                className={`w-full flex items-center gap-2 py-1.5 pr-2 rounded-none text-left text-xs transition-colors hover:bg-muted/80 group ${indentClass}`}
+                className={cn(
+                  "group flex w-full items-center gap-2 rounded-none py-1.5 pr-2 text-left text-xs transition-colors hover:bg-muted/80",
+                  indentClass
+                )}
               >
-                <span className="font-mono text-[10px] text-muted-foreground/50 shrink-0 group-hover:text-primary">
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground/50 group-hover:text-primary">
                   H{heading.level}
                 </span>
-                <span className="truncate flex-1 font-sans">{heading.text}</span>
-                <ChevronRight className="size-3 opacity-0 group-hover:opacity-60 shrink-0 text-muted-foreground" />
+                <span className="flex-1 truncate font-sans">{heading.text}</span>
+                <ChevronRight className="size-3 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-60" />
               </button>
             );
-          })
-        )}
-      </div>
-    </div>
+          })}
+        </div>
+      )}
+    </ResponsiveSheet>
   );
 }

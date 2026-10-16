@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Corners } from "@/components/frame";
 import { aiEngine } from "@/lib/ai/aiEngine";
 import { AIModelProgress, AIProvider } from "@/lib/ai/types";
+import { useOverlayLayer } from "@/lib/ui/overlayStack";
 import { Cpu, Zap, DownloadCloud, CheckCircle2, Shield, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,6 +31,9 @@ export function AIStatusModal({ open, onOpenChange }: AIStatusModalProps) {
     status: "idle",
   });
   const [isPreloading, setIsPreloading] = useState(false);
+
+  // Participates in the Android back-button overlay stack
+  useOverlayLayer(open, () => onOpenChange(false));
 
   useEffect(() => {
     if (!open) return;
