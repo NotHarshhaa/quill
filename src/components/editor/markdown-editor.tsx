@@ -83,11 +83,13 @@ export function MarkdownEditor({
     redo: () => void;
     openFind: () => void;
     toggleTypewriter: () => void;
+    insert: (before: string, after?: string, placeholder?: string) => void;
   }>({
     undo: () => {},
     redo: () => {},
     openFind: () => {},
     toggleTypewriter: () => {},
+    insert: () => {},
   });
 
   useEffect(() => {
@@ -96,6 +98,11 @@ export function MarkdownEditor({
       else if (command === "typewriter") handlersRef.current.toggleTypewriter();
       else if (command === "undo") handlersRef.current.undo();
       else if (command === "redo") handlersRef.current.redo();
+      else if (command === "bold") handlersRef.current.insert("**", "**", "bold text");
+      else if (command === "italic") handlersRef.current.insert("*", "*", "italic text");
+      else if (command === "bullet") handlersRef.current.insert("- ", "", "item");
+      else if (command === "checklist") handlersRef.current.insert("- [ ] ", "", "task");
+      else if (command === "link") handlersRef.current.insert("[", "](url)", "text");
     });
   }, []);
 
@@ -179,6 +186,8 @@ export function MarkdownEditor({
     redo: handleRedo,
     openFind: () => setIsFindOpen(true),
     toggleTypewriter: () => setIsTypewriter((prev) => !prev),
+    // Wrapped so the reference resolves after `insertSnippet` is declared below
+    insert: (before, after, placeholder) => insertSnippet(before, after, placeholder),
   };
 
   const handleCursorScroll = () => {

@@ -22,8 +22,6 @@ import {
   PinOff,
   Sun,
   Moon,
-  Undo2,
-  Redo2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -48,11 +46,26 @@ import {
 } from "@/components/layout/top-bar";
 import { AIAssistantMenu } from "@/components/ai/ai-assistant-menu";
 import { AIStatusModal } from "@/components/ai/ai-status-modal";
+import { MobileHeader } from "@/components/layout/mobile-header";
+import { MobileTabBar, MobileTab } from "@/components/layout/mobile-tab-bar";
+import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet";
+import { MobileAISheet } from "@/components/layout/mobile-ai-sheet";
+import { KeyboardAccessoryBar } from "@/components/editor/keyboard-accessory-bar";
 import { emitEditorCommand } from "@/lib/editor/editorCommands";
 import { useEditorState } from "@/hooks/useEditorState";
+import { useIsMobileShell } from "@/hooks/useMediaQuery";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
+import { hapticTap } from "@/lib/ui/haptics";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
+type MobileView = "notes" | "editor";
+
+const MOBILE_MEDIA = "(max-width: 767px)";
+
+function isMobileViewport(): boolean {
+  return typeof window !== "undefined" && window.matchMedia(MOBILE_MEDIA).matches;
+}
 
 const VIEW_SEGMENTS: ViewSegment[] = [
   { value: "editor", label: "Write", icon: PenLine, shortcut: "Ctrl+1" },
@@ -116,6 +129,17 @@ export default function QuillPage() {
   const [isDocPanelOpen, setIsDocPanelOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // ----- Mobile shell (<768px / Android APK) -----
+  const isMobileShell = useIsMobileShell();
+  const keyboardInset = useKeyboardInset();
+  const keyboardVisible = keyboardInset > 0;
+  const [mobileView, setMobileView] = useState<MobileView>("editor");
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
+  const [isMobileAIOpen, setIsMobileAIOpen] = useState(false);
+  const [searchFocusSignal, setSearchFocusSignal] = useState(0);
+  // True while the markdown textarea owns focus (drives the accessory bar)
+  const [editorFocused, setEditorFocused] = useState(false);
+
   // Hidden file inputs for .md import and JSON restore
   const markdownInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -124,9 +148,10 @@ export default function QuillPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       if (window.innerWidth < 768) {
-        // Mobile phones: start in clean preview, sidebar off-canvas
-        setViewMode("preview");
+        // Mobile phones: editor-first shell; the notes list is a full-screen page
+        setViewMode("editor");
         setSideVisible(false);
+        setMobileView("editor");
       } else if (window.innerWidth < 1024) {
         // Tablet devices (768px-1023px): start with sleek 48px rail + split view
         setViewMode("split");
@@ -167,6 +192,28 @@ export default function QuillPage() {
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
+
+  // Mobile has no Split view — collapse it to the Write pane when we land on a phone
+  useEffect(() => {
+    if (isMobileShell && viewMode === "split") setViewMode("editor");
+  }, [isMobileShell, viewMode]);
+
+  // Track whether the markdown textarea owns focus so the keyboard accessory bar
+  // only appears for the editor (not for the search / title / settings fields).
+  useEffect(() => {
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null;
+      setEditorFocused(!!target && target.tagName === "TEXTAREA");
+    };
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  }, []);
+
+  // Keep the shell's mobile view and the desktop sidebar flag in sync
+  const gotoMobileView = (next: MobileView) => {
+    setMobileView(next);
+    setSideVisible(next === "notes");
+  };
 
   // Latest editor content & active note, readable from effect cleanups
   const latestEditorRef = useRef({ id: activeNoteId, content: localContent, note: activeNote });
@@ -232,22 +279,23 @@ export default function QuillPage() {
         e.preventDefault();
         setSideVisible((prev) => !prev);
       }
-      // Escape to close mobile sidebar drawer / exit zen mode
+      // Escape: exit zen mode, or step back from the editor to the notes list
       if (e.key === "Escape") {
         if (isZenMode) {
           setIsZenMode(false);
-        } else if (
-          sideVisible &&
-          typeof window !== "undefined" &&
-          window.matchMedia("(max-width: 767px)").matches
-        ) {
+        } else if (isMobileMoreOpen || isMobileAIOpen) {
+          // The bottom sheet owns Escape (Radix closes it) — don't also navigate
+        } else if (isMobileViewport() && mobileView === "editor") {
+          setMobileView("notes");
+          setSideVisible(true);
+        } else if (sideVisible && isMobileViewport()) {
           setSideVisible(false);
         }
       }
     };
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [isZenMode, sideVisible, createNote]);
+  }, [isZenMode, sideVisible, createNote, mobileView, isMobileMoreOpen, isMobileAIOpen]);
 
   // Android hardware back button: close the topmost overlay first (mirrors the
   // Escape behavior), then close the mobile drawer / zen mode, and only exit
@@ -263,6 +311,8 @@ export default function QuillPage() {
       .then(({ App }) => {
         if (cancelled) return;
         App.addListener("backButton", () => {
+          if (isMobileMoreOpen) return setIsMobileMoreOpen(false);
+          if (isMobileAIOpen) return setIsMobileAIOpen(false);
           if (isAIStatusOpen) return setIsAIStatusOpen(false);
           if (isMoreOpen) return setIsMoreOpen(false);
           if (isWelcomeOpen) return setIsWelcomeOpen(false);
@@ -273,12 +323,11 @@ export default function QuillPage() {
           if (isHistoryOpen) return setIsHistoryOpen(false);
           if (isCommandPaletteOpen) return setIsCommandPaletteOpen(false);
           if (isZenMode) return setIsZenMode(false);
-          if (
-            sideVisible &&
-            typeof window !== "undefined" &&
-            window.matchMedia("(max-width: 767px)").matches
-          ) {
-            return setSideVisible(false);
+          // Shell navigation: editor → notes list → exit
+          if (isMobileViewport() && mobileView === "editor") {
+            setSideVisible(true);
+            setMobileView("notes");
+            return;
           }
           App.exitApp();
         }).then((h) => {
@@ -294,6 +343,8 @@ export default function QuillPage() {
       } catch {}
     };
   }, [
+    isMobileMoreOpen,
+    isMobileAIOpen,
     isAIStatusOpen,
     isMoreOpen,
     isWelcomeOpen,
@@ -304,7 +355,7 @@ export default function QuillPage() {
     isHistoryOpen,
     isCommandPaletteOpen,
     isZenMode,
-    sideVisible,
+    mobileView,
   ]);
 
   // Debounced autosave to repository + periodic revision snapshots + activity tracking
@@ -323,11 +374,12 @@ export default function QuillPage() {
     setLocalContent(newContent);
   };
 
-  // Select note; on mobile also close the sidebar drawer
+  // Select note; on mobile also return from the notes list to the editor
   const handleSelectNote = (id: string) => {
     selectNote(id);
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+    if (isMobileViewport()) {
       setSideVisible(false);
+      setMobileView("editor");
     }
   };
 
@@ -436,6 +488,47 @@ export default function QuillPage() {
     }
   };
 
+  /* --------------------------- Mobile shell wiring --------------------------- */
+
+  const handleMobileTab = (tab: MobileTab) => {
+    if (tab === "notes") {
+      gotoMobileView("notes");
+    } else if (tab === "editor") {
+      gotoMobileView("editor");
+    } else if (tab === "ai") {
+      setIsMobileAIOpen(true);
+    } else {
+      setIsMobileMoreOpen(true);
+    }
+  };
+
+  const handleMobileNewNote = () => {
+    createNote();
+    gotoMobileView("editor");
+  };
+
+  const openNotesPanel = (panel: SidebarPanel) => {
+    setActivePanel(panel);
+    gotoMobileView("notes");
+  };
+
+  const handleMobileSearch = () => {
+    setActivePanel("all");
+    gotoMobileView("notes");
+    setSearchFocusSignal((n) => n + 1);
+  };
+
+  const mobileTab: MobileTab = isMobileMoreOpen
+    ? "more"
+    : isMobileAIOpen
+    ? "ai"
+    : mobileView === "notes"
+    ? "notes"
+    : "editor";
+
+  // Accessory bar swaps in for the tab bar only while typing in the editor
+  const showAccessoryBar = keyboardVisible && editorFocused;
+
   const wordCount = countWords(localContent);
 
   // Trigger celebration toast once when session writing goal is reached
@@ -489,12 +582,20 @@ export default function QuillPage() {
         />
 
         {/* Main Layout */}
-        <div className="flex-1 flex min-h-0">
-          {/* Unified Library Sidebar (All / Favorites / Trash / Settings) */}
+        <div className="relative flex-1 flex min-h-0">
+          {/* Unified Library Sidebar (All / Favorites / Trash / Settings).
+              On phones it becomes a full-screen "Notes" page. */}
           <AppSidebar
             open={sideVisible}
-            onClose={() => setSideVisible(false)}
+            onClose={() => {
+              // Phone: the X on the full-screen Notes page returns to the editor.
+              // Desktop: it collapses the expanded sidebar to the rail.
+              if (isMobileViewport()) gotoMobileView("editor");
+              else setSideVisible(false);
+            }}
             onOpen={() => setSideVisible(true)}
+            mobilePage={mobileView === "notes"}
+            searchFocusSignal={searchFocusSignal}
             activePanel={activePanel}
             onSelectPanel={setActivePanel}
             notes={notes}
@@ -535,13 +636,13 @@ export default function QuillPage() {
           <div className="flex-1 flex flex-col min-w-0">
             {/* Top Bar (Edge-to-edge header with safe-area clearance for camera cutout/status bar) */}
             <header
-              className="border-b border-border/80 shrink-0 bg-background/95 backdrop-blur-xs select-none"
+              className="max-md:hidden border-b border-border/80 shrink-0 bg-background/95 backdrop-blur-xs select-none"
               style={{
                 paddingTop: "var(--safe-top)",
               }}
             >
               <div className="h-12 px-2 sm:px-3 flex items-center gap-2 shrink-0">
-                {/* Zone 1: Left — sidebar toggle · mobile undo/redo · pin · title · word count */}
+                {/* Zone 1: Left — sidebar toggle · pin · title · word count */}
                 <div className="flex items-center gap-2 min-w-0 flex-1 basis-0 justify-start">
                   <TopBarButton
                     label={sideVisible ? "Hide sidebar" : "Show sidebar"}
@@ -551,26 +652,6 @@ export default function QuillPage() {
                   >
                     <TopBarGlyph icon={sideVisible ? PanelLeftClose : PanelLeftOpen} />
                   </TopBarButton>
-
-                  {/* Undo / Redo — phones only (desktop keeps them in the editor toolbar) */}
-                  <div className="flex items-center gap-1 sm:hidden">
-                    <TopBarButton
-                      label="Undo"
-                      shortcut="Ctrl+Z"
-                      onClick={() => emitEditorCommand("undo")}
-                      disabled={!editorState.mounted || !editorState.canUndo}
-                    >
-                      <TopBarGlyph icon={Undo2} />
-                    </TopBarButton>
-                    <TopBarButton
-                      label="Redo"
-                      shortcut="Ctrl+Y"
-                      onClick={() => emitEditorCommand("redo")}
-                      disabled={!editorState.mounted || !editorState.canRedo}
-                    >
-                      <TopBarGlyph icon={Redo2} />
-                    </TopBarButton>
-                  </div>
 
                   {activeNote && (
                     <TopBarButton
@@ -666,6 +747,17 @@ export default function QuillPage() {
               </div>
             </div>
           </header>
+
+            {/* Phone top bar: back · title · Write/Preview · ⋯ */}
+            <MobileHeader
+              className={cn(isZenMode && "hidden")}
+              title={activeNote?.title}
+              onRename={handleRenameNote}
+              onBack={() => gotoMobileView("notes")}
+              viewMode={viewMode === "preview" ? "preview" : "editor"}
+              onViewModeChange={setViewMode}
+              onOpenMore={() => setIsMobileMoreOpen(true)}
+            />
 
             {/* Editor/Preview Content */}
             <div className="flex-1 flex min-h-0">
@@ -849,6 +941,29 @@ export default function QuillPage() {
           onSelectTag={setSelectedTag}
         />
 
+        {/* Phone bottom bar — swaps to the keyboard accessory while typing */}
+        {!isZenMode && (
+          <div
+            className={cn(
+              "md:hidden shrink-0",
+              keyboardVisible && !showAccessoryBar && "hidden"
+            )}
+            style={{ paddingBottom: keyboardVisible ? 0 : "var(--safe-bottom)" }}
+          >
+            {showAccessoryBar ? (
+              <KeyboardAccessoryBar
+                onDismiss={() => (document.activeElement as HTMLElement | null)?.blur?.()}
+              />
+            ) : (
+              <MobileTabBar
+                active={mobileTab}
+                onNavigate={handleMobileTab}
+                onNewNote={handleMobileNewNote}
+              />
+            )}
+          </div>
+        )}
+
         {/* Command Palette (Cmd+K / Ctrl+K) */}
         <CommandPalette
           isOpen={isCommandPaletteOpen}
@@ -964,6 +1079,39 @@ export default function QuillPage() {
         <AIStatusModal
           open={isAIStatusOpen}
           onOpenChange={setIsAIStatusOpen}
+        />
+
+        {/* Phone bottom sheets (AI · More) */}
+        <MobileAISheet
+          open={isMobileAIOpen}
+          onOpenChange={setIsMobileAIOpen}
+          content={localContent}
+          onChangeContent={handleEditorChange}
+          disabled={!activeNote}
+        />
+
+        <MobileMoreSheet
+          open={isMobileMoreOpen}
+          onOpenChange={setIsMobileMoreOpen}
+          activeNote={activeNote}
+          onOpenSearch={handleMobileSearch}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          onOpenTemplates={() => setIsTemplateOpen(true)}
+          onOpenFavorites={() => openNotesPanel("favorites")}
+          onOpenTrash={() => openNotesPanel("trash")}
+          onOpenSettings={() => openNotesPanel("settings")}
+          onOpenGraph={() => setIsGraphOpen(true)}
+          onOpenInsights={() => setIsInsightsOpen(true)}
+          onOpenOutline={handleOpenOutline}
+          onOpenHistory={() => setIsHistoryOpen(true)}
+          onFindReplace={() => emitEditorCommand("find")}
+          onExportNote={handleExportActiveNote}
+          onPrintNote={() => window.print()}
+          onToggleZen={() => setIsZenMode(true)}
+          onToggleFullscreen={handleToggleFullscreen}
+          fullscreen={isFullscreen}
+          onToggleTypewriter={() => emitEditorCommand("typewriter")}
+          typewriter={editorState.typewriter}
         />
 
         {/* In-App Update Notifier (Only active in native mobile app) */}

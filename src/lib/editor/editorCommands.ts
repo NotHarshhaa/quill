@@ -1,12 +1,22 @@
 "use client";
 
 /**
- * Tiny decoupling bridge so app-level surfaces (top bar, More menu, Command
- * Palette) can trigger commands that live inside the MarkdownEditor without
- * hoisting the editor's internal state (textarea ref, undo stack, typewriter
- * flag) — and so those surfaces can *read* a small snapshot of that state.
+ * Tiny decoupling bridge so app-level surfaces (top bar, More menu, mobile
+ * tab bar / keyboard accessory bar, Command Palette) can trigger commands that
+ * live inside the MarkdownEditor without hoisting the editor's internal state
+ * (textarea ref, undo stack, typewriter flag) — and so those surfaces can
+ * *read* a small snapshot of that state.
  */
-export type EditorCommand = "find" | "typewriter" | "undo" | "redo";
+export type EditorCommand =
+  | "find"
+  | "typewriter"
+  | "undo"
+  | "redo"
+  | "bold"
+  | "italic"
+  | "bullet"
+  | "checklist"
+  | "link";
 
 const EDITOR_COMMAND_EVENT = "quill:editor-command";
 const EDITOR_STATE_EVENT = "quill:editor-state";

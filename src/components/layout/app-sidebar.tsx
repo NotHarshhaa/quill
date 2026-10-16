@@ -299,12 +299,18 @@ export interface AppSidebarProps {
   onExportAll: () => void;
   onImportBackup: () => void;
   onImportMarkdown?: () => void;
+  /** Phone shell: true while this sidebar is the active full-screen "Notes" page. */
+  mobilePage?: boolean;
+  /** Increment to move focus into the search field (used by the phone More sheet). */
+  searchFocusSignal?: number;
 }
 
 export function AppSidebar({
   open,
   onClose,
   onOpen,
+  mobilePage = false,
+  searchFocusSignal = 0,
   activePanel,
   onSelectPanel,
   notes,
@@ -331,6 +337,7 @@ export function AppSidebar({
   onImportMarkdown,
 }: AppSidebarProps) {
   const asideRef = useRef<HTMLElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -342,6 +349,13 @@ export function AppSidebar({
       setWidth(clampSidebarWidth(stored));
     }
   }, []);
+
+  // Focus the search field when the mobile shell asks for it
+  useEffect(() => {
+    if (searchFocusSignal > 0) {
+      searchInputRef.current?.focus();
+    }
+  }, [searchFocusSignal]);
 
   const handleResizeStart = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
@@ -413,16 +427,6 @@ export function AppSidebar({
 
   return (
     <>
-      {/* Mobile backdrop */}
-      <div
-        aria-hidden
-        onClick={onClose}
-        className={cn(
-          "fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity duration-200 md:hidden",
-          open ? "opacity-100" : "opacity-0 pointer-events-none"
-        )}
-      />
-
       <aside
         ref={asideRef}
         aria-label="Library"
@@ -431,11 +435,12 @@ export function AppSidebar({
           "relative flex flex-col h-full bg-card/95 border-r border-border/80 shrink-0 overflow-hidden select-none font-sans",
           isResizing
             ? "transition-none"
-            : "transition-[width,transform] duration-200 ease-out",
-          // Mobile: off-canvas drawer
-          "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:h-[100dvh]",
-          "max-md:w-[min(320px,calc(100vw-2.5rem))]",
-          open ? "max-md:translate-x-0 max-md:shadow-2xl" : "max-md:-translate-x-full",
+            : "transition-[transform,width] duration-200 ease-out motion-reduce:transition-none",
+          // Phone (<768px): a full-screen "Notes" page that slides over the editor
+          "max-md:absolute max-md:inset-0 max-md:z-30 max-md:h-full max-md:w-full max-md:border-r-0 max-md:bg-background",
+          mobilePage
+            ? "max-md:translate-x-0 max-md:opacity-100"
+            : "max-md:pointer-events-none max-md:-translate-x-full max-md:opacity-0",
           // Desktop: in-flow dock (Full width when open, sleek 48px icon rail when closed)
           open ? "md:w-[var(--sidebar-w)]" : "md:w-12"
         )}
@@ -783,6 +788,7 @@ export function AppSidebar({
                 <Corners size="sm" weight="thin" light />
                 <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground/60" />
                 <Input
+                  ref={searchInputRef}
                   type="text"
                   placeholder={
                     activePanel === "trash"
@@ -1178,12 +1184,7 @@ export function AppSidebar({
           </ScrollArea>
 
           {/* Footer: single Settings utility entry (Graph/Insights/Ambient now live in the More menu + Command Palette) */}
-          <div
-            className="border-t border-border/80 px-2 shrink-0 bg-background/50 font-sans select-none"
-            style={{
-              paddingBottom: "var(--safe-bottom)",
-            }}
-          >
+          <div className="border-t border-border/80 px-2 shrink-0 bg-background/50 font-sans select-none">
             <div className="h-10 flex items-center justify-end">
               {/* Settings Button */}
               <Tooltip>

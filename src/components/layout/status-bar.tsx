@@ -27,7 +27,7 @@ export function StatusBar({
 
   return (
     <footer
-      className="bg-muted/30 border-t border-border/60 shrink-0 select-none"
+      className="max-md:hidden bg-muted/30 border-t border-border/60 shrink-0 select-none"
       style={{
         paddingBottom: "var(--safe-bottom)",
       }}
