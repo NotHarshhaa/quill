@@ -54,6 +54,7 @@ import { ExportSheet } from "@/components/layout/export-sheet";
 import { KeyboardAccessoryBar } from "@/components/editor/keyboard-accessory-bar";
 import { emitEditorCommand } from "@/lib/editor/editorCommands";
 import { useEditorState } from "@/hooks/useEditorState";
+import { useAIActions } from "@/lib/ai/useAIActions";
 import { useIsMobileShell } from "@/hooks/useMediaQuery";
 import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { useHorizontalSwipe } from "@/hooks/useHorizontalSwipe";
@@ -400,6 +401,25 @@ export default function QuillPage() {
 
   const handleEditorChange = (newContent: string) => {
     setLocalContent(newContent);
+  };
+
+  // Offline-AI runner for the command palette (the dropdown menu and the mobile
+  // sheet each own an instance too — the engine is a shared singleton).
+  const { run: runAIAction, isProcessing: aiProcessing } = useAIActions(
+    localContent,
+    handleEditorChange
+  );
+
+  // Move the active note to the trash from app surfaces (palette / menus) with
+  // the same undo affordance the library rows use.
+  const handleMoveActiveToTrash = () => {
+    if (!activeNote) return;
+    const id = activeNote.id;
+    deleteNote(id);
+    toast("Moved to Trash", {
+      duration: 6000,
+      action: { label: "Undo", onClick: () => restoreFromTrash(id) },
+    });
   };
 
   // Select note; on mobile also return from the notes list to the editor
@@ -772,7 +792,7 @@ export default function QuillPage() {
             </div>
           </header>
 
-            {/* Phone top bar: back · title · Write/Preview · ⋯ */}
+            {/* Phone top bar: back · title · Write/Preview · search · ⋯ */}
             <MobileHeader
               className={cn(isZenMode && "hidden")}
               title={activeNote?.title}
@@ -780,6 +800,7 @@ export default function QuillPage() {
               onBack={() => gotoMobileView("notes")}
               viewMode={viewMode === "preview" ? "preview" : "editor"}
               onViewModeChange={setViewMode}
+              onOpenSearch={() => setIsCommandPaletteOpen(true)}
               onOpenMore={() => setIsMobileMoreOpen(true)}
             />
 
@@ -988,17 +1009,18 @@ export default function QuillPage() {
           </div>
         )}
 
-        {/* Command Palette (Cmd+K / Ctrl+K) */}
+        {/* Command Palette (Cmd+K / Ctrl+K) — the single surface for every action */}
         <CommandPalette
           isOpen={isCommandPaletteOpen}
           onClose={() => setIsCommandPaletteOpen(false)}
           notes={allRawNotes}
           activeNote={activeNote}
-          onSelectNote={selectNote}
+          onSelectNote={handleSelectNote}
           onCreateNote={createNote}
           onTogglePin={togglePinNote}
           onOpenHistory={() => setIsHistoryOpen(true)}
           onPrintNote={() => window.print()}
+          onFindReplace={() => emitEditorCommand("find")}
           onOpenTemplates={() => setIsTemplateOpen(true)}
           onToggleZen={() => setIsZenMode((prev) => !prev)}
           onDuplicateActiveNote={() => {
@@ -1007,6 +1029,7 @@ export default function QuillPage() {
               toast.success("Note duplicated");
             }
           }}
+          onMoveActiveToTrash={handleMoveActiveToTrash}
           onExportNote={handleExportActiveNote}
           onImportMarkdown={() => markdownInputRef.current?.click()}
           onBackupNotes={handleBackupNotes}
@@ -1027,7 +1050,28 @@ export default function QuillPage() {
               toast.info("Session writing goal cleared");
             }
           }}
-          onSelectPanel={setActivePanel}
+          writingGoal={writingGoal}
+          onSelectPanel={openNotesPanel}
+          tags={allTags}
+          onSelectTag={(tag) => {
+            setSelectedTag(tag);
+            openNotesPanel("all");
+          }}
+          onCreateFromTemplate={(tmpl) => {
+            createNoteFromTemplate(tmpl);
+            toast.success(`Created note from "${tmpl.title}" template`);
+            if (isMobileViewport()) gotoMobileView("editor");
+          }}
+          onRunAIAction={runAIAction}
+          aiBusy={aiProcessing}
+          typewriter={editorState.typewriter}
+          onToggleTypewriter={() => emitEditorCommand("typewriter")}
+          fullscreen={isFullscreen}
+          onToggleFullscreen={handleToggleFullscreen}
+          onEditorCommand={emitEditorCommand}
+          editorMounted={editorState.mounted}
+          canUndo={editorState.canUndo}
+          canRedo={editorState.canRedo}
         />
 
         {/* Version History Dialog */}

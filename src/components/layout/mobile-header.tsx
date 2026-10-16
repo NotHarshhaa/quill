@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft, PenLine, Eye, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, PenLine, Eye, MoreHorizontal, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InlineEditableTitle } from "@/components/layout/top-bar";
 import { hapticTap } from "@/lib/ui/haptics";
@@ -14,6 +14,8 @@ interface MobileHeaderProps {
   viewMode: "editor" | "preview";
   onViewModeChange: (mode: "editor" | "preview") => void;
   onOpenMore: () => void;
+  /** Open the full-screen search sheet (the command palette). */
+  onOpenSearch?: () => void;
   className?: string;
 }
 
@@ -28,6 +30,7 @@ export function MobileHeader({
   viewMode,
   onViewModeChange,
   onOpenMore,
+  onOpenSearch,
   className,
 }: MobileHeaderProps) {
   return (
@@ -75,6 +78,21 @@ export function MobileHeader({
             onClick={() => onViewModeChange("preview")}
           />
         </div>
+
+        {onOpenSearch && (
+          <button
+            type="button"
+            onClick={() => {
+              hapticTap();
+              onOpenSearch();
+            }}
+            aria-label="Search everything"
+            aria-haspopup="dialog"
+            className="flex size-11 shrink-0 items-center justify-center text-muted-foreground transition-colors motion-reduce:transition-none hover:text-foreground active:bg-muted rounded-none"
+          >
+            <Search className="size-[18px]" strokeWidth={1.75} />
+          </button>
+        )}
 
         <button
           type="button"

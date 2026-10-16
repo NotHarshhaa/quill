@@ -1,36 +1,48 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Note } from "@/lib/storage/schema";
 import {
-  Search,
+  Archive,
+  BarChart3,
+  Bold,
+  Clock,
+  Columns2,
+  Copy,
+  Download,
+  Eye,
+  Feather,
   FileText,
-  Plus,
+  Hash,
+  HelpCircle,
+  History,
+  Italic,
+  Laptop,
+  LayoutTemplate,
+  Link2,
+  List,
+  ListChecks,
+  ListTree,
+  Maximize2,
+  Moon,
+  Network,
+  PanelLeft,
+  PenLine,
   Pin,
   PinOff,
-  Download,
-  Upload,
-  Archive,
-  Sun,
-  Moon,
-  Laptop,
-  History,
+  Plus,
   Printer,
-  Maximize2,
-  Sparkles,
-  Copy,
-  Network,
-  ListTree,
-  BarChart3,
-  HelpCircle,
-  PenLine,
-  Columns2,
-  Eye,
-  PanelLeft,
+  Redo2,
+  Search,
   Settings,
-  Target,
+  Sparkles,
   Star,
+  Sun,
+  Target,
   Trash2,
+  Undo2,
+  Upload,
+  Wand2,
   X,
 } from "lucide-react";
 import { Corners } from "@/components/frame";
@@ -38,6 +50,44 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { useIsMobileShell } from "@/hooks/useMediaQuery";
+import { hapticTap } from "@/lib/ui/haptics";
+import { useOverlayLayer } from "@/lib/ui/overlayStack";
+import { NOTE_TEMPLATES, type NoteTemplate } from "@/lib/templates/noteTemplates";
+import { AI_ACTIONS } from "@/lib/ai/useAIActions";
+import type { AIAction } from "@/lib/ai/types";
+import type { EditorCommand } from "@/lib/editor/editorCommands";
+
+type ViewMode = "editor" | "split" | "preview";
+type Panel = "all" | "favorites" | "trash" | "settings";
+
+/** Top-level grouping of results. Order is fixed by {@link GROUP_ORDER}. */
+type ItemGroup = "notes" | "actions" | "navigation" | "settings";
+type ItemKind = "note" | "tag" | "command";
+
+interface PaletteItem {
+  /** Stable identity — also the key used to remember "recent commands". */
+  id: string;
+  kind: ItemKind;
+  group: ItemGroup;
+  title: string;
+  subtitle?: string;
+  /** Extra searchable text (synonyms, categories) that is never displayed. */
+  keywords?: string;
+  icon: React.ElementType;
+  /** Keyboard shortcut hint shown on the right. */
+  shortcut?: string;
+  /** Trailing mono chip, e.g. `#tag` or `template`. */
+  chip?: string;
+  /** Small badge such as `CURRENT`. */
+  badge?: string;
+  /** Present for note results. */
+  note?: Note;
+  /** Extra tags shown as chips (note results). */
+  tags?: string[];
+  disabled?: boolean;
+  run: () => void;
+}
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -53,6 +103,7 @@ interface CommandPaletteProps {
   onRestoreBackup: () => void;
   onOpenHistory?: () => void;
   onPrintNote?: () => void;
+  onFindReplace?: () => void;
   onOpenTemplates?: () => void;
   onToggleZen?: () => void;
   onDuplicateActiveNote?: () => void;
@@ -65,29 +116,190 @@ interface CommandPaletteProps {
   currentViewMode?: ViewMode;
   onToggleSidebar?: () => void;
   onSetWritingGoal?: (goal: number) => void;
-  onSelectPanel?: (panel: "all" | "favorites" | "trash" | "settings") => void;
+  writingGoal?: number;
+  onSelectPanel?: (panel: Panel) => void;
+  /** Every tag in the library (used by the `#` prefix and free-text search). */
+  tags?: string[];
+  onSelectTag?: (tag: string) => void;
+  /** Create a note from one of the built-in templates. */
+  onCreateFromTemplate?: (template: NoteTemplate) => void;
+  /** Run an offline-AI action against the active note. */
+  onRunAIAction?: (action: AIAction) => void;
+  aiBusy?: boolean;
+  typewriter?: boolean;
+  onToggleTypewriter?: () => void;
+  fullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  onMoveActiveToTrash?: () => void;
+  /** Runs editor-local commands (formatting, undo/redo) via the command bridge. */
+  onEditorCommand?: (command: EditorCommand) => void;
+  /** True while a markdown editor is mounted somewhere in the tree. */
+  editorMounted?: boolean;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
-type ViewMode = "editor" | "split" | "preview";
-
-type ActionItem = {
-  id: string;
-  type: "action";
-  title: string;
-  subtitle?: string;
-  icon: React.ElementType;
-  handler: () => void;
-  shortcut?: string;
+const GROUP_ORDER: ItemGroup[] = ["notes", "actions", "navigation", "settings"];
+const GROUP_LABEL: Record<ItemGroup, string> = {
+  notes: "Notes",
+  actions: "Actions",
+  navigation: "Navigation",
+  settings: "Settings",
 };
 
-type NoteItem = {
-  id: string;
-  type: "note";
-  note: Note;
-};
+const RECENT_KEY = "quill_recent_commands_v1";
+const RECENT_MAX = 5;
+const NOTE_LIMIT = 8;
 
-type PaletteItem = NoteItem | ActionItem;
+type Prefix = "" | ">" | "#" | "@";
 
+/* ------------------------------- Fuzzy search ------------------------------ */
+
+const BOUNDARY_RE = /[\s\-_/·:.,[\](){}|"'#@]/;
+
+/**
+ * Score `needle` against `haystack`. Returns `null` when there is no match, a
+ * larger number for a better match. Exact substring hits (especially at a word
+ * boundary) beat loose subsequence hits such as "nwnt" → "New Note".
+ */
+function scoreText(haystack: string, needle: string): number | null {
+  if (!needle) return null;
+  const h = haystack.toLowerCase();
+  const n = needle.toLowerCase();
+  if (!h) return null;
+
+  const direct = h.indexOf(n);
+  if (direct !== -1) {
+    const atStart = direct === 0;
+    const atBoundary = !atStart && BOUNDARY_RE.test(h[direct - 1]);
+    return (
+      1000 +
+      (atStart ? 300 : atBoundary ? 120 : 0) -
+      direct * 2 -
+      h.length * 0.5
+    );
+  }
+
+  // Subsequence fallback: every query char must appear in order.
+  let cursor = 0;
+  let score = 0;
+  let streak = 0;
+  let firstIndex = -1;
+
+  for (let i = 0; i < n.length; i++) {
+    const found = h.indexOf(n[i], cursor);
+    if (found === -1) return null;
+    if (firstIndex === -1) firstIndex = found;
+
+    if (i > 0) {
+      if (found === cursor) {
+        streak += 1;
+        score += 26 + streak * 10;
+      } else {
+        streak = 0;
+        score += 7;
+      }
+    }
+    if (found === 0 || BOUNDARY_RE.test(h[found - 1])) score += 16;
+    cursor = found + 1;
+  }
+
+  return score + 240 - Math.min(firstIndex, 30) * 3 - h.length * 0.2;
+}
+
+/** Best weighted score across an item's displayable/searchable fields. */
+function scoreItem(item: PaletteItem, term: string): number | null {
+  let best: number | null = null;
+  const consider = (value: string | undefined, weight: number) => {
+    if (!value) return;
+    const s = scoreText(value, term);
+    if (s === null) return;
+    const weighted = s * weight;
+    if (best === null || weighted > best) best = weighted;
+  };
+
+  consider(item.title, 1);
+  // Note snippets are note *content*, so they must match as real substrings
+  // (handled below) — a loose subsequence over a body would rank noise above
+  // the genuine hits.
+  if (item.kind !== "note") consider(item.subtitle, 0.65);
+  consider(item.keywords, 0.55);
+  if (item.tags) item.tags.forEach((t) => consider(t, 0.5));
+
+  // Note bodies (and their displayed snippet) are matched by plain substring.
+  if (item.note) {
+    const body = item.note.content.toLowerCase();
+    const idx = body.indexOf(term.toLowerCase());
+    if (idx !== -1) {
+      const s = 260 - idx * 0.05 - body.length * 0.01;
+      if (best === null || s > best) best = s;
+    }
+  }
+
+  return best;
+}
+
+/** Indices of `term` inside `text` for match highlighting. */
+function matchIndices(text: string, term: string): number[] {
+  if (!term) return [];
+  const h = text.toLowerCase();
+  const n = term.toLowerCase();
+
+  const direct = h.indexOf(n);
+  if (direct !== -1) {
+    return Array.from({ length: n.length }, (_, i) => direct + i);
+  }
+
+  const out: number[] = [];
+  let cursor = 0;
+  for (const ch of n) {
+    const found = h.indexOf(ch, cursor);
+    if (found === -1) return [];
+    out.push(found);
+    cursor = found + 1;
+  }
+  return out;
+}
+
+function parseQuery(raw: string): { prefix: Prefix; term: string } {
+  const trimmed = raw.replace(/^\s+/, "");
+  const first = trimmed[0];
+  if (first === ">" || first === "#" || first === "@") {
+    return { prefix: first, term: trimmed.slice(1).trim() };
+  }
+  return { prefix: "", term: trimmed.trim() };
+}
+
+/* ------------------------------ Recent commands ----------------------------- */
+
+function readRecents(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRecents(ids: string[]): void {
+  try {
+    window.localStorage.setItem(RECENT_KEY, JSON.stringify(ids));
+  } catch {
+    /* storage unavailable — recents are a nicety, never fatal */
+  }
+}
+
+/* ---------------------------------- Dialog --------------------------------- */
+
+/**
+ * The single surface where every Quill action lives: quick switcher, command
+ * runner, tag filter and settings index in one fuzzy-searchable list.
+ *
+ * - `>` scopes to commands, `#` to tags, `@` to notes.
+ * - On phones it opens as a full-screen search sheet (keyboard inset aware).
+ */
 export function CommandPalette({
   isOpen,
   onClose,
@@ -102,6 +314,7 @@ export function CommandPalette({
   onRestoreBackup,
   onOpenHistory,
   onPrintNote,
+  onFindReplace,
   onOpenTemplates,
   onToggleZen,
   onDuplicateActiveNote,
@@ -114,491 +327,842 @@ export function CommandPalette({
   currentViewMode,
   onToggleSidebar,
   onSetWritingGoal,
+  writingGoal = 0,
   onSelectPanel,
+  tags = [],
+  onSelectTag,
+  onCreateFromTemplate,
+  onRunAIAction,
+  aiBusy = false,
+  typewriter = false,
+  onToggleTypewriter,
+  fullscreen = false,
+  onToggleFullscreen,
+  onMoveActiveToTrash,
+  onEditorCommand,
+  editorMounted = false,
+  canUndo = false,
+  canRedo = false,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
+  const isMobile = useIsMobileShell();
 
-  // Reset query and selection when dialog opens
+  // Own Escape / Android back while open, so shell navigation waits its turn.
+  useOverlayLayer(isOpen, onClose);
+
+  // Reset on open + hydrate the recent-command history
   useEffect(() => {
-    if (isOpen) {
-      setQuery("");
-      setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
+    if (!isOpen) return;
+    setQuery("");
+    setSelectedIndex(0);
+    setRecentIds(readRecents());
+
+    // Focus the field immediately, then re-assert once more: when the palette is
+    // opened from a sheet/drawer, that layer's exit animation restores focus to
+    // its trigger a beat later and would otherwise steal the caret (and the
+    // on-screen keyboard) from the search field.
+    const grabFocus = () => {
+      const el = inputRef.current;
+      if (!el || document.activeElement === el) return;
+      el.focus();
+    };
+    const timers = [
+      window.setTimeout(grabFocus, 40),
+      window.setTimeout(grabFocus, 320),
+    ];
+    return () => timers.forEach((t) => window.clearTimeout(t));
   }, [isOpen]);
 
-  // Actions list
-  const actions: ActionItem[] = useMemo(() => {
-    const list: ActionItem[] = [
-      {
-        id: "action-new",
-        type: "action",
-        title: "Create New Note",
-        subtitle: "Start writing a new note",
-        icon: Plus,
-        handler: () => {
-          onCreateNote();
-          onClose();
-        },
-        shortcut: "Ctrl+N",
-      },
-      {
-        id: "action-export",
-        type: "action",
-        title: "Export Note as Markdown",
-        subtitle: activeNote ? `Export "${activeNote.title || "Untitled"}.md"` : "Export active note",
-        icon: Download,
-        handler: () => {
-          onExportNote();
-          onClose();
-        },
-      },
-      {
-        id: "action-import",
-        type: "action",
-        title: "Import Markdown File",
-        subtitle: "Load .md or .txt file as a new note",
-        icon: Upload,
-        handler: () => {
-          onImportMarkdown();
-          onClose();
-        },
-      },
-      {
-        id: "action-backup",
-        type: "action",
-        title: "Backup All Notes (JSON)",
-        subtitle: `Download full archive of ${notes.length} notes`,
-        icon: Archive,
-        handler: () => {
-          onBackupNotes();
-          onClose();
-        },
-      },
-      {
-        id: "action-restore",
-        type: "action",
-        title: "Restore from Backup (JSON)",
-        subtitle: "Import a previous JSON backup file",
-        icon: Upload,
-        handler: () => {
-          onRestoreBackup();
-          onClose();
-        },
-      },
-    ];
+  const remember = useCallback((id: string) => {
+    setRecentIds((prev) => {
+      const next = [id, ...prev.filter((v) => v !== id)].slice(0, RECENT_MAX);
+      writeRecents(next);
+      return next;
+    });
+  }, []);
 
-    if (onOpenHistory) {
-      list.push({
-        id: "action-history",
-        type: "action",
-        title: "Version History & Snapshots",
-        subtitle: "View and restore previous revisions of this note",
-        icon: History,
-        handler: () => {
-          onOpenHistory();
-          onClose();
-        },
-      });
-    }
+  /* ------------------------------ Command items ------------------------------ */
 
-    if (onPrintNote) {
-      list.push({
-        id: "action-print",
-        type: "action",
-        title: "Print / Export as PDF",
-        subtitle: "Open print preview for active note",
-        icon: Printer,
-        handler: () => {
-          onPrintNote();
-          onClose();
-        },
-      });
-    }
+  const commands = useMemo<PaletteItem[]>(() => {
+    const list: PaletteItem[] = [];
+    const activeTitle = activeNote?.title || "Untitled";
 
-    if (onToggleZen) {
-      list.push({
-        id: "action-zen",
-        type: "action",
-        title: "Toggle Zen Focus Mode",
-        subtitle: "Fullscreen distraction-free writing desk",
-        icon: Maximize2,
-        shortcut: "Ctrl+Shift+F",
-        handler: () => {
-          onToggleZen();
-          onClose();
-        },
-      });
-    }
+    /* Actions — change the document / the library */
+    list.push({
+      id: "action-new",
+      kind: "command",
+      group: "actions",
+      title: "Create New Note",
+      subtitle: "Start a blank note",
+      keywords: "add note new create write",
+      icon: Plus,
+      shortcut: "Ctrl+N",
+      run: onCreateNote,
+    });
 
-    if (onOpenTemplates) {
+    if (activeNote) {
       list.push({
-        id: "action-templates",
-        type: "action",
-        title: "New Note from Template...",
-        subtitle: "Start from Meeting, Daily Journal, Spec, or Review",
-        icon: Sparkles,
-        handler: () => {
-          onOpenTemplates();
-          onClose();
-        },
+        id: "action-pin",
+        kind: "command",
+        group: "actions",
+        title: activeNote.isPinned ? "Unpin Active Note" : "Pin Active Note",
+        subtitle: activeTitle,
+        keywords: "favorite star pin top",
+        icon: activeNote.isPinned ? PinOff : Pin,
+        run: () => onTogglePin(activeNote.id),
       });
     }
 
     if (activeNote && onDuplicateActiveNote) {
       list.push({
         id: "action-duplicate",
-        type: "action",
+        kind: "command",
+        group: "actions",
         title: "Duplicate Active Note",
-        subtitle: `Create a copy of "${activeNote.title || "Untitled"}"`,
+        subtitle: `Copy of “${activeTitle}”`,
+        keywords: "clone copy",
         icon: Copy,
-        handler: () => {
-          onDuplicateActiveNote();
-          onClose();
+        run: onDuplicateActiveNote,
+      });
+    }
+
+    if (activeNote && onMoveActiveToTrash) {
+      list.push({
+        id: "action-trash",
+        kind: "command",
+        group: "actions",
+        title: "Move Active Note to Trash",
+        subtitle: `“${activeTitle}” — undoable`,
+        keywords: "delete remove bin archive",
+        icon: Trash2,
+        run: onMoveActiveToTrash,
+      });
+    }
+
+    if (onExportNote) {
+      list.push({
+        id: "action-export-md",
+        kind: "command",
+        group: "actions",
+        title: "Export Note as Markdown",
+        subtitle: activeNote ? `Download “${activeTitle}.md”` : "Download the active note",
+        keywords: "save download md file",
+        icon: Download,
+        run: onExportNote,
+      });
+    }
+
+    if (onPrintNote) {
+      list.push({
+        id: "action-print",
+        kind: "command",
+        group: "actions",
+        title: "Print / Export as PDF",
+        subtitle: "Open the print preview for the active note",
+        keywords: "pdf paper printer",
+        icon: Printer,
+        run: onPrintNote,
+      });
+    }
+
+    list.push({
+      id: "action-import-md",
+      kind: "command",
+      group: "actions",
+      title: "Import Markdown File",
+      subtitle: "Load a .md or .txt file as a new note",
+      keywords: "upload load open file",
+      icon: Upload,
+      run: onImportMarkdown,
+    });
+
+    list.push({
+      id: "action-backup",
+      kind: "command",
+      group: "actions",
+      title: "Backup All Notes (JSON)",
+      subtitle: `Download an archive of ${notes.length} note${notes.length === 1 ? "" : "s"}`,
+      keywords: "export save archive data json",
+      icon: Archive,
+      run: onBackupNotes,
+    });
+
+    list.push({
+      id: "action-restore",
+      kind: "command",
+      group: "actions",
+      title: "Restore from JSON Backup",
+      subtitle: "Import a previous backup file",
+      keywords: "import load data json restore",
+      icon: Upload,
+      run: onRestoreBackup,
+    });
+
+    if (onOpenTemplates) {
+      list.push({
+        id: "action-templates-browse",
+        kind: "command",
+        group: "actions",
+        title: "Browse All Templates…",
+        subtitle: "Preview and pick from the template gallery",
+        keywords: "template new note boilerplate",
+        icon: LayoutTemplate,
+        run: onOpenTemplates,
+      });
+    }
+
+    if (onCreateFromTemplate) {
+      NOTE_TEMPLATES.forEach((tmpl) => {
+        list.push({
+          id: `template:${tmpl.id}`,
+          kind: "command",
+          group: "actions",
+          title: `New Note: ${tmpl.title}`,
+          subtitle: tmpl.description,
+          keywords: `template ${tmpl.tags.join(" ")} scaffold`,
+          icon: LayoutTemplate,
+          chip: "template",
+          run: () => onCreateFromTemplate(tmpl),
+        });
+      });
+    }
+
+    if (onFindReplace) {
+      list.push({
+        id: "action-find",
+        kind: "command",
+        group: "actions",
+        title: "Find & Replace",
+        subtitle: "Search inside the active note",
+        keywords: "search replace in note ctrl f",
+        icon: Search,
+        shortcut: "Ctrl+F",
+        run: onFindReplace,
+      });
+    }
+
+    if (onEditorCommand && editorMounted) {
+      const editorCommands: {
+        id: string;
+        command: EditorCommand;
+        title: string;
+        subtitle: string;
+        keywords: string;
+        icon: React.ElementType;
+        shortcut?: string;
+        show?: boolean;
+      }[] = [
+        {
+          id: "editor-bold",
+          command: "bold",
+          title: "Bold",
+          subtitle: "Wrap the selection in **",
+          keywords: "bold strong weight emphasis format",
+          icon: Bold,
         },
+        {
+          id: "editor-italic",
+          command: "italic",
+          title: "Italic",
+          subtitle: "Wrap the selection in *",
+          keywords: "italic emphasis slanted format",
+          icon: Italic,
+        },
+        {
+          id: "editor-bullet",
+          command: "bullet",
+          title: "Bullet List",
+          subtitle: "Turn the current line into a “- ” item",
+          keywords: "bullet unordered list format",
+          icon: List,
+        },
+        {
+          id: "editor-checklist",
+          command: "checklist",
+          title: "Checklist",
+          subtitle: "Turn the current line into a “- [ ]” task",
+          keywords: "checkbox task todo checklist format",
+          icon: ListChecks,
+        },
+        {
+          id: "editor-link",
+          command: "link",
+          title: "Insert Link",
+          subtitle: "Add a [text](url) link",
+          keywords: "link url href hyperlink format",
+          icon: Link2,
+        },
+        {
+          id: "editor-undo",
+          command: "undo",
+          title: "Undo",
+          subtitle: "Step back one edit",
+          keywords: "undo revert back format",
+          icon: Undo2,
+          show: canUndo,
+        },
+        {
+          id: "editor-redo",
+          command: "redo",
+          title: "Redo",
+          subtitle: "Step forward one edit",
+          keywords: "redo repeat forward format",
+          icon: Redo2,
+          show: canRedo,
+        },
+      ];
+
+      editorCommands
+        .filter((entry) => entry.show !== false)
+        .forEach((entry) => {
+          list.push({
+            id: entry.id,
+            kind: "command",
+            group: "actions",
+            title: entry.title,
+            subtitle: entry.subtitle,
+            keywords: entry.keywords,
+            icon: entry.icon,
+            shortcut: entry.shortcut,
+            chip: "editor",
+            run: () => onEditorCommand(entry.command),
+          });
+        });
+    }
+
+    if (activeNote && onRunAIAction) {
+      AI_ACTIONS.forEach((descriptor) => {
+        list.push({
+          id: `ai:${descriptor.action}`,
+          kind: "command",
+          group: "actions",
+          title: descriptor.title,
+          subtitle: descriptor.description,
+          keywords: `ai assistant offline webgpu ${descriptor.action.replace("_", " ")}`,
+          icon: Wand2,
+          chip: "AI",
+          disabled: aiBusy,
+          run: () => onRunAIAction(descriptor.action),
+        });
+      });
+    }
+
+    /* Navigation — go somewhere / change what you are looking at */
+    if (onSelectPanel) {
+      list.push({
+        id: "nav-all",
+        kind: "command",
+        group: "navigation",
+        title: "All Notes",
+        subtitle: "Browse the full library",
+        keywords: "library home list notes",
+        icon: FileText,
+        run: () => onSelectPanel("all"),
+      });
+      list.push({
+        id: "nav-favorites",
+        kind: "command",
+        group: "navigation",
+        title: "Pinned / Favorites",
+        subtitle: "Jump to your pinned notes",
+        keywords: "star pinned favorite bookmarks",
+        icon: Star,
+        run: () => onSelectPanel("favorites"),
+      });
+      list.push({
+        id: "nav-trash",
+        kind: "command",
+        group: "navigation",
+        title: "Trash",
+        subtitle: "Restore or permanently delete notes",
+        keywords: "deleted bin restore purge",
+        icon: Trash2,
+        run: () => onSelectPanel("trash"),
+      });
+      list.push({
+        id: "nav-settings-panel",
+        kind: "command",
+        group: "navigation",
+        title: "Preferences & Data",
+        subtitle: "Writing goal, backups and about",
+        keywords: "settings options panel preferences",
+        icon: Settings,
+        run: () => onSelectPanel("settings"),
       });
     }
 
     if (onOpenToc) {
       list.push({
-        id: "action-toc",
-        type: "action",
-        title: "Document Outline (Table of Contents)",
-        subtitle: "Navigate sections and headings in active note",
+        id: "nav-outline",
+        kind: "command",
+        group: "navigation",
+        title: "Document Outline",
+        subtitle: "Jump between headings in the active note",
+        keywords: "toc table of contents headings sections",
         icon: ListTree,
-        handler: () => {
-          onOpenToc();
-          onClose();
-        },
+        run: onOpenToc,
+      });
+    }
+
+    if (onOpenHistory) {
+      list.push({
+        id: "nav-history",
+        kind: "command",
+        group: "navigation",
+        title: "Version History",
+        subtitle: "Browse and restore previous revisions",
+        keywords: "snapshot revisions undo restore",
+        icon: History,
+        run: onOpenHistory,
       });
     }
 
     if (onOpenGraph) {
       list.push({
-        id: "action-graph",
-        type: "action",
-        title: "Open Knowledge Graph View",
-        subtitle: "Interactive 2D physics network of notes and wiki-links",
+        id: "nav-graph",
+        kind: "command",
+        group: "navigation",
+        title: "Knowledge Graph",
+        subtitle: "Interactive map of notes and wiki-links",
+        keywords: "links network graph connections",
         icon: Network,
-        handler: () => {
-          onOpenGraph();
-          onClose();
-        },
+        run: onOpenGraph,
       });
     }
 
     if (onOpenInsights) {
       list.push({
-        id: "action-insights",
-        type: "action",
-        title: "Writing Insights & Activity Heatmap",
-        subtitle: "Contribution calendar, readability diagnostics, vault stats",
+        id: "nav-insights",
+        kind: "command",
+        group: "navigation",
+        title: "Writing Insights",
+        subtitle: "Heatmap, readability and vault statistics",
+        keywords: "analytics stats heatmap activity",
         icon: BarChart3,
-        handler: () => {
-          onOpenInsights();
-          onClose();
-        },
+        run: onOpenInsights,
       });
     }
 
     if (onOpenWelcome) {
       list.push({
-        id: "action-welcome",
-        type: "action",
+        id: "nav-welcome",
+        kind: "command",
+        group: "navigation",
         title: "Welcome & Quick Guide",
-        subtitle: "Show Quill introduction, features showcase, and logo",
+        subtitle: "Feature tour and shortcuts",
+        keywords: "help guide about onboarding docs",
         icon: HelpCircle,
-        handler: () => {
-          onOpenWelcome();
-          onClose();
-        },
+        run: onOpenWelcome,
+      });
+    }
+
+    if (onViewModeChange) {
+      list.push({
+        id: "nav-view-editor",
+        kind: "command",
+        group: "navigation",
+        title: "Switch to Write Mode",
+        subtitle: currentViewMode === "editor" ? "Currently active" : "Single focused editor pane",
+        keywords: "view mode editor write",
+        icon: PenLine,
+        shortcut: "Ctrl+1",
+        badge: currentViewMode === "editor" ? "CURRENT" : undefined,
+        run: () => onViewModeChange("editor"),
+      });
+      list.push({
+        id: "nav-view-split",
+        kind: "command",
+        group: "navigation",
+        title: "Switch to Split Mode",
+        subtitle: currentViewMode === "split" ? "Currently active" : "Editor and preview side by side",
+        keywords: "view mode split columns",
+        icon: Columns2,
+        shortcut: "Ctrl+2",
+        badge: currentViewMode === "split" ? "CURRENT" : undefined,
+        run: () => onViewModeChange("split"),
+      });
+      list.push({
+        id: "nav-view-preview",
+        kind: "command",
+        group: "navigation",
+        title: "Switch to Preview Mode",
+        subtitle: currentViewMode === "preview" ? "Currently active" : "Rendered markdown reading view",
+        keywords: "view mode preview read rendered",
+        icon: Eye,
+        shortcut: "Ctrl+3",
+        badge: currentViewMode === "preview" ? "CURRENT" : undefined,
+        run: () => onViewModeChange("preview"),
+      });
+    }
+
+    if (onToggleZen) {
+      list.push({
+        id: "nav-zen",
+        kind: "command",
+        group: "navigation",
+        title: "Toggle Zen Focus Mode",
+        subtitle: "Distraction-free writing desk",
+        keywords: "focus zen fullscreen distraction",
+        icon: Maximize2,
+        shortcut: "Ctrl+Shift+F",
+        run: onToggleZen,
+      });
+    }
+
+    if (onToggleFullscreen) {
+      list.push({
+        id: "nav-fullscreen",
+        kind: "command",
+        group: "navigation",
+        title: fullscreen ? "Exit Fullscreen" : "Enter Fullscreen",
+        subtitle: "Use the whole display",
+        keywords: "fullscreen display window maximize",
+        icon: Maximize2,
+        badge: fullscreen ? "ON" : undefined,
+        run: onToggleFullscreen,
+      });
+    }
+
+    if (onToggleSidebar) {
+      list.push({
+        id: "nav-sidebar",
+        kind: "command",
+        group: "navigation",
+        title: "Toggle Library Sidebar",
+        subtitle: "Show or hide the notes library",
+        keywords: "sidebar panel library toggle",
+        icon: PanelLeft,
+        shortcut: "Ctrl+B",
+        run: onToggleSidebar,
+      });
+    }
+
+    if (onSelectTag) {
+      tags.forEach((tag) => {
+        list.push({
+          id: `tag:${tag}`,
+          kind: "tag",
+          group: "navigation",
+          title: tag,
+          subtitle: "Filter the library by this tag",
+          keywords: `tag #${tag} filter`,
+          icon: Hash,
+          chip: `#${tag}`,
+          run: () => onSelectTag(tag),
+        });
+      });
+    }
+
+    /* Settings — preferences */
+    const themeOptions: { value: string; label: string; icon: React.ElementType; keywords: string }[] = [
+      { value: "light", label: "Light", icon: Sun, keywords: "theme light day bright" },
+      { value: "dark", label: "Dark", icon: Moon, keywords: "theme dark night dim" },
+      { value: "system", label: "System", icon: Laptop, keywords: "theme system auto device os" },
+    ];
+    themeOptions.forEach((option) => {
+      list.push({
+        id: `setting-theme-${option.value}`,
+        kind: "command",
+        group: "settings",
+        title: `Theme: ${option.label}`,
+        subtitle: "Appearance",
+        keywords: option.keywords,
+        icon: option.icon,
+        badge: theme === option.value ? "CURRENT" : undefined,
+        run: () => setTheme(option.value),
+      });
+    });
+
+    if (onSetWritingGoal) {
+      const goals: { value: number; label: string; keywords: string }[] = [
+        { value: 0, label: "None (Free Write)", keywords: "goal target none off clear" },
+        { value: 250, label: "250 words", keywords: "goal target quick short" },
+        { value: 500, label: "500 words", keywords: "goal target standard" },
+        { value: 1000, label: "1,000 words", keywords: "goal target deep essay long" },
+      ];
+      goals.forEach((goal) => {
+        list.push({
+          id: `setting-goal-${goal.value}`,
+          kind: "command",
+          group: "settings",
+          title: `Session Goal: ${goal.label}`,
+          subtitle: "Tracked in the status bar",
+          keywords: goal.keywords,
+          icon: Target,
+          badge: writingGoal === goal.value ? "CURRENT" : undefined,
+          run: () => onSetWritingGoal(goal.value),
+        });
+      });
+    }
+
+    if (onToggleTypewriter) {
+      list.push({
+        id: "setting-typewriter",
+        kind: "command",
+        group: "settings",
+        title: "Typewriter Scrolling",
+        subtitle: "Keep the caret vertically centred",
+        keywords: "typewriter scrolling caret centre center focus",
+        icon: Feather,
+        badge: typewriter ? "ON" : undefined,
+        run: onToggleTypewriter,
       });
     }
 
     if (onOpenAIStatus) {
       list.push({
-        id: "action-ai-status",
-        type: "action",
-        title: "Offline AI (WebGPU) Engine Settings",
-        subtitle: "Check hardware WebGPU acceleration, manage on-device models, or pre-load offline weights",
+        id: "setting-ai-engine",
+        kind: "command",
+        group: "settings",
+        title: "Offline AI Engine",
+        subtitle: "WebGPU acceleration and on-device models",
+        keywords: "ai assistant engine webgpu model settings local offline",
         icon: Sparkles,
-        handler: () => {
-          onOpenAIStatus();
-          onClose();
-        },
+        run: onOpenAIStatus,
       });
     }
 
-    if (activeNote) {
-      list.unshift({
-        id: "action-pin",
-        type: "action",
-        title: activeNote.isPinned ? "Unpin Active Note" : "Pin Active Note to Top",
-        subtitle: `"${activeNote.title || "Untitled"}"`,
-        icon: activeNote.isPinned ? PinOff : Pin,
-        handler: () => {
-          onTogglePin(activeNote.id);
-          onClose();
-        },
-      });
-    }
-
-    // Theme switcher action
-    list.push({
-      id: "action-theme",
-      type: "action",
-      title: `Switch Theme (Current: ${theme || "system"})`,
-      subtitle: "Cycle between Light, Dark, and System",
-      icon: theme === "dark" ? Moon : theme === "light" ? Sun : Laptop,
-      handler: () => {
-        const next = theme === "dark" ? "light" : theme === "light" ? "system" : "dark";
-        setTheme(next);
-        onClose();
-      },
-    });
-
-    // View mode switching (primary, mirrored from the top bar)
-    if (onViewModeChange) {
-      list.push({
-        id: "action-view-editor",
-        type: "action",
-        title: "Switch to Write Mode",
-        subtitle: currentViewMode === "editor" ? "Currently active" : "Single distraction-free editor pane",
-        icon: PenLine,
-        shortcut: "Ctrl+1",
-        handler: () => {
-          onViewModeChange("editor");
-          onClose();
-        },
-      });
-      list.push({
-        id: "action-view-split",
-        type: "action",
-        title: "Switch to Split Mode",
-        subtitle: currentViewMode === "split" ? "Currently active" : "Editor and live preview side by side",
-        icon: Columns2,
-        shortcut: "Ctrl+2",
-        handler: () => {
-          onViewModeChange("split");
-          onClose();
-        },
-      });
-      list.push({
-        id: "action-view-preview",
-        type: "action",
-        title: "Switch to Preview Mode",
-        subtitle: currentViewMode === "preview" ? "Currently active" : "Rendered markdown reading view",
-        icon: Eye,
-        shortcut: "Ctrl+3",
-        handler: () => {
-          onViewModeChange("preview");
-          onClose();
-        },
-      });
-    }
-
-    // Library sidebar toggle
-    if (onToggleSidebar) {
-      list.push({
-        id: "action-toggle-sidebar",
-        type: "action",
-        title: "Toggle Library Sidebar",
-        subtitle: "Show or hide the notes library",
-        icon: PanelLeft,
-        shortcut: "Ctrl+B",
-        handler: () => {
-          onToggleSidebar();
-          onClose();
-        },
-      });
-    }
-
-    // Library panel navigation
-    if (onSelectPanel) {
-      list.push({
-        id: "action-open-all",
-        type: "action",
-        title: "Open All Notes",
-        subtitle: "Browse the full library",
-        icon: FileText,
-        handler: () => {
-          onSelectPanel("all");
-          onClose();
-        },
-      });
-      list.push({
-        id: "action-open-favorites",
-        type: "action",
-        title: "Open Pinned / Favorites",
-        subtitle: "Jump to your pinned notes",
-        icon: Star,
-        handler: () => {
-          onSelectPanel("favorites");
-          onClose();
-        },
-      });
-      list.push({
-        id: "action-open-trash",
-        type: "action",
-        title: "Open Trash",
-        subtitle: "Restore or permanently delete notes",
-        icon: Trash2,
-        handler: () => {
-          onSelectPanel("trash");
-          onClose();
-        },
-      });
-      list.push({
-        id: "action-open-settings",
-        type: "action",
-        title: "Open Preferences & Data",
-        subtitle: "Writing goal, backups, theme, and about",
-        icon: Settings,
-        handler: () => {
-          onSelectPanel("settings");
-          onClose();
-        },
-      });
-    }
-
-    // Writing goal presets
-    if (onSetWritingGoal) {
-      const goals: { value: number; label: string }[] = [
-        { value: 0, label: "None (Free Write)" },
-        { value: 250, label: "250 words (Quick Note)" },
-        { value: 500, label: "500 words (Standard Reflection)" },
-        { value: 1000, label: "1,000 words (Deep Essay)" },
-      ];
-      goals.forEach((goal) => {
-        list.push({
-          id: `action-goal-${goal.value}`,
-          type: "action",
-          title: `Set Session Goal: ${goal.label}`,
-          subtitle: "Track progress in the status bar",
-          icon: Target,
-          handler: () => {
-            onSetWritingGoal(goal.value);
-            onClose();
-          },
-        });
-      });
-    }
-
-    return list;
+    return list.filter((item) => !item.disabled);
   }, [
     activeNote,
     notes.length,
+    tags,
     theme,
+    writingGoal,
+    typewriter,
+    fullscreen,
+    currentViewMode,
+    aiBusy,
+    setTheme,
     onCreateNote,
+    onCreateFromTemplate,
+    onTogglePin,
+    onDuplicateActiveNote,
+    onMoveActiveToTrash,
     onExportNote,
+    onPrintNote,
+    onFindReplace,
     onImportMarkdown,
     onBackupNotes,
     onRestoreBackup,
-    onTogglePin,
-    onOpenHistory,
-    onPrintNote,
-    onToggleZen,
     onOpenTemplates,
-    onDuplicateActiveNote,
     onOpenToc,
+    onOpenHistory,
     onOpenGraph,
     onOpenInsights,
     onOpenWelcome,
-    onOpenAIStatus,
     onViewModeChange,
-    currentViewMode,
+    onToggleZen,
+    onToggleFullscreen,
     onToggleSidebar,
-    onSetWritingGoal,
     onSelectPanel,
-    setTheme,
-    onClose,
+    onSelectTag,
+    onSetWritingGoal,
+    onToggleTypewriter,
+    onOpenAIStatus,
+    onRunAIAction,
+    onEditorCommand,
+    editorMounted,
+    canUndo,
+    canRedo,
   ]);
 
-  // Filter notes & actions based on query
-  const filteredItems = useMemo<PaletteItem[]>(() => {
-    const q = query.trim().toLowerCase();
+  const noteItems = useMemo<PaletteItem[]>(
+    () =>
+      notes.map((note) => ({
+        id: `note:${note.id}`,
+        kind: "note",
+        group: "notes",
+        title: note.title || "Untitled",
+        subtitle: note.content
+          ? note.content.replace(/^[#\s\-*[\]xX>]+/gm, "").slice(0, 90)
+          : undefined,
+        icon: FileText,
+        note,
+        tags: note.tags,
+        run: () => onSelectNote(note.id),
+      })),
+    [notes, onSelectNote]
+  );
 
-    const matchedNotes: NoteItem[] = notes
-      .filter((note) => {
-        if (!q) return true;
-        const inTitle = note.title.toLowerCase().includes(q);
-        const inContent = note.content.toLowerCase().includes(q);
-        const inTags = (note.tags || []).some((t) => t.toLowerCase().includes(q));
-        return inTitle || inContent || inTags;
-      })
-      .slice(0, 8)
-      .map((note) => ({ id: note.id, type: "note", note }));
+  const allItems = useMemo(
+    () => [...noteItems, ...commands],
+    [noteItems, commands]
+  );
 
-    const matchedActions: ActionItem[] = actions.filter((act) => {
-      if (!q) return true;
-      return (
-        act.title.toLowerCase().includes(q) ||
-        (act.subtitle && act.subtitle.toLowerCase().includes(q))
-      );
+  const { prefix, term } = useMemo(() => parseQuery(query), [query]);
+
+  const hasQuery = query.trim().length > 0;
+
+  /* ------------------------------ Grouping/ranking ---------------------------- */
+
+  const sections = useMemo(() => {
+    const out: { key: string; label: string; items: PaletteItem[] }[] = [];
+
+    // Prefix scoping: `>` commands, `#` tags, `@` notes.
+    const visible = allItems.filter((item) => {
+      if (prefix === ">") return item.kind === "command";
+      if (prefix === "#") return item.kind === "tag";
+      if (prefix === "@") return item.kind === "note";
+      return true;
     });
 
-    return [...matchedNotes, ...matchedActions];
-  }, [query, notes, actions]);
+    // Recent commands — pinned to the very top of the empty state.
+    const recentItems =
+      !term && recentIds.length > 0
+        ? recentIds
+            .map((id) => allItems.find((item) => item.id === id))
+            .filter((item): item is PaletteItem => !!item)
+        : [];
+    const recentSet = new Set(recentItems.map((item) => item.id));
 
-  // Keep selected index within bounds
+    // Ranking: fuzzy score when searching, authored order (pinned/updated notes
+    // first) when the query is empty.
+    let ranked: PaletteItem[];
+    if (term) {
+      ranked = visible
+        .map((item) => ({ item, score: scoreItem(item, term) }))
+        .filter(
+          (entry): entry is { item: PaletteItem; score: number } => entry.score !== null
+        )
+        .sort((a, b) => b.score - a.score)
+        .map((entry) => entry.item);
+    } else {
+      const notesRanked = visible
+        .filter((item) => item.kind === "note")
+        .sort((a, b) => {
+          const pinA = a.note?.isPinned ? 1 : 0;
+          const pinB = b.note?.isPinned ? 1 : 0;
+          if (pinA !== pinB) return pinB - pinA;
+          return (b.note?.updatedAt ?? 0) - (a.note?.updatedAt ?? 0);
+        });
+      const others = visible.filter((item) => item.kind !== "note");
+      ranked = [...notesRanked, ...others];
+    }
+
+    if (recentItems.length > 0) {
+      out.push({ key: "recent", label: "Recent", items: recentItems });
+    }
+
+    GROUP_ORDER.forEach((group) => {
+      let items = ranked.filter((item) => item.group === group);
+      if (recentItems.length > 0) {
+        items = items.filter((item) => !recentSet.has(item.id));
+      }
+      if (group === "notes") items = items.slice(0, NOTE_LIMIT);
+      if (items.length > 0) {
+        // Tag results live in the Navigation group; relabel when scoped with `#`.
+        const label =
+          prefix === "#" && items.every((item) => item.kind === "tag")
+            ? "Tags"
+            : GROUP_LABEL[group];
+        out.push({ key: group, label, items });
+      }
+    });
+
+    return out;
+  }, [allItems, prefix, term, recentIds]);
+
+  const flat = useMemo(() => sections.flatMap((section) => section.items), [sections]);
+
+  const indexOf = useMemo(() => {
+    const map = new Map<string, number>();
+    flat.forEach((item, index) => map.set(item.id, index));
+    return map;
+  }, [flat]);
+
   useEffect(() => {
     setSelectedIndex(0);
   }, [query]);
 
-  // Scroll active item into view
   useEffect(() => {
-    if (listRef.current) {
-      const activeEl = listRef.current.querySelector(`[data-index="${selectedIndex}"]`);
-      if (activeEl) {
-        activeEl.scrollIntoView({ block: "nearest" });
-      }
-    }
+    if (selectedIndex > flat.length - 1) setSelectedIndex(0);
+  }, [flat.length, selectedIndex]);
+
+  useEffect(() => {
+    const el = listRef.current?.querySelector(`[data-index="${selectedIndex}"]`);
+    el?.scrollIntoView({ block: "nearest" });
   }, [selectedIndex]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (filteredItems.length === 0) return;
+  /* --------------------------------- Execution -------------------------------- */
 
+  const executeItem = useCallback(
+    (item: PaletteItem) => {
+      hapticTap();
+      if (item.kind !== "note") remember(item.id);
+      onClose();
+      // Run after closing so dialogs opened by the command stack cleanly.
+      setTimeout(() => item.run(), 0);
+    },
+    [onClose, remember]
+  );
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelectedIndex((prev) => (prev + 1) % filteredItems.length);
+      if (flat.length) setSelectedIndex((prev) => (prev + 1) % flat.length);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setSelectedIndex((prev) => (prev - 1 + filteredItems.length) % filteredItems.length);
+      if (flat.length) setSelectedIndex((prev) => (prev - 1 + flat.length) % flat.length);
     } else if (e.key === "Enter") {
       e.preventDefault();
-      const current = filteredItems[selectedIndex];
-      if (current) {
-        executeItem(current);
-      }
+      const item = flat[selectedIndex];
+      if (item) executeItem(item);
     }
   };
 
-  const executeItem = (item: PaletteItem) => {
-    if (item.type === "note") {
-      onSelectNote(item.note.id);
-      onClose();
-    } else if (item.type === "action") {
-      item.handler();
-    }
-  };
+  const placeholder =
+    prefix === ">"
+      ? "Run a command…"
+      : prefix === "#"
+      ? "Filter by tag…"
+      : prefix === "@"
+      ? "Jump to a note…"
+      : "Search notes, actions, tags, settings…";
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="p-0 w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-xl md:max-w-2xl overflow-hidden border border-border/80 bg-background/95 backdrop-blur-md shadow-2xl rounded-none font-sans gap-0 max-h-[85vh] flex flex-col"
         aria-describedby={undefined}
+        style={
+          isMobile
+            ? {
+                top: 0,
+                height: "calc(100dvh - var(--kb-height, 0px))",
+                maxHeight: "calc(100dvh - var(--kb-height, 0px))",
+              }
+            : undefined
+        }
+        className={cn(
+          "p-0 gap-0 overflow-hidden border border-border/80 bg-background/95 backdrop-blur-md shadow-2xl rounded-none font-sans flex flex-col",
+          isMobile
+            ? "left-0 w-screen max-w-none translate-x-0 translate-y-0 border-x-0 border-b-0"
+            : "w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-xl md:max-w-2xl max-h-[85vh]"
+        )}
       >
         <DialogTitle className="sr-only">Command Palette</DialogTitle>
-        <div className="relative flex flex-col h-full w-full overflow-hidden">
+
+        <div
+          className="relative flex flex-col h-full min-h-0 w-full overflow-hidden"
+          style={
+            isMobile
+              ? {
+                  paddingTop: "var(--safe-top, 0px)",
+                  paddingBottom: "var(--safe-bottom, 0px)",
+                }
+              : undefined
+          }
+        >
           <Corners size="sm" offset="border" weight="thin" light />
 
-          {/* Search Header Bar with integrated Close and ESC */}
-          <div className="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border/60 gap-2 sm:gap-3 shrink-0 bg-background/50">
+          {/* Search header */}
+          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border/60 shrink-0 bg-background/50">
             <Search className="size-4 text-muted-foreground/70 shrink-0" />
             <input
               ref={inputRef}
@@ -606,8 +1170,14 @@ export function CommandPalette({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type to search notes or run actions..."
-              className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none font-sans"
+              placeholder={placeholder}
+              role="combobox"
+              aria-expanded
+              aria-controls="command-palette-results"
+              aria-label="Search commands, notes, tags and settings"
+              autoComplete="off"
+              spellCheck={false}
+              className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none font-sans"
             />
             <div className="flex items-center gap-1.5 shrink-0">
               <Badge
@@ -619,7 +1189,7 @@ export function CommandPalette({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                className="flex size-8 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors motion-reduce:transition-none rounded-none"
                 aria-label="Close command palette"
                 title="Close (Esc)"
               >
@@ -628,128 +1198,91 @@ export function CommandPalette({
             </div>
           </div>
 
-          {/* Results List */}
+          {/* Prefix legend — teaches `>` / `#` / `@` at a glance */}
+          {!hasQuery && (
+            <div className="flex items-center gap-1.5 px-3 sm:px-4 py-2 border-b border-border/40 shrink-0 overflow-x-auto">
+              {(
+                [
+                  { prefix: ">" as Prefix, label: "Commands" },
+                  { prefix: "#" as Prefix, label: "Tags" },
+                  { prefix: "@" as Prefix, label: "Notes" },
+                ] as const
+              ).map((chip) => (
+                <button
+                  key={chip.prefix}
+                  type="button"
+                  onClick={() => {
+                    setQuery(`${chip.prefix}`);
+                    inputRef.current?.focus();
+                  }}
+                  className="flex items-center gap-1 shrink-0 border border-border/60 bg-muted/30 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors motion-reduce:transition-none hover:border-border hover:text-foreground rounded-none"
+                >
+                  <span className="font-semibold text-foreground">{chip.prefix}</span>
+                  {chip.label}
+                </button>
+              ))}
+              <span className="ml-auto hidden shrink-0 pl-2 text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60 sm:inline">
+                Every action lives here
+              </span>
+            </div>
+          )}
+
+          {/* Results */}
           <div
+            id="command-palette-results"
             ref={listRef}
-            className="flex-1 min-h-0 max-h-[55vh] overflow-y-auto p-1.5 sm:p-2 divide-y divide-border/20 font-sans"
+            role="listbox"
+            aria-label="Results"
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-1 font-sans"
           >
-            {filteredItems.length === 0 ? (
-              <div className="py-10 text-center text-xs text-muted-foreground font-sans">
-                No matching notes or actions found.
+            {flat.length === 0 ? (
+              <div className="px-6 py-12 text-center text-xs text-muted-foreground">
+                {prefix === "#"
+                  ? "No tags match that search."
+                  : prefix === "@"
+                  ? "No notes match that search."
+                  : prefix === ">"
+                  ? "No commands match that search."
+                  : "No results. Try “> commands”, “# tags” or “@ notes”."}
               </div>
             ) : (
-              filteredItems.map((item, idx) => {
-                const isSelected = idx === selectedIndex;
-
-                if (item.type === "note") {
-                  const note = item.note;
-                  const isActive = activeNote?.id === note.id;
-
-                  return (
-                    <div
-                      key={item.id}
-                      data-index={idx}
-                      onClick={() => executeItem(item)}
-                      onMouseEnter={() => setSelectedIndex(idx)}
-                      className={cn(
-                        "flex items-center justify-between px-2.5 sm:px-3 py-2 sm:py-2.5 cursor-pointer text-xs transition-colors rounded-none gap-2",
-                        isSelected
-                          ? "bg-muted/80 text-foreground"
-                          : "text-foreground/80 hover:bg-muted/40"
-                      )}
-                    >
-                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
-                        <FileText className="size-3.5 text-muted-foreground/60 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="font-medium text-foreground truncate text-[12.5px] sm:text-[13px]">
-                              {note.title || "Untitled"}
-                            </span>
-                            {note.isPinned && (
-                              <Pin className="size-2.5 text-amber-600 dark:text-amber-400 fill-current shrink-0" />
-                            )}
-                            {isActive && (
-                              <Badge
-                                variant="outline"
-                                className="text-[8.5px] sm:text-[9px] px-1 py-0 font-mono text-muted-foreground border-border/60 shrink-0"
-                              >
-                                CURRENT
-                              </Badge>
-                            )}
-                          </div>
-                          {note.content && (
-                            <p className="text-[10.5px] sm:text-[11px] text-muted-foreground truncate mt-0.5 max-w-[220px] sm:max-w-md">
-                              {note.content.replace(/^[#\s\-*\[\]xX]+/gm, "").slice(0, 70)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Note tags */}
-                      {note.tags && note.tags.length > 0 && (
-                        <div className="hidden sm:flex items-center gap-1 shrink-0">
-                          {note.tags.slice(0, 2).map((t) => (
-                            <span
-                              key={t}
-                              className="text-[9.5px] font-mono text-muted-foreground bg-muted/60 px-1.5 py-0.5 border border-border/50 max-w-20 truncate"
-                            >
-                              #{t}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-
-                // Action item
-                const ActionIcon = item.icon;
-                return (
+              sections.map((section) => (
+                <div key={section.key} className="pb-1">
                   <div
-                    key={item.id}
-                    data-index={idx}
-                    onClick={() => executeItem(item)}
-                    onMouseEnter={() => setSelectedIndex(idx)}
                     className={cn(
-                      "flex items-center justify-between px-2.5 sm:px-3 py-2 sm:py-2.5 cursor-pointer text-xs transition-colors rounded-none gap-2",
-                      isSelected
-                        ? "bg-muted/80 text-foreground"
-                        : "text-foreground/80 hover:bg-muted/40"
+                      "sticky top-0 z-10 flex items-center gap-1.5 px-3 sm:px-4 py-1.5",
+                      "bg-background/95 backdrop-blur-xs text-[10px] font-mono uppercase tracking-wider text-muted-foreground"
                     )}
                   >
-                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
-                      <div className="size-6 flex items-center justify-center rounded-xs bg-muted/70 border border-border/60 shrink-0">
-                        <ActionIcon className="size-3 text-foreground" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-[12.5px] sm:text-[13px] text-foreground truncate">
-                          {item.title}
-                        </div>
-                        {item.subtitle && (
-                          <div className="text-[10.5px] sm:text-[11px] text-muted-foreground truncate">
-                            {item.subtitle}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {item.shortcut && (
-                      <Badge
-                        variant="outline"
-                        className="font-mono text-[9px] sm:text-[9.5px] px-1.5 py-0.5 text-muted-foreground border-border/60 shrink-0"
-                      >
-                        {item.shortcut}
-                      </Badge>
-                    )}
+                    {section.key === "recent" && <Clock className="size-3" />}
+                    <span>{section.label}</span>
+                    <span className="text-muted-foreground/50">{section.items.length}</span>
                   </div>
-                );
-              })
+
+                  {section.items.map((item) => {
+                    const index = indexOf.get(item.id) ?? 0;
+                    const isSelected = index === selectedIndex;
+                    return (
+                      <PaletteRow
+                        key={item.id}
+                        item={item}
+                        term={term}
+                        index={index}
+                        selected={isSelected}
+                        activeNoteId={activeNote?.id}
+                        onHover={() => setSelectedIndex(index)}
+                        onRun={() => executeItem(item)}
+                      />
+                    );
+                  })}
+                </div>
+              ))
             )}
           </div>
 
-          {/* Footer Shortcuts Guide */}
-          <div className="px-3 sm:px-4 py-2 bg-muted/30 border-t border-border/50 flex items-center justify-between text-[10px] sm:text-[10.5px] text-muted-foreground font-mono gap-2 shrink-0">
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* Footer */}
+          <div className="hidden md:flex px-3 sm:px-4 py-2 bg-muted/30 border-t border-border/50 items-center justify-between text-[10px] text-muted-foreground font-mono gap-2 shrink-0">
+            <div className="flex items-center gap-3">
               <span>
                 <kbd className="font-semibold text-foreground">↑↓</kbd> navigate
               </span>
@@ -759,13 +1292,151 @@ export function CommandPalette({
               <span>
                 <kbd className="font-semibold text-foreground">esc</kbd> close
               </span>
+              <span className="hidden lg:inline">
+                <kbd className="font-semibold text-foreground">&gt;</kbd>{" "}
+                <kbd className="font-semibold text-foreground">#</kbd>{" "}
+                <kbd className="font-semibold text-foreground">@</kbd> scopes
+              </span>
             </div>
-            <span className="text-[9.5px] sm:text-[10px] tracking-wider uppercase shrink-0 hidden xs:inline">
-              Quill Command
-            </span>
+            <span className="text-[9.5px] tracking-wider uppercase shrink-0">Quill Command</span>
           </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ---------------------------------- Rows ----------------------------------- */
+
+function Highlight({ text, term }: { text: string; term: string }) {
+  const indices = useMemo(() => new Set(matchIndices(text, term)), [text, term]);
+  if (!term || indices.size === 0) return <>{text}</>;
+
+  return (
+    <>
+      {Array.from(text).map((char, i) =>
+        indices.has(i) ? (
+          <span key={i} className="font-semibold text-foreground">
+            {char}
+          </span>
+        ) : (
+          <React.Fragment key={i}>{char}</React.Fragment>
+        )
+      )}
+    </>
+  );
+}
+
+function PaletteRow({
+  item,
+  term,
+  index,
+  selected,
+  activeNoteId,
+  onHover,
+  onRun,
+}: {
+  item: PaletteItem;
+  term: string;
+  index: number;
+  selected: boolean;
+  activeNoteId?: string;
+  onHover: () => void;
+  onRun: () => void;
+}) {
+  const Icon = item.icon;
+  const isActiveNote = item.kind === "note" && item.note?.id === activeNoteId;
+  const isPinned = item.kind === "note" && item.note?.isPinned;
+
+  return (
+    <div
+      role="option"
+      aria-selected={selected}
+      data-index={index}
+      onClick={onRun}
+      onMouseEnter={onHover}
+      className={cn(
+        "mx-1 flex min-h-[44px] cursor-pointer items-center justify-between gap-2 px-2.5 py-2 text-xs transition-colors motion-reduce:transition-none rounded-none sm:px-3",
+        selected ? "bg-muted/80 text-foreground" : "text-foreground/80 hover:bg-muted/40"
+      )}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5">
+        <div
+          className={cn(
+            "flex size-6 shrink-0 items-center justify-center border border-border/60 rounded-xs",
+            item.kind === "command" ? "bg-muted/70" : "bg-transparent"
+          )}
+        >
+          <Icon
+            className={cn(
+              "size-3",
+              item.kind === "tag" ? "text-muted-foreground" : "text-foreground"
+            )}
+          />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-[12.5px] font-medium text-foreground sm:text-[13px]">
+              <Highlight text={item.title} term={term} />
+            </span>
+            {isPinned && (
+              <Pin className="size-2.5 shrink-0 fill-current text-amber-600 dark:text-amber-400" />
+            )}
+            {isActiveNote && (
+              <Badge
+                variant="outline"
+                className="shrink-0 border-border/60 px-1 py-0 font-mono text-[8.5px] text-muted-foreground sm:text-[9px]"
+              >
+                CURRENT
+              </Badge>
+            )}
+            {item.badge && (
+              <Badge
+                variant="outline"
+                className="shrink-0 border-border/60 px-1 py-0 font-mono text-[8.5px] text-muted-foreground sm:text-[9px]"
+              >
+                {item.badge}
+              </Badge>
+            )}
+          </div>
+          {item.subtitle && (
+            <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground sm:text-[11px]">
+              {item.kind === "note" ? item.subtitle : <Highlight text={item.subtitle} term={term} />}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1.5">
+        {item.kind === "note" && item.tags && item.tags.length > 0 && (
+          <div className="hidden items-center gap-1 sm:flex">
+            {item.tags.slice(0, 2).map((tag) => (
+              <span
+                key={tag}
+                className="max-w-20 truncate border border-border/50 bg-muted/60 px-1.5 py-0.5 font-mono text-[9.5px] text-muted-foreground"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {item.chip && item.kind !== "note" && (
+          <span className="border border-border/50 bg-muted/60 px-1.5 py-0.5 font-mono text-[9.5px] text-muted-foreground">
+            {item.chip}
+          </span>
+        )}
+
+        {item.shortcut && (
+          <Badge
+            variant="outline"
+            className="shrink-0 border-border/60 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground sm:text-[9.5px]"
+          >
+            {item.shortcut}
+          </Badge>
+        )}
+      </div>
+    </div>
   );
 }

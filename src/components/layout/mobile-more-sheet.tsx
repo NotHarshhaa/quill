@@ -107,7 +107,7 @@ export function MobileMoreSheet({
       initialSnap="half"
       bodyClassName="px-1"
     >
-      <SheetRow icon={SearchIcon} label="Search" onClick={run(onOpenSearch)} />
+      <SheetRow icon={SearchIcon} label="Search Notes" onClick={run(onOpenSearch)} />
       <SheetRow
         icon={Command}
         label="Command Palette"
