@@ -36,10 +36,12 @@ export function MobileTabBar({ active, onNavigate, onNewNote, className }: Mobil
   return (
     <nav
       aria-label="Primary"
+      data-tour="tabbar"
       className={cn(
-        "h-14 flex items-stretch border-t border-border/80 bg-card/95 backdrop-blur-sm select-none",
+        "h-14 flex items-stretch bg-card/95 backdrop-blur-sm select-none",
         className
       )}
+      style={{ boxShadow: "0 -1px 0 color-mix(in oklab, var(--foreground) 6%, transparent), var(--elevation-soft)" }}
     >
       <TabItem
         id="notes"
@@ -62,10 +64,10 @@ export function MobileTabBar({ active, onNavigate, onNewNote, className }: Mobil
           type="button"
           onClick={create}
           aria-label="New note"
-          className="absolute -top-3.5 left-1/2 -translate-x-1/2 flex size-12 items-center justify-center bg-primary text-primary-foreground border border-primary shadow-lg ring-4 ring-background rounded-none transition-transform motion-reduce:transition-none active:scale-95"
+          className="absolute -top-3.5 left-1/2 -translate-x-1/2 flex size-12 items-center justify-center bg-brand text-brand-foreground shadow-lg ring-4 ring-background rounded-none transition-transform motion-reduce:transition-none active:scale-95"
         >
           <Corners size="sm" weight="thin" light />
-          <Plus className="size-5" strokeWidth={1.75} />
+          <Plus className="size-icon-lg" strokeWidth={1.75} />
         </button>
         <span className="absolute inset-x-0 bottom-1.5 text-center text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
           New
@@ -121,22 +123,22 @@ function TabItem({
       <span
         aria-hidden
         className={cn(
-          "absolute top-0 h-0.5 w-8 rounded-full bg-primary transition-opacity motion-reduce:transition-none",
+          "absolute top-0 h-0.5 w-8 rounded-full bg-brand transition-opacity motion-reduce:transition-none",
           active ? "opacity-100" : "opacity-0"
         )}
       />
       <span
         className={cn(
           "flex size-7 items-center justify-center rounded-full transition-colors motion-reduce:transition-none",
-          active ? "bg-primary/12 text-primary" : "text-muted-foreground"
+          active ? "bg-brand/12 text-brand" : "text-muted-foreground"
         )}
       >
-        <Icon className="size-[18px]" strokeWidth={1.75} />
+        <Icon className="size-icon-lg" strokeWidth={1.75} />
       </span>
       <span
         className={cn(
           "text-[10px] font-mono uppercase tracking-wide transition-colors motion-reduce:transition-none",
-          active ? "text-primary font-semibold" : "text-muted-foreground"
+          active ? "text-brand font-semibold" : "text-muted-foreground"
         )}
       >
         {label}

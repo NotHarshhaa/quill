@@ -21,7 +21,7 @@ export function TopBarGlyph({
   icon: TopBarIcon;
   className?: string;
 }) {
-  return <Icon className={cn("size-4", className)} strokeWidth={TOP_BAR_STROKE} />;
+  return <Icon className={cn("size-icon", className)} strokeWidth={TOP_BAR_STROKE} />;
 }
 
 /**

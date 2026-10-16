@@ -36,7 +36,7 @@ export function MobileHeader({
   return (
     <header
       className={cn(
-        "md:hidden border-b border-border/80 shrink-0 bg-background/95 backdrop-blur-xs select-none",
+        "md:hidden shrink-0 bg-background/95 backdrop-blur-xs select-none ds-hairline-b",
         className
       )}
       style={{ paddingTop: "var(--safe-top)" }}
@@ -51,8 +51,7 @@ export function MobileHeader({
           aria-label="Back to notes"
           className="flex size-11 shrink-0 items-center justify-center text-muted-foreground transition-colors motion-reduce:transition-none hover:text-foreground active:bg-muted rounded-none"
         >
-          <ArrowLeft className="size-[18px]" strokeWidth={1.75} />
-        </button>
+          <ArrowLeft className="size-icon" strokeWidth={1.75} />        </button>
 
         <InlineEditableTitle
           value={title}
@@ -67,8 +66,7 @@ export function MobileHeader({
         >
           <ViewToggleButton
             active={viewMode === "editor"}
-            icon={PenLine}
-            label="Write"
+            icon={PenLine}            label="Write"
             onClick={() => onViewModeChange("editor")}
           />
           <ViewToggleButton
@@ -86,12 +84,12 @@ export function MobileHeader({
               hapticTap();
               onOpenSearch();
             }}
+            data-tour="search"
             aria-label="Search everything"
             aria-haspopup="dialog"
             className="flex size-11 shrink-0 items-center justify-center text-muted-foreground transition-colors motion-reduce:transition-none hover:text-foreground active:bg-muted rounded-none"
           >
-            <Search className="size-[18px]" strokeWidth={1.75} />
-          </button>
+            <Search className="size-icon" strokeWidth={1.75} />          </button>
         )}
 
         <button
@@ -104,8 +102,7 @@ export function MobileHeader({
           aria-haspopup="dialog"
           className="flex size-11 shrink-0 items-center justify-center text-muted-foreground transition-colors motion-reduce:transition-none hover:text-foreground active:bg-muted rounded-none"
         >
-          <MoreHorizontal className="size-[18px]" strokeWidth={1.75} />
-        </button>
+          <MoreHorizontal className="size-icon" strokeWidth={1.75} />        </button>
       </div>
     </header>
   );
@@ -137,7 +134,6 @@ function ViewToggleButton({
         active ? "bg-background text-foreground shadow-xs" : "text-muted-foreground"
       )}
     >
-      <Icon className="size-[18px]" strokeWidth={1.75} />
-    </button>
+      <Icon className="size-icon" strokeWidth={1.75} />    </button>
   );
 }

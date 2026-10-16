@@ -48,7 +48,8 @@ export function AIAssistantMenu({
                 size="icon"
                 variant="ghost"
                 disabled={disabled || isProcessing}
-                className="relative size-9 rounded-none bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shrink-0"
+                data-tour="ai"
+                className="relative size-9 rounded-none bg-brand text-brand-foreground hover:bg-brand/90 disabled:opacity-50 shrink-0"
                 aria-label="AI Assistant"
               >
                 {isProcessing ? (
@@ -87,7 +88,7 @@ export function AIAssistantMenu({
                 disabled={isProcessing}
                 className="cursor-pointer gap-2.5 py-2 sm:py-1.5 px-2.5 sm:px-2 rounded-none hover:bg-muted/50 focus:bg-muted/50 min-h-[36px] sm:min-h-0"
               >
-                <Icon className="size-3.5 text-primary shrink-0" />
+                <Icon className="size-icon-sm text-brand shrink-0" />
                 <div className="flex flex-col">
                   <span className="font-semibold text-foreground">{title}</span>
                   <span className="text-[10px] text-muted-foreground">{description}</span>

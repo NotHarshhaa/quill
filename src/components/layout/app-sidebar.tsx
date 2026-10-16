@@ -209,8 +209,8 @@ function NoteRow({
         className={cn(
           "group relative w-full min-w-0 max-w-full text-left p-3 rounded-none transition-all cursor-pointer font-sans select-none box-border touch-pan-y",
           isActive
-            ? "bg-card shadow-xs border border-border text-foreground"
-            : "bg-card/40 hover:bg-muted/40 text-foreground/80 hover:text-foreground border border-border/60 hover:border-border/90"
+            ? "bg-card shadow-soft-md text-foreground ds-hairline-t"
+            : "bg-card/40 hover:bg-muted/40 text-foreground/80 hover:text-foreground"
         )}
       >
       <Corners
@@ -220,7 +220,7 @@ function NoteRow({
         light={!isActive}
         className={cn(
           "transition-opacity",
-          isActive ? "border-primary opacity-100" : "opacity-40 group-hover:opacity-100"
+          isActive ? "border-brand opacity-100" : "opacity-40 group-hover:opacity-100"
         )}
       />
 
@@ -333,10 +333,10 @@ function NoteRow({
                   onSelectTag?.(selectedTag === tag ? null : tag);
                 }}
                 className={cn(
-                  "text-[9.5px] font-mono px-1.5 py-0.2 rounded-none transition-colors border truncate max-w-[80px]",
+                  "text-[9.5px] font-mono px-1.5 py-0.2 rounded-none transition-colors truncate max-w-[80px]",
                   selectedTag === tag
-                    ? "bg-primary text-primary-foreground border-primary font-semibold"
-                    : "bg-muted/40 text-muted-foreground hover:text-foreground border-border/40 hover:border-border"
+                    ? "bg-brand-soft text-brand font-semibold"
+                    : "bg-muted/40 text-muted-foreground hover:text-foreground"
                 )}
                 title={`Filter by #${tag}`}
               >
@@ -433,6 +433,8 @@ export function AppSidebar({
   const [isResizing, setIsResizing] = useState(false);
   /** Note whose "···" actions are open in the touch bottom sheet. */
   const [actionsNote, setActionsNote] = useState<Note | null>(null);
+  /** Tag strip: collapsed hides tags beyond the first 6 behind "+N more". */
+  const [allTagsExpanded, setAllTagsExpanded] = useState(false);
   const { theme, setTheme } = useTheme();
 
   // Restore persisted width
@@ -530,10 +532,12 @@ export function AppSidebar({
     <>
       <aside
         ref={asideRef}
+        data-tour="sidebar"
         aria-label="Library"
         style={{ "--sidebar-w": `${width}px` } as React.CSSProperties}
         className={cn(
-          "relative flex flex-col h-full bg-card/95 border-r border-border/80 shrink-0 overflow-hidden select-none font-sans",
+          "relative flex flex-col h-full bg-card/95 shrink-0 overflow-hidden select-none font-sans",
+          "shadow-soft",
           isResizing
             ? "transition-none"
             : "transition-[transform,width] duration-200 ease-out motion-reduce:transition-none",
@@ -580,7 +584,7 @@ export function AppSidebar({
                 <button
                   type="button"
                   onClick={handleNewNoteClick}
-                  className="relative size-8 flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-none border border-primary shadow-xs cursor-pointer group mb-1.5 shrink-0"
+                  className="relative size-8 flex items-center justify-center bg-brand text-brand-foreground hover:bg-brand/90 transition-colors rounded-none shadow-soft cursor-pointer group mb-1.5 shrink-0"
                   aria-label="New Note (Ctrl+N)"
                 >
                   <Corners size="sm" weight="thin" light />
@@ -699,49 +703,46 @@ export function AppSidebar({
             {/* Flexible Spacer */}
             <div className="flex-1 min-h-2" />
 
-            {/* Bottom Utilities */}
-            <div className="flex flex-col items-center gap-1 shrink-0 pt-2 border-t border-border/60 w-full">
-              {/* Vault Preferences & Data */}
+            {/* Bottom: single Tools & Settings menu — graph/insights/ambient now
+                also live in the Command Palette. */}
+            <div className="flex flex-col items-center gap-1 shrink-0 pt-2 ds-hairline-t w-full">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onSelectPanel(activePanel === "settings" ? "all" : "settings");
-                      onOpen?.();
-                    }}
-                    className={cn(
-                      "relative size-8 flex items-center justify-center rounded-none transition-colors cursor-pointer",
-                      activePanel === "settings"
-                        ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                    )}
-                    aria-label="Vault Preferences & Data"
-                  >
-                    {activePanel === "settings" && <Corners size="sm" weight="thin" light />}
-                    <Settings className="size-3.5" />
-                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          "size-8 flex items-center justify-center rounded-none transition-colors cursor-pointer",
+                          activePanel === "settings"
+                            ? "bg-brand-soft text-brand"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        )}
+                        aria-label="Tools & Settings"
+                      >
+                        <Settings className="size-icon-sm" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start" className="w-52 font-sans text-xs rounded-none border border-border/60 bg-card shadow-soft-md p-1">
+                      <DropdownMenuItem className="gap-2.5 py-2 normal-case tracking-normal font-sans cursor-pointer" onClick={() => onSelectPanel(activePanel === "settings" ? "all" : "settings")}>
+                        <Settings className="size-3.5 text-muted-foreground" />
+                        <span>Settings & Data</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-border/50" />
+                      <DropdownMenuItem className="gap-2.5 py-2 normal-case tracking-normal font-sans cursor-pointer" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                        {theme === "dark" ? <Sun className="size-3.5 text-muted-foreground" /> : <Moon className="size-3.5 text-muted-foreground" />}
+                        <span>Toggle theme</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-border/50" />
+                      <DropdownMenuItem className="gap-2.5 py-2 normal-case tracking-normal font-sans cursor-pointer" onClick={onOpen}>
+                        <PanelLeftOpen className="size-3.5 text-muted-foreground" />
+                        <span>Expand library</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
-                  Vault Preferences & Data
-                </TooltipContent>
-              </Tooltip>
-
-              {/* Expand Library Toggle */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={onOpen}
-                    className="size-8 text-primary hover:text-primary hover:bg-primary/10 rounded-none transition-colors"
-                    aria-label="Expand library"
-                  >
-                    <PanelLeftOpen className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8} className="font-sans text-xs">
-                  Expand Library (Ctrl+B)
+                  Tools & Settings
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -751,7 +752,7 @@ export function AppSidebar({
           <div className="flex flex-col h-full w-full min-w-0 overflow-hidden box-border">
             {/* Brand header (Unified h-12 height + safe area top) */}
             <div
-              className="border-b border-border/80 shrink-0 bg-background/50 select-none"
+              className="shrink-0 bg-background/50 select-none ds-hairline-b"
               style={{
                 paddingTop: "var(--safe-top)",
               }}
@@ -797,7 +798,7 @@ export function AppSidebar({
               type="button"
               onClick={handleNewNoteClick}
               aria-label="New Note (Ctrl+N)"
-              className="relative flex-1 h-8 flex items-center justify-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-xs font-semibold rounded-none border border-primary shadow-xs"
+              className="relative flex-1 h-8 flex items-center justify-center gap-1.5 bg-brand text-brand-foreground hover:bg-brand/90 transition-colors text-xs font-semibold rounded-none shadow-soft"
             >
               <Corners size="sm" weight="thin" light />
               <Plus className="size-3.5 shrink-0" />
@@ -826,56 +827,65 @@ export function AppSidebar({
             )}
           </div>
 
-          {/* Library Tabs (All / Favorites / Trash) */}
-          <div className="relative flex items-center gap-1 mx-2.5 p-1 bg-card/60 border border-border/80 shrink-0 shadow-xs">
-            <Corners size="sm" weight="thin" light />
+          {/* Library Tabs (All / Favorites / Trash) — segmented control.
+              The active segment carries the single brand accent; the track is a
+              tinted, borderless surface. */}
+          <div
+            className="relative flex items-center gap-0.5 mx-2.5 p-0.5 shrink-0 bg-muted/60 rounded-none"
+            role="tablist"
+            aria-label="Library view"
+            style={{ boxShadow: "var(--elevation-soft)" }}
+          >
             <button
               type="button"
+              role="tab"
+              aria-selected={activePanel === "all"}
               onClick={() => onSelectPanel("all")}
-              aria-current={activePanel === "all" ? "page" : undefined}
               className={cn(
                 "flex-1 h-7.5 flex items-center justify-center gap-1.5 text-xs font-mono uppercase tracking-wider transition-all rounded-none cursor-pointer",
                 activePanel === "all"
-                  ? "bg-primary text-primary-foreground shadow-xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  ? "bg-brand text-brand-foreground shadow-soft font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <FileText className="size-3.5 shrink-0" />
+              <FileText className="size-icon-sm shrink-0" />
               <span>ALL</span>
-              <span className={cn("text-[10px] font-mono", activePanel === "all" ? "text-primary-foreground/90 font-bold" : "opacity-70")}>({notes.length})</span>
+              <span className={cn("text-[10px] font-mono", activePanel === "all" ? "text-brand-foreground/80" : "opacity-70")}>({notes.length})</span>
             </button>
 
             <button
               type="button"
+              role="tab"
+              aria-selected={activePanel === "favorites"}
               onClick={() => onSelectPanel("favorites")}
-              aria-current={activePanel === "favorites" ? "page" : undefined}
               className={cn(
                 "flex-1 h-7.5 flex items-center justify-center gap-1.5 text-xs font-mono uppercase tracking-wider transition-all rounded-none cursor-pointer",
                 activePanel === "favorites"
-                  ? "bg-primary text-primary-foreground shadow-xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  ? "bg-brand text-brand-foreground shadow-soft font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Star className={cn("size-3.5 shrink-0", activePanel === "favorites" ? "fill-current text-primary-foreground" : "text-amber-500")} />
+              <Star className={cn("size-icon-sm shrink-0", activePanel === "favorites" ? "fill-current text-brand-foreground" : "text-amber-500")} />
               <span>FAVS</span>
-              <span className={cn("text-[10px] font-mono", activePanel === "favorites" ? "text-primary-foreground/90 font-bold" : "opacity-70")}>({pinnedCount})</span>
+              <span className={cn("text-[10px] font-mono", activePanel === "favorites" ? "text-brand-foreground/80" : "opacity-70")}>({pinnedCount})</span>
             </button>
 
             <button
               type="button"
+              role="tab"
+              aria-selected={activePanel === "trash"}
               onClick={() => onSelectPanel("trash")}
-              aria-current={activePanel === "trash" ? "page" : undefined}
               className={cn(
                 "flex-1 h-7.5 flex items-center justify-center gap-1.5 text-xs font-mono uppercase tracking-wider transition-all rounded-none cursor-pointer",
                 activePanel === "trash"
-                  ? "bg-primary text-primary-foreground shadow-xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  ? "bg-brand text-brand-foreground shadow-soft font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Trash2 className="size-3.5 shrink-0" />
+              <Trash2 className="size-icon-sm shrink-0" />
               <span>TRASH</span>
               {trashedNotes.length > 0 && (
-                <span className={cn("text-[10px] font-mono font-bold", activePanel === "trash" ? "text-primary-foreground" : "text-destructive")}>
+                <span className={cn("text-[10px] font-mono font-bold", activePanel === "trash" ? "text-brand-foreground" : "text-destructive")}>
                   ({trashedNotes.length})
                 </span>
               )}
@@ -914,23 +924,24 @@ export function AppSidebar({
             </div>
           )}
 
-          {/* Dynamic Tag Filter Strip */}
+          {/* Dynamic Tag Filter Strip — single horizontally scrollable row
+              with a "+N more" affordance past 6 tags. */}
           {activePanel !== "settings" && activePanel !== "trash" && allTags.length > 0 && (
-            <div className="px-2.5 py-1 shrink-0 w-full min-w-0 overflow-hidden">
-              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none w-full touch-pan-x [mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent_100%)]">
+            <div className="px-2.5 py-1 shrink-0 w-full min-w-0">
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none w-full touch-pan-x">
                 <button
                   type="button"
                   onClick={() => onSelectTag?.(null)}
                   className={cn(
-                    "text-[10px] font-mono uppercase px-2 py-0.5 rounded-none whitespace-nowrap transition-colors border shrink-0",
+                    "text-[10px] font-mono uppercase px-2 py-0.5 rounded-none whitespace-nowrap shrink-0 transition-colors",
                     !selectedTag
-                      ? "bg-primary text-primary-foreground font-semibold border-primary"
-                      : "bg-muted/40 text-muted-foreground hover:text-foreground border-border/40 hover:border-border"
+                      ? "bg-brand-soft text-brand font-semibold"
+                      : "bg-muted/40 text-muted-foreground hover:text-foreground"
                   )}
                 >
                   All
                 </button>
-                {allTags.map((tag) => {
+                {(allTagsExpanded ? allTags : allTags.slice(0, 6)).map((tag) => {
                   const isSelected = selectedTag === tag;
                   return (
                     <button
@@ -938,16 +949,35 @@ export function AppSidebar({
                       type="button"
                       onClick={() => onSelectTag?.(isSelected ? null : tag)}
                       className={cn(
-                        "text-[10px] font-mono px-2 py-0.5 rounded-none whitespace-nowrap transition-colors border shrink-0",
+                        "text-[10px] font-mono px-2 py-0.5 rounded-none whitespace-nowrap shrink-0 transition-colors",
                         isSelected
-                          ? "bg-primary text-primary-foreground font-semibold border-primary"
-                          : "bg-muted/40 text-muted-foreground hover:text-foreground border-border/40 hover:border-border"
+                          ? "bg-brand-soft text-brand font-semibold"
+                          : "bg-muted/40 text-muted-foreground hover:text-foreground"
                       )}
                     >
                       #{tag}
                     </button>
                   );
                 })}
+                {!allTagsExpanded && allTags.length > 6 && (
+                  <button
+                    type="button"
+                    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+                    onClick={() => setAllTagsExpanded(true)}
+                    className="text-[10px] font-mono px-2 py-0.5 rounded-none whitespace-nowrap shrink-0 text-muted-foreground hover:text-foreground bg-muted/40"
+                  >
+                    +{allTags.length - 6} more
+                  </button>
+                )}
+                {allTagsExpanded && allTags.length > 6 && (
+                  <button
+                    type="button"
+                    onClick={() => setAllTagsExpanded(false)}
+                    className="text-[10px] font-mono px-2 py-0.5 rounded-none whitespace-nowrap shrink-0 text-muted-foreground hover:text-foreground bg-muted/40"
+                  >
+                    Show less
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -1080,7 +1110,7 @@ export function AppSidebar({
                     filteredTrashNotes.map((note) => (
                       <div
                         key={note.id}
-                        className="group relative p-2.5 rounded-none border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors w-full min-w-0 max-w-full box-border"
+                        className="group relative p-2.5 rounded-none bg-muted/20 hover:bg-muted/40 transition-colors w-full min-w-0 max-w-full box-border shadow-soft"
                       >
                         <Corners size="sm" offset="border" weight="thin" light className="opacity-40 group-hover:opacity-100 transition-opacity" />
                         <div className="flex items-center justify-between gap-1">
@@ -1139,7 +1169,7 @@ export function AppSidebar({
             {activePanel === "settings" && (
               <div className="flex flex-col h-full font-sans">
                 {/* Header with back button */}
-                <div className="flex items-center justify-between px-3 py-2 border-b border-border/60 bg-muted/20">
+                <div className="flex items-center justify-between px-3 py-2 bg-muted/20 ds-hairline-b">
                   <span className="text-xs font-semibold tracking-tight text-foreground">
                     Preferences & Data
                   </span>
@@ -1156,7 +1186,7 @@ export function AppSidebar({
 
                 <div className="p-3 space-y-3">
                   {/* Session Writing Goal */}
-                  <div className="border border-border/70 p-3 rounded-none bg-card/60 shadow-xs space-y-2 relative">
+                  <div className="rounded-none bg-card/60 p-3 shadow-soft-md space-y-2 relative">
                     <Corners size="sm" weight="thin" light />
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
@@ -1188,7 +1218,7 @@ export function AppSidebar({
                   </div>
 
                   {/* Data Management */}
-                  <div className="border border-border/70 p-3 rounded-none bg-card/60 shadow-xs space-y-2 relative">
+                  <div className="rounded-none bg-card/60 p-3 shadow-soft-md space-y-2 relative">
                     <Corners size="sm" weight="thin" light />
                     <div className="flex items-center gap-1.5">
                       <Database className="size-3.5 text-primary" />
@@ -1231,7 +1261,7 @@ export function AppSidebar({
                   </div>
 
                   {/* Theme & Appearance */}
-                  <div className="border border-border/70 p-3 rounded-none bg-card/60 shadow-xs space-y-2 relative">
+                  <div className="rounded-none bg-card/60 p-3 shadow-soft-md space-y-2 relative">
                     <Corners size="sm" weight="thin" light />
                     <div className="flex items-center gap-1.5">
                       <Sun className="size-3.5 text-primary" />
@@ -1269,7 +1299,7 @@ export function AppSidebar({
                   </div>
 
                   {/* About Section */}
-                  <div className="border border-border/70 p-3 rounded-none bg-card/60 shadow-xs space-y-1.5 relative">
+                  <div className="rounded-none bg-card/60 p-3 shadow-soft-md space-y-1.5 relative">
                     <Corners size="sm" weight="thin" light />
                     <h4 className="text-xs font-semibold text-foreground">About Quill</h4>
                     <p className="text-[10px] text-muted-foreground leading-relaxed">
@@ -1287,7 +1317,7 @@ export function AppSidebar({
           </ScrollArea>
 
           {/* Footer: single Settings utility entry (Graph/Insights/Ambient now live in the More menu + Command Palette) */}
-          <div className="border-t border-border/80 px-2 shrink-0 bg-background/50 font-sans select-none">
+          <div className="px-2 shrink-0 bg-background/50 font-sans select-none ds-hairline-t">
             <div className="h-10 flex items-center justify-end">
               {/* Settings Button */}
               <Tooltip>

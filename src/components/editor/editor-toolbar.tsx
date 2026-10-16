@@ -76,7 +76,7 @@ export function EditorToolbar({
           role="toolbar"
           aria-label="Markdown formatting"
           aria-orientation="horizontal"
-          className="flex flex-wrap items-center gap-0.5 max-w-full bg-card/90 backdrop-blur-sm border border-border/70 shadow-sm px-1 py-0.5 rounded-none"
+          className="flex flex-wrap items-center gap-0.5 max-w-full bg-card/90 backdrop-blur-sm shadow-soft-md px-1 py-0.5 rounded-none ds-panel-md"
         >
           {/* Undo / Redo — desktop only. Phones get undo/redo from the keyboard
               accessory bar and keep this pill on a single row. */}

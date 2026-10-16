@@ -49,6 +49,7 @@ import { AIStatusModal } from "@/components/ai/ai-status-modal";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { MobileTabBar, MobileTab } from "@/components/layout/mobile-tab-bar";
 import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet";
+import { LayoutTour, hasSeenLayoutTour } from "@/components/onboarding/layout-tour";
 import { MobileAISheet } from "@/components/layout/mobile-ai-sheet";
 import { ExportSheet } from "@/components/layout/export-sheet";
 import { KeyboardAccessoryBar } from "@/components/editor/keyboard-accessory-bar";
@@ -128,6 +129,7 @@ export default function QuillPage() {
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
   const [isAIStatusOpen, setIsAIStatusOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -180,6 +182,15 @@ export default function QuillPage() {
       });
     }
   }, []);
+
+  // Open the first-run layout tour once the welcome modal closes.
+  useEffect(() => {
+    if (isWelcomeOpen) return;
+    if (typeof window === "undefined") return;
+    if (hasSeenLayoutTour()) return;
+    const t = window.setTimeout(() => setIsTourOpen(true), 400);
+    return () => window.clearTimeout(t);
+  }, [isWelcomeOpen]);
 
   // Synchronize Android native status bar icon appearance when theme changes
   useEffect(() => {
@@ -684,7 +695,7 @@ export default function QuillPage() {
           <div className="flex-1 flex flex-col min-w-0">
             {/* Top Bar (Edge-to-edge header with safe-area clearance for camera cutout/status bar) */}
             <header
-              className="max-md:hidden border-b border-border/80 shrink-0 bg-background/95 backdrop-blur-xs select-none"
+              className="max-md:hidden shrink-0 bg-background/95 backdrop-blur-xs select-none ds-hairline-b"
               style={{
                 paddingTop: "var(--safe-top)",
               }}
@@ -721,7 +732,7 @@ export default function QuillPage() {
                     <InlineEditableTitle
                       value={activeNote.title}
                       onCommit={handleRenameNote}
-                      className="hidden min-[420px]:inline-flex"
+                      className="hidden @3xs:inline-flex"
                     />
                   )}
 
@@ -757,6 +768,7 @@ export default function QuillPage() {
                   label="Command palette"
                   shortcut="Ctrl+K"
                   onClick={() => setIsCommandPaletteOpen(true)}
+                  data-tour="search"
                   className="hidden sm:inline-flex"
                 >
                   <TopBarGlyph icon={Command} />
@@ -784,7 +796,7 @@ export default function QuillPage() {
                 <TopBarButton
                   label={isDark ? "Switch to light theme" : "Switch to dark theme"}
                   onClick={() => setTheme(isDark ? "light" : "dark")}
-                  className="hidden lg:inline-flex"
+                  className="hidden @lg:inline-flex"
                 >
                   <TopBarGlyph icon={isDark ? Sun : Moon} />
                 </TopBarButton>
@@ -805,7 +817,7 @@ export default function QuillPage() {
             />
 
             {/* Editor/Preview Content */}
-            <div className="flex-1 flex min-h-0" {...editorSwipe.bind}>
+            <div className="flex-1 flex min-h-0" data-tour="canvas" {...editorSwipe.bind}>
               {isZenMode ? (
                 /* Zen Mode - Centered Focus */
                 <div className="flex-1 flex flex-col h-full bg-drafting-grid relative overflow-hidden">
@@ -1141,6 +1153,12 @@ export default function QuillPage() {
               selectNote(welcomeNote.id);
             }
           }}
+        />
+
+        {/* First-run layout tour (spotlight walkthrough). */}
+        <LayoutTour
+          open={isTourOpen}
+          onDone={() => setIsTourOpen(false)}
         />
 
         {/* Offline AI Model Manager & WebGPU Status Dialog */}
