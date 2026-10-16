@@ -20,14 +20,11 @@ import {
   PanelLeftOpen,
   Pin,
   PinOff,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { VersionHistoryDialog } from "@/components/history/version-history-dialog";
 import { TemplateDialog } from "@/components/templates/template-dialog";
 import { KnowledgeGraphModal } from "@/components/graph/knowledge-graph-modal";
@@ -40,13 +37,25 @@ import { AppSidebar, SidebarPanel } from "@/components/layout/app-sidebar";
 import { StatusBar } from "@/components/layout/status-bar";
 import { MoreMenu } from "@/components/layout/more-menu";
 import { DocumentPanel } from "@/components/layout/document-panel";
-import { Corners } from "@/components/frame";
+import {
+  InlineEditableTitle,
+  TopBarButton,
+  TopBarGlyph,
+  TopBarSegmentedControl,
+  ViewSegment,
+} from "@/components/layout/top-bar";
 import { AIAssistantMenu } from "@/components/ai/ai-assistant-menu";
 import { AIStatusModal } from "@/components/ai/ai-status-modal";
 import { emitEditorCommand } from "@/lib/editor/editorCommands";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
+
+const VIEW_SEGMENTS: ViewSegment[] = [
+  { value: "editor", label: "Write", icon: PenLine, shortcut: "Ctrl+1" },
+  { value: "split", label: "Split", icon: Columns2, shortcut: "Ctrl+2" },
+  { value: "preview", label: "Preview", icon: Eye, shortcut: "Ctrl+3" },
+];
 
 export default function QuillPage() {
   const {
@@ -90,7 +99,8 @@ export default function QuillPage() {
   const [hasNotifiedGoal, setHasNotifiedGoal] = useState(false);
   const [activePanel, setActivePanel] = useState<SidebarPanel>("all");
   const [sideVisible, setSideVisible] = useState(true);
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   // New Feature Modals State
   const [isGraphOpen, setIsGraphOpen] = useState(false);
@@ -100,6 +110,7 @@ export default function QuillPage() {
   const [isAIStatusOpen, setIsAIStatusOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isDocPanelOpen, setIsDocPanelOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Hidden file inputs for .md import and JSON restore
   const markdownInputRef = useRef<HTMLInputElement>(null);
@@ -145,6 +156,13 @@ export default function QuillPage() {
       } catch {}
     }
   }, [resolvedTheme]);
+
+  // Track fullscreen state so the More menu can reflect / exit it
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
 
   // Latest editor content & active note, readable from effect cleanups
   const latestEditorRef = useRef({ id: activeNoteId, content: localContent, note: activeNote });
@@ -398,6 +416,22 @@ export default function QuillPage() {
     }
   };
 
+  // Inline rename from the top bar — renames the note only, never the body
+  const handleRenameNote = (title: string) => {
+    if (!activeNote) return;
+    updateNote(activeNote.id, { title });
+  };
+
+  // Real browser fullscreen (View → Fullscreen in the More menu)
+  const handleToggleFullscreen = () => {
+    if (typeof document === "undefined") return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen?.().catch(() => {});
+    } else {
+      void document.documentElement.requestFullscreen?.().catch(() => {});
+    }
+  };
+
   const wordCount = countWords(localContent);
 
   // Trigger celebration toast once when session writing goal is reached
@@ -502,166 +536,97 @@ export default function QuillPage() {
                 paddingTop: "var(--safe-top)",
               }}
             >
-              <div className="h-12 px-3 flex items-center justify-between gap-3 shrink-0">
-                {/* Zone 1: Left (Sidebar toggle, Note title, Pin, Wordcount) */}
-              <div className="flex items-center gap-2 min-w-0 flex-1 basis-0 justify-start">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      onClick={() => setSideVisible((prev) => !prev)}
-                      className="relative size-7.5 rounded-none border border-border/70 bg-card/40 hover:bg-muted/50 hover:border-border text-muted-foreground hover:text-foreground shrink-0 group transition-all"
-                      aria-label={sideVisible ? "Hide sidebar" : "Show sidebar"}
-                    >
-                      <Corners size="sm" weight="thin" light className="opacity-30 group-hover:opacity-100 transition-opacity" />
-                      {sideVisible ? (
-                        <PanelLeftClose className="size-3.5" />
-                      ) : (
-                        <PanelLeftOpen className="size-3.5" />
+              <div className="h-12 px-2 sm:px-3 flex items-center gap-2 shrink-0">
+                {/* Zone 1: Left — sidebar toggle · pin · inline title · quiet word count */}
+                <div className="flex items-center gap-2 min-w-0 flex-1 basis-0 justify-start">
+                  <TopBarButton
+                    label={sideVisible ? "Hide sidebar" : "Show sidebar"}
+                    shortcut="Ctrl+B"
+                    onClick={() => setSideVisible((prev) => !prev)}
+                    active={sideVisible}
+                  >
+                    <TopBarGlyph icon={sideVisible ? PanelLeftClose : PanelLeftOpen} />
+                  </TopBarButton>
+
+                  {activeNote && (
+                    <TopBarButton
+                      label={activeNote.isPinned ? "Unpin note" : "Pin note"}
+                      onClick={() => togglePinNote(activeNote.id)}
+                      className={cn(
+                        "hidden sm:inline-flex",
+                        activeNote.isPinned && "text-amber-500 hover:text-amber-400"
                       )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="font-sans text-xs">
-                    {sideVisible ? "Hide Library (Ctrl+B)" : "Show Library (Ctrl+B)"}
-                  </TooltipContent>
-                </Tooltip>
+                    >
+                      <TopBarGlyph
+                        icon={activeNote.isPinned ? Pin : PinOff}
+                        className={activeNote.isPinned ? "fill-current" : undefined}
+                      />
+                    </TopBarButton>
+                  )}
 
-                {activeNote && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon-xs"
-                        variant="ghost"
-                        onClick={() => togglePinNote(activeNote.id)}
-                        className={cn(
-                          "size-7 rounded-none shrink-0",
-                          activeNote.isPinned
-                            ? "text-amber-500 hover:text-amber-400"
-                            : "text-muted-foreground hover:text-foreground"
-                        )}
-                        aria-label={activeNote.isPinned ? "Unpin note" : "Pin note"}
-                      >
-                        {activeNote.isPinned ? (
-                          <Pin className="size-3.5 fill-current" />
-                        ) : (
-                          <PinOff className="size-3.5" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="font-sans text-xs">
-                      {activeNote.isPinned ? "Unpin from top" : "Pin to top"}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
+                  {activeNote && (
+                    <InlineEditableTitle value={activeNote.title} onCommit={handleRenameNote} />
+                  )}
 
-                <span
-                  className="min-w-0 text-xs font-semibold text-foreground truncate max-w-[160px] sm:max-w-xs font-sans tracking-tight"
-                  title={activeNote?.title}
-                >
-                  {activeNote?.title || "Untitled"}
-                </span>
-              </div>
-
-              {/* Zone 2: Center (view mode switcher - spacious & default variant) */}
-              <div className="flex items-center justify-center shrink-0">
-                <div className="relative flex items-center bg-card/60 border border-border/80 p-1 gap-1 shrink-0 rounded-none shadow-xs">
-                  <Corners size="sm" weight="thin" light />
-                  <Button
-                    size="xs"
-                    variant={viewMode === "editor" ? "default" : "ghost"}
-                    onClick={() => setViewMode("editor")}
-                    className={cn(
-                      "h-7 sm:h-7.5 px-3 sm:px-3.5 text-xs font-mono font-medium tracking-wide gap-1.5 rounded-none transition-all",
-                      viewMode === "editor"
-                        ? "shadow-xs font-semibold"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                    )}
-                    title="Editor (Ctrl+1)"
-                  >
-                    <PenLine className="size-3.5" />
-                    <span className="hidden md:inline">WRITE</span>
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant={viewMode === "split" ? "default" : "ghost"}
-                    onClick={() => setViewMode("split")}
-                    className={cn(
-                      "hidden md:inline-flex h-7 sm:h-7.5 px-3 sm:px-3.5 text-xs font-mono font-medium tracking-wide gap-1.5 rounded-none transition-all",
-                      viewMode === "split"
-                        ? "shadow-xs font-semibold"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                    )}
-                    title="Split (Ctrl+2)"
-                  >
-                    <Columns2 className="size-3.5" />
-                    <span>SPLIT</span>
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant={viewMode === "preview" ? "default" : "ghost"}
-                    onClick={() => setViewMode("preview")}
-                    className={cn(
-                      "h-7 sm:h-7.5 px-3 sm:px-3.5 text-xs font-mono font-medium tracking-wide gap-1.5 rounded-none transition-all",
-                      viewMode === "preview"
-                        ? "shadow-xs font-semibold"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                    )}
-                    title="Preview (Ctrl+3)"
-                  >
-                    <Eye className="size-3.5" />
-                    <span className="hidden md:inline">PREVIEW</span>
-                  </Button>
+                  <span className="hidden sm:inline shrink-0 pl-1 text-[11px] font-mono text-muted-foreground/60 tabular-nums">
+                    {wordCount} words
+                  </span>
                 </div>
+
+              {/* Zone 2: Center — segmented Write | Split | Preview */}
+              <div className="flex items-center justify-center shrink-0">
+                <TopBarSegmentedControl
+                  value={viewMode}
+                  onChange={(v) => setViewMode(v as ViewMode)}
+                  segments={VIEW_SEGMENTS}
+                />
               </div>
 
-              {/* Zone 3: Right (Command palette, Offline AI, and More menu) */}
+              {/* Zone 3: Right — AI · Command palette · ⋯ More · theme toggle */}
               <div className="flex items-center gap-2 min-w-0 flex-1 basis-0 justify-end">
-                {/* Command palette */}
-                <button
-                  type="button"
-                  onClick={() => setIsCommandPaletteOpen(true)}
-                  className="relative flex items-center gap-1.5 h-7 px-2 border border-border/70 bg-card/40 hover:bg-muted/50 hover:border-border text-xs font-mono text-muted-foreground hover:text-foreground transition-all shadow-2xs rounded-none cursor-pointer group shrink-0"
-                  title="Command palette (Ctrl+K)"
-                >
-                  <Corners size="sm" weight="thin" light className="opacity-30 group-hover:opacity-100 transition-opacity" />
-                  <Command className="size-3.5 text-primary shrink-0" />
-                  <span className="hidden xl:inline font-sans text-xs text-foreground/80 group-hover:text-foreground">Commands</span>
-                  <kbd className="hidden lg:inline-flex items-center font-mono text-[9px] px-1 py-0.2 bg-muted/60 border border-border/70 text-muted-foreground">
-                    ⌘K
-                  </kbd>
-                </button>
-
-                {/* Offline AI Assistant (WebGPU / Local) */}
+                {/* Offline AI Assistant (WebGPU / Local) — primary accent */}
                 <AIAssistantMenu
                   content={localContent}
                   onChangeContent={handleEditorChange}
                   disabled={!activeNote}
                 />
 
-                {/* Secondary actions — Templates, Outline, History, Export, Print, Zen, Ambient, Goal */}
+                {/* Command palette */}
+                <TopBarButton
+                  label="Command palette"
+                  shortcut="Ctrl+K"
+                  onClick={() => setIsCommandPaletteOpen(true)}
+                  className="hidden sm:inline-flex"
+                >
+                  <TopBarGlyph icon={Command} />
+                </TopBarButton>
+
+                {/* Secondary actions — View / Note / Export / Tools */}
                 <MoreMenu
                   open={isMoreOpen}
                   onOpenChange={setIsMoreOpen}
                   activeNote={activeNote}
-                  onOpenTemplates={() => setIsTemplateOpen(true)}
                   onOpenOutline={handleOpenOutline}
                   onOpenHistory={() => setIsHistoryOpen(true)}
                   onFindReplace={() => emitEditorCommand("find")}
                   onExportNote={handleExportActiveNote}
                   onPrintNote={() => window.print()}
                   onToggleZen={() => setIsZenMode(true)}
-                  writingGoal={writingGoal}
-                  onSetWritingGoal={(goal) => {
-                    setWritingGoal(goal);
-                    if (goal > 0) {
-                      toast.info(`Session writing goal: ${goal} words`);
-                    } else {
-                      toast.info("Session writing goal cleared");
-                    }
-                  }}
+                  onToggleFullscreen={handleToggleFullscreen}
+                  fullscreen={isFullscreen}
+                  onOpenGraph={() => setIsGraphOpen(true)}
+                  onOpenInsights={() => setIsInsightsOpen(true)}
+                  onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
                 />
 
+                {/* Theme quick-toggle (hidden on phone widths — available in ⋯ More + Settings) */}
+                <TopBarButton
+                  label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+                  onClick={() => setTheme(isDark ? "light" : "dark")}
+                  className="hidden lg:inline-flex"
+                >
+                  <TopBarGlyph icon={isDark ? Sun : Moon} />
+                </TopBarButton>
               </div>
             </div>
           </header>

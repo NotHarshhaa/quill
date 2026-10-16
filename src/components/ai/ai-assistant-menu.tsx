@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Corners } from "@/components/frame";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Sparkles,
   FileText,
@@ -111,34 +112,29 @@ export function AIAssistantMenu({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            size="xs"
-            variant="ghost"
-            disabled={disabled || isProcessing}
-            className="relative h-7 px-1.5 sm:px-2 border border-border/70 bg-card/40 hover:bg-muted/50 hover:border-border text-xs font-mono text-muted-foreground hover:text-foreground transition-all shadow-2xs rounded-none cursor-pointer group shrink-0 gap-1.5 min-w-[28px]"
-            aria-label="Offline AI Assistant"
-          >
-            <Corners
-              size="sm"
-              weight="thin"
-              light
-              className="opacity-30 group-hover:opacity-100 transition-opacity"
-            />
-            {isProcessing ? (
-              <Loader2 className="size-3.5 text-primary animate-spin shrink-0" />
-            ) : (
-              <Sparkles className="size-3.5 text-amber-500 group-hover:text-amber-400 transition-colors shrink-0" />
-            )}
-            <span className="hidden 2xl:inline font-sans text-xs text-foreground/80 group-hover:text-foreground">
-              {isProcessing
-                ? progress.status === "downloading"
-                  ? `${progress.progress || 0}%`
-                  : "Thinking..."
-                : "AI Assistant"}
-            </span>
-          </Button>
-        </DropdownMenuTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                disabled={disabled || isProcessing}
+                className="relative size-9 rounded-none bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shrink-0"
+                aria-label="AI Assistant"
+              >
+                {isProcessing ? (
+                  <Loader2 className="size-4 animate-spin" strokeWidth={1.75} />
+                ) : (
+                  <Sparkles className="size-4 text-primary-foreground" strokeWidth={1.75} />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="font-sans text-xs">
+            AI Assistant
+            {isProcessing && progress.status === "downloading" ? ` · ${progress.progress || 0}%` : ""}
+          </TooltipContent>
+        </Tooltip>
 
         <DropdownMenuContent
           align="end"
