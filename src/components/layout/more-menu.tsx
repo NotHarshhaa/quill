@@ -11,6 +11,7 @@ import {
   Maximize2,
   Maximize,
   Minimize,
+  Feather,
   Headphones,
   Network,
   BarChart3,
@@ -20,6 +21,9 @@ import {
   MoreHorizontal,
   X,
   Command,
+  PenLine,
+  Columns2,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +60,10 @@ export interface MoreMenuProps {
   onOpenGraph?: () => void;
   onOpenInsights?: () => void;
   onOpenCommandPalette?: () => void;
+  onToggleTypewriter?: () => void;
+  typewriter?: boolean;
+  viewMode?: string;
+  onChangeViewMode?: (mode: string) => void;
 }
 
 function useIsMobile(): boolean {
@@ -99,6 +107,10 @@ export function MoreMenu({
   onOpenGraph,
   onOpenInsights,
   onOpenCommandPalette,
+  onToggleTypewriter,
+  typewriter = false,
+  viewMode,
+  onChangeViewMode,
 }: MoreMenuProps) {
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
@@ -159,6 +171,30 @@ export function MoreMenu({
           <div className="overflow-y-auto px-1 py-1.5">
             <SheetRow icon={Command} label="Command Palette" hint="Ctrl+K" onClick={run(onOpenCommandPalette)} />
 
+            {onChangeViewMode && (
+              <>
+                <SheetLabel>Layout</SheetLabel>
+                <SheetRow
+                  icon={PenLine}
+                  label="Write"
+                  hint={viewMode === "editor" ? "ON" : undefined}
+                  onClick={run(() => onChangeViewMode("editor"))}
+                />
+                <SheetRow
+                  icon={Columns2}
+                  label="Split"
+                  hint={viewMode === "split" ? "ON" : undefined}
+                  onClick={run(() => onChangeViewMode("split"))}
+                />
+                <SheetRow
+                  icon={Eye}
+                  label="Preview"
+                  hint={viewMode === "preview" ? "ON" : undefined}
+                  onClick={run(() => onChangeViewMode("preview"))}
+                />
+              </>
+            )}
+
             <SheetLabel>View</SheetLabel>
             <SheetRow icon={ListTree} label="Outline" onClick={run(onOpenOutline)} />
             <SheetRow icon={Maximize2} label="Zen Focus Mode" hint="Ctrl+Shift+F" onClick={run(onToggleZen)} />
@@ -166,6 +202,12 @@ export function MoreMenu({
               icon={fullscreen ? Minimize : Maximize}
               label={fullscreen ? "Exit Fullscreen" : "Fullscreen"}
               onClick={run(onToggleFullscreen)}
+            />
+            <SheetRow
+              icon={Feather}
+              label="Typewriter scrolling"
+              hint={typewriter ? "ON" : undefined}
+              onClick={run(onToggleTypewriter)}
             />
 
             <SheetLabel>Note</SheetLabel>
@@ -249,6 +291,12 @@ export function MoreMenu({
           icon={fullscreen ? Minimize : Maximize}
           label={fullscreen ? "Exit Fullscreen" : "Fullscreen"}
           onSelect={run(onToggleFullscreen)}
+        />
+        <MenuItem
+          icon={Feather}
+          label="Typewriter scrolling"
+          hint={typewriter ? "ON" : undefined}
+          onSelect={run(onToggleTypewriter)}
         />
 
         <DropdownMenuSeparator className="border-border/50" />

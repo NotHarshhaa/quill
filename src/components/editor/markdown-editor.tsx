@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { SlashCommandMenu, SlashCommand } from "./slash-command-menu";
 import { FindReplaceBar } from "./find-replace-bar";
 import { EditorToolbar } from "./editor-toolbar";
-import { subscribeEditorCommands } from "@/lib/editor/editorCommands";
+import { subscribeEditorCommands, setEditorState } from "@/lib/editor/editorCommands";
 import { mediaRepository } from "@/lib/storage/mediaRepository";
 import { toast } from "sonner";
 
@@ -76,13 +76,44 @@ export function MarkdownEditor({
     };
   }, []);
 
-  // Let app-level surfaces (More menu / Command Palette) trigger editor commands
+  // Let app-level surfaces (top bar / More menu / Command Palette) trigger
+  // editor commands without hoisting this component's internal state.
+  const handlersRef = useRef<{
+    undo: () => void;
+    redo: () => void;
+    openFind: () => void;
+    toggleTypewriter: () => void;
+  }>({
+    undo: () => {},
+    redo: () => {},
+    openFind: () => {},
+    toggleTypewriter: () => {},
+  });
+
   useEffect(() => {
     return subscribeEditorCommands((command) => {
-      if (command === "find") setIsFindOpen(true);
-      if (command === "typewriter") setIsTypewriter((prev) => !prev);
+      if (command === "find") handlersRef.current.openFind();
+      else if (command === "typewriter") handlersRef.current.toggleTypewriter();
+      else if (command === "undo") handlersRef.current.undo();
+      else if (command === "redo") handlersRef.current.redo();
     });
   }, []);
+
+  // Publish a small state snapshot so the app top bar can drive mobile undo/redo
+  useEffect(() => {
+    setEditorState({ mounted: true });
+    return () =>
+      setEditorState({
+        mounted: false,
+        canUndo: false,
+        canRedo: false,
+        typewriter: false,
+      });
+  }, []);
+
+  useEffect(() => {
+    setEditorState({ canUndo, canRedo, typewriter: isTypewriter });
+  }, [canUndo, canRedo, isTypewriter]);
 
   // Push new state to history
   const pushHistory = (newVal: string, immediate = false) => {
@@ -140,6 +171,14 @@ export function MarkdownEditor({
         handleCursorScroll();
       }, 0);
     }
+  };
+
+  // Keep the bridge callbacks pointing at the latest closures
+  handlersRef.current = {
+    undo: handleUndo,
+    redo: handleRedo,
+    openFind: () => setIsFindOpen(true),
+    toggleTypewriter: () => setIsTypewriter((prev) => !prev),
   };
 
   const handleCursorScroll = () => {
@@ -367,7 +406,7 @@ export function MarkdownEditor({
         className="hidden"
       />
 
-      {/* Editor Header Bar with comfortable mobile height */}
+      {/* Floating formatting toolbar */}
       <EditorToolbar
         canUndo={canUndo}
         canRedo={canRedo}
@@ -375,10 +414,6 @@ export function MarkdownEditor({
         onRedo={handleRedo}
         onInsert={insertSnippet}
         onInsertImage={() => imageInputRef.current?.click()}
-        isTypewriter={isTypewriter}
-        onToggleTypewriter={() => setIsTypewriter((prev) => !prev)}
-        isFindOpen={isFindOpen}
-        onToggleFind={() => setIsFindOpen((prev) => !prev)}
       />
 
       {/* Find & Replace Bar Dock */}

@@ -22,6 +22,8 @@ import {
   PinOff,
   Sun,
   Moon,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -47,6 +49,7 @@ import {
 import { AIAssistantMenu } from "@/components/ai/ai-assistant-menu";
 import { AIStatusModal } from "@/components/ai/ai-status-modal";
 import { emitEditorCommand } from "@/lib/editor/editorCommands";
+import { useEditorState } from "@/hooks/useEditorState";
 import { toast } from "sonner";
 
 type ViewMode = "editor" | "split" | "preview";
@@ -101,6 +104,7 @@ export default function QuillPage() {
   const [sideVisible, setSideVisible] = useState(true);
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const editorState = useEditorState();
 
   // New Feature Modals State
   const [isGraphOpen, setIsGraphOpen] = useState(false);
@@ -537,7 +541,7 @@ export default function QuillPage() {
               }}
             >
               <div className="h-12 px-2 sm:px-3 flex items-center gap-2 shrink-0">
-                {/* Zone 1: Left — sidebar toggle · pin · inline title · quiet word count */}
+                {/* Zone 1: Left — sidebar toggle · mobile undo/redo · pin · title · word count */}
                 <div className="flex items-center gap-2 min-w-0 flex-1 basis-0 justify-start">
                   <TopBarButton
                     label={sideVisible ? "Hide sidebar" : "Show sidebar"}
@@ -547,6 +551,26 @@ export default function QuillPage() {
                   >
                     <TopBarGlyph icon={sideVisible ? PanelLeftClose : PanelLeftOpen} />
                   </TopBarButton>
+
+                  {/* Undo / Redo — phones only (desktop keeps them in the editor toolbar) */}
+                  <div className="flex items-center gap-1 sm:hidden">
+                    <TopBarButton
+                      label="Undo"
+                      shortcut="Ctrl+Z"
+                      onClick={() => emitEditorCommand("undo")}
+                      disabled={!editorState.mounted || !editorState.canUndo}
+                    >
+                      <TopBarGlyph icon={Undo2} />
+                    </TopBarButton>
+                    <TopBarButton
+                      label="Redo"
+                      shortcut="Ctrl+Y"
+                      onClick={() => emitEditorCommand("redo")}
+                      disabled={!editorState.mounted || !editorState.canRedo}
+                    >
+                      <TopBarGlyph icon={Redo2} />
+                    </TopBarButton>
+                  </div>
 
                   {activeNote && (
                     <TopBarButton
@@ -565,7 +589,11 @@ export default function QuillPage() {
                   )}
 
                   {activeNote && (
-                    <InlineEditableTitle value={activeNote.title} onCommit={handleRenameNote} />
+                    <InlineEditableTitle
+                      value={activeNote.title}
+                      onCommit={handleRenameNote}
+                      className="hidden min-[420px]:inline-flex"
+                    />
                   )}
 
                   <span className="hidden sm:inline shrink-0 pl-1 text-[11px] font-mono text-muted-foreground/60 tabular-nums">
@@ -573,8 +601,10 @@ export default function QuillPage() {
                   </span>
                 </div>
 
-              {/* Zone 2: Center — segmented Write | Split | Preview */}
-              <div className="flex items-center justify-center shrink-0">
+              {/* Zone 2: Center — segmented Write | Split | Preview.
+                  Hidden only on very small phones (<360px), where the layout
+                  switcher lives in the ⋯ More sheet instead. */}
+              <div className="hidden min-[360px]:flex items-center justify-center shrink-0">
                 <TopBarSegmentedControl
                   value={viewMode}
                   onChange={(v) => setViewMode(v as ViewMode)}
@@ -582,8 +612,10 @@ export default function QuillPage() {
                 />
               </div>
 
-              {/* Zone 3: Right — AI · Command palette · ⋯ More · theme toggle */}
-              <div className="flex items-center gap-2 min-w-0 flex-1 basis-0 justify-end">
+              {/* Zone 3: Right — AI · Command palette · ⋯ More · theme toggle.
+                  On phones it takes its natural width so the left zone can absorb
+                  the mobile undo/redo buttons without clipping. */}
+              <div className="flex items-center gap-2 min-w-0 flex-none sm:flex-1 sm:basis-0 justify-end">
                 {/* Offline AI Assistant (WebGPU / Local) — primary accent */}
                 <AIAssistantMenu
                   content={localContent}
@@ -617,6 +649,10 @@ export default function QuillPage() {
                   onOpenGraph={() => setIsGraphOpen(true)}
                   onOpenInsights={() => setIsInsightsOpen(true)}
                   onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+                  onToggleTypewriter={() => emitEditorCommand("typewriter")}
+                  typewriter={editorState.typewriter}
+                  viewMode={viewMode}
+                  onChangeViewMode={(m) => setViewMode(m as ViewMode)}
                 />
 
                 {/* Theme quick-toggle (hidden on phone widths — available in ⋯ More + Settings) */}

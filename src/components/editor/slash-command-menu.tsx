@@ -16,6 +16,8 @@ import {
   Lightbulb,
   AlertTriangle,
   Calendar,
+  Link2,
+  Strikethrough,
   Image as ImageIcon,
 } from "lucide-react";
 import { Corners } from "@/components/frame";
@@ -158,6 +160,34 @@ export function SlashCommandMenu({
         month: "short",
         day: "numeric",
       }) + " ",
+    },
+    {
+      id: "wiki-link",
+      title: "Wiki Link",
+      description: "Link to another note by title",
+      icon: ({ className }: { className?: string }) => <span className={className}>[[]]</span>,
+      snippet: "[[Note Title]] ",
+    },
+    {
+      id: "link",
+      title: "Markdown Link",
+      description: "Inline link to a URL",
+      icon: Link2,
+      snippet: "[link text](https://) ",
+    },
+    {
+      id: "strikethrough",
+      title: "Strikethrough",
+      description: "Cross out text",
+      icon: Strikethrough,
+      snippet: "~~strikethrough~~ ",
+    },
+    {
+      id: "inline-code",
+      title: "Inline Code",
+      description: "Monospace code span",
+      icon: Code,
+      snippet: "`code` ",
     },
     {
       id: "image",

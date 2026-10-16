@@ -107,7 +107,7 @@ export function TopBarSegmentedControl({
                 aria-pressed={isActive}
                 aria-label={seg.label}
                 className={cn(
-                  "flex h-8 items-center justify-center gap-1.5 px-3 text-xs font-medium rounded-none transition-colors",
+                  "flex h-8 items-center justify-center gap-1.5 px-2.5 lg:px-3 text-xs font-medium rounded-none transition-colors",
                   isActive
                     ? "bg-background text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
