@@ -612,13 +612,14 @@ export default function QuillPage() {
 
   return (
     <ErrorBoundary>
-      {/* App shell: shrinks above the on-screen keyboard (Android injects --kb-height)
-          and avoids landscape display cutouts via safe-left/right padding. h-screen is
-          the fallback for WebViews without dvh support (invalid calc ignores the style). */}
+      {/* App shell: occupies exactly the visible viewport (the keyboard height is
+          never subtracted twice) and avoids landscape display cutouts via
+          safe-left/right padding. `--app-h` is published by useKeyboardInset;
+          100dvh is the fallback for WebViews without dvh support. */}
       <div
         className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden"
         style={{
-          height: "calc(100dvh - var(--kb-height, 0px))",
+          height: "var(--app-h, 100dvh)",
           paddingLeft: "var(--safe-left)",
           paddingRight: "var(--safe-right)",
         }}
@@ -691,8 +692,10 @@ export default function QuillPage() {
             onImportMarkdown={() => markdownInputRef.current?.click()}
           />
 
-          {/* Main Content Area */}
-          <div className="flex-1 flex flex-col min-w-0">
+          {/* Main Content Area — the container query context for the top bar
+              (title, word count, theme toggle) so they react to the space the
+              content actually has, not to the viewport. */}
+          <div className="flex-1 flex flex-col min-w-0 @container/content">
             {/* Top Bar (Edge-to-edge header with safe-area clearance for camera cutout/status bar) */}
             <header
               className="max-md:hidden shrink-0 bg-background/95 backdrop-blur-xs select-none ds-hairline-b"
@@ -732,7 +735,7 @@ export default function QuillPage() {
                     <InlineEditableTitle
                       value={activeNote.title}
                       onCommit={handleRenameNote}
-                      className="hidden @3xs:inline-flex"
+                      className="hidden @3xs/content:inline-flex"
                     />
                   )}
 
@@ -796,7 +799,7 @@ export default function QuillPage() {
                 <TopBarButton
                   label={isDark ? "Switch to light theme" : "Switch to dark theme"}
                   onClick={() => setTheme(isDark ? "light" : "dark")}
-                  className="hidden @lg:inline-flex"
+                  className="hidden @lg/content:inline-flex"
                 >
                   <TopBarGlyph icon={isDark ? Sun : Moon} />
                 </TopBarButton>

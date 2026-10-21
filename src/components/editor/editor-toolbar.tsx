@@ -70,13 +70,13 @@ export function EditorToolbar({
   onInsertImage,
 }: EditorToolbarProps) {
   return (
-    <div className="shrink-0 sticky top-0 z-20 px-2 sm:px-3 py-1.5 flex items-center justify-start sm:justify-end select-none">
+    <div className="shrink-0 sticky top-0 z-20 px-2 sm:px-3 py-1.5 flex items-center justify-start sm:justify-end select-none overflow-x-auto horizontal-toolbar-scroll">
       <TooltipProvider delayDuration={150}>
         <div
           role="toolbar"
           aria-label="Markdown formatting"
           aria-orientation="horizontal"
-          className="flex flex-wrap items-center gap-0.5 max-w-full bg-card/90 backdrop-blur-sm shadow-soft-md px-1 py-0.5 rounded-none ds-panel-md"
+          className="flex flex-nowrap items-center gap-0.5 w-max bg-card/90 backdrop-blur-sm shadow-soft-md px-1 py-0.5 rounded-none ds-panel-md"
         >
           {/* Undo / Redo — desktop only. Phones get undo/redo from the keyboard
               accessory bar and keep this pill on a single row. */}

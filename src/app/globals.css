@@ -12,6 +12,9 @@
   --safe-area-right: 0px;
   /* On-screen keyboard height (injected by the Android shell on API 30+; 0 in browsers) */
   --kb-height: 0px;
+  /* Height the app shell may occupy: the visible viewport, never the keyboard
+     subtracted twice (see useKeyboardInset). */
+  --app-h: 100dvh;
   --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-top, 0px));
   --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-bottom, 0px));
   --safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-left, 0px));

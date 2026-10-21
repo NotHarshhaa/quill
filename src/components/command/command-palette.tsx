@@ -1134,8 +1134,8 @@ export function CommandPalette({
           isMobile
             ? {
                 top: 0,
-                height: "calc(100dvh - var(--kb-height, 0px))",
-                maxHeight: "calc(100dvh - var(--kb-height, 0px))",
+                height: "var(--app-h, 100dvh)",
+                maxHeight: "var(--app-h, 100dvh)",
               }
             : undefined
         }
