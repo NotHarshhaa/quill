@@ -55,7 +55,7 @@ export function MobileAISheet({
           onOpenChange(next);
         }}
         title="Offline AI"
-        icon={<Sparkles className="size-4 text-primary shrink-0" strokeWidth={1.75} />}
+        icon={<Sparkles className="size-icon text-brand shrink-0" strokeWidth={1.75} />}
         badge={
           <span className="shrink-0 font-mono text-[10px] font-bold text-emerald-500">
             100% Local

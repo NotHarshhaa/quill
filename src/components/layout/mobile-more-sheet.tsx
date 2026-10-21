@@ -23,11 +23,11 @@ import {
   Laptop,
   MoreHorizontal,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { BottomSheet, SheetLabel, SheetRow } from "@/components/ui/bottom-sheet";
 import { AmbientSoundPlayer } from "@/components/audio/ambient-sound-player";
 import { Note } from "@/lib/storage/schema";
 import { hapticTap } from "@/lib/ui/haptics";
+import { cn } from "@/lib/utils";
 
 export interface MobileMoreSheetProps {
   open: boolean;
@@ -95,7 +95,7 @@ export function MobileMoreSheet({
       open={open}
       onOpenChange={onOpenChange}
       title="More"
-      icon={<MoreHorizontal className="size-4 text-primary shrink-0" strokeWidth={1.75} />}
+      icon={<MoreHorizontal className="size-icon text-brand shrink-0" strokeWidth={1.75} />}
       badge={
         activeNote ? (
           <span className="truncate font-mono text-[10.5px] text-muted-foreground">
@@ -182,10 +182,16 @@ export function MobileMoreSheet({
       />
 
       <SheetLabel>Theme</SheetLabel>
-      <div className="flex items-center gap-1 px-3 pb-3 pt-1">
-        <ThemeButton value="light" current={theme} onSelect={setTheme} icon={Sun} label="Light" />
-        <ThemeButton value="dark" current={theme} onSelect={setTheme} icon={Moon} label="Dark" />
-        <ThemeButton value="system" current={theme} onSelect={setTheme} icon={Laptop} label="Auto" />
+      <div className="px-3 pb-3 pt-1">
+        <div
+          role="group"
+          aria-label="Theme"
+          className="flex items-center gap-0.5 bg-muted/60 p-0.5"
+        >
+          <ThemeButton value="light" current={theme} onSelect={setTheme} icon={Sun} label="Light" />
+          <ThemeButton value="dark" current={theme} onSelect={setTheme} icon={Moon} label="Dark" />
+          <ThemeButton value="system" current={theme} onSelect={setTheme} icon={Laptop} label="Auto" />
+        </div>
       </div>
     </BottomSheet>
   );
@@ -204,18 +210,24 @@ function ThemeButton({
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
 }) {
+  const active = current === value;
   return (
-    <Button
-      size="xs"
-      variant={current === value ? "default" : "secondary"}
+    <button
+      type="button"
       onClick={() => {
         hapticTap();
         onSelect(value);
       }}
-      className="h-9 flex-1 gap-1 rounded-none text-[10.5px] normal-case tracking-normal"
+      aria-pressed={active}
+      className={cn(
+        "flex h-10 flex-1 items-center justify-center gap-1.5 rounded-none text-[11px] transition-colors motion-reduce:transition-none",
+        active
+          ? "bg-background text-foreground shadow-soft font-semibold"
+          : "text-muted-foreground"
+      )}
     >
-      <Icon className="size-3" strokeWidth={1.75} />
+      <Icon className="size-icon-sm" strokeWidth={1.75} />
       {label}
-    </Button>
+    </button>
   );
 }

@@ -445,7 +445,7 @@ export function MarkdownEditor({
       {/* Editor Textarea with Typewriter Scrolling Mode, Slash Commands & Image Drag/Paste */}
       <div
         ref={scrollContainerRef}
-        className={`flex-1 p-3.5 sm:p-6 overflow-y-auto relative ${
+        className={`flex-1 pt-3.5 px-3.5 pb-8 sm:p-6 overflow-y-auto relative ${
           isTypewriter ? "pb-[50vh]" : ""
         }`}
       >

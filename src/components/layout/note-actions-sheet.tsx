@@ -43,7 +43,7 @@ export function NoteActionsSheet({
       open={open && !!note}
       onOpenChange={onOpenChange}
       title="Note actions"
-      icon={<FileText className="size-4 text-primary" strokeWidth={1.75} />}
+      icon={<FileText className="size-icon text-brand" strokeWidth={1.75} />}
       drawerWidth="sm"
       snapPoints={["half", "full"]}
       bodyClassName="py-1.5"

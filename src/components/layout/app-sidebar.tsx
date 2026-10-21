@@ -315,7 +315,9 @@ function NoteRow({
       </div>
 
       {/* Snippet preview - multi-line wrapped */}
-      <p className="text-[11px] text-muted-foreground/75 line-clamp-2 mt-1.5 leading-relaxed font-sans block w-full min-w-0 break-words">
+      {/* NOTE: no `block` here — `line-clamp` sets the display itself, and a
+          competing `display:block` silently disables the clamp. */}
+      <p className="text-[11px] text-muted-foreground/75 line-clamp-2 mt-1.5 leading-relaxed font-sans w-full min-w-0 break-words">
         {snippet}
       </p>
 
@@ -792,7 +794,11 @@ export function AppSidebar({
             </div>
           </div>
 
-          {/* Primary Actions: New Note + Templates Combo */}
+          {/* Primary Actions: New Note + Templates Combo.
+              On the phone library the bottom-nav FAB creates notes and the
+              More sheet holds Templates, so this row is redundant there —
+              skipping it gives the list another 40px of screen. */}
+          {!mobilePage && (
           <div className="p-2.5 pb-2 shrink-0 flex items-center gap-1.5">
             <button
               type="button"
@@ -826,10 +832,13 @@ export function AppSidebar({
               </Tooltip>
             )}
           </div>
+          )}
 
           {/* Library Tabs (All / Favorites / Trash) — segmented control.
               The active segment carries the single brand accent; the track is a
-              tinted, borderless surface. */}
+              tinted, borderless surface. On the phone library the scope and the
+              tag filters share one scrollable row instead. */}
+          {!mobilePage && (
           <div
             className="relative flex items-center gap-0.5 mx-2.5 p-0.5 shrink-0 bg-muted/60 rounded-none"
             role="tablist"
@@ -891,6 +900,7 @@ export function AppSidebar({
               )}
             </button>
           </div>
+          )}
 
           {/* Search bar (Available in All, Favorites, and Trash) */}
           {activePanel !== "settings" && (
@@ -908,7 +918,7 @@ export function AppSidebar({
                   }
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  className="pl-8 pr-7 h-8 text-xs bg-background/80 font-sans rounded-none border-border/80 shadow-xs focus-visible:ring-1"
+                  className="pl-8 pr-7 h-9 text-xs bg-muted/50 font-sans rounded-none border-transparent shadow-soft focus-visible:ring-1 focus-visible:bg-background"
                 />
                 {searchQuery && (
                   <button
@@ -924,9 +934,55 @@ export function AppSidebar({
             </div>
           )}
 
+          {/* Phone library: scope (All / Favourites / Trash) and tag filters
+              share ONE horizontally scrollable chip row, so the list gets the
+              screen instead of three stacked control bars. */}
+          {mobilePage && activePanel !== "settings" && (
+            <div className="shrink-0 w-full min-w-0 overflow-x-auto horizontal-toolbar-scroll">
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 w-max">
+                <FilterChip
+                  active={activePanel === "all"}
+                  onClick={() => onSelectPanel("all")}
+                  icon={FileText}
+                >
+                  All
+                  <span className="opacity-60">{notes.length}</span>
+                </FilterChip>
+                <FilterChip
+                  active={activePanel === "favorites"}
+                  onClick={() => onSelectPanel("favorites")}
+                  icon={Star}
+                >
+                  Favourites
+                  <span className="opacity-60">{pinnedCount}</span>
+                </FilterChip>
+                <FilterChip
+                  active={activePanel === "trash"}
+                  onClick={() => onSelectPanel("trash")}
+                  icon={Trash2}
+                  count={trashedNotes.length}
+                >
+                  Trash
+                </FilterChip>
+                {allTags.map((tag) => {
+                  const isSelected = selectedTag === tag;
+                  return (
+                    <FilterChip
+                      key={tag}
+                      active={isSelected}
+                      onClick={() => onSelectTag?.(isSelected ? null : tag)}
+                    >
+                      #{tag}
+                    </FilterChip>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Dynamic Tag Filter Strip — single horizontally scrollable row
               with a "+N more" affordance past 6 tags. */}
-          {activePanel !== "settings" && activePanel !== "trash" && allTags.length > 0 && (
+          {!mobilePage && activePanel !== "settings" && activePanel !== "trash" && allTags.length > 0 && (
             <div className="px-2.5 py-1 shrink-0 w-full min-w-0">
               <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none w-full touch-pan-x">
                 <button
@@ -1389,5 +1445,50 @@ export function AppSidebar({
         onMoveToTrash={handleMoveToTrash}
       />
     </>
+  );
+}
+
+/**
+ * Compact, tappable filter chip for the phone library. 32px tall, 44px wide
+ * touch target on the axis it scrolls, and it never wraps — the row scrolls.
+ */
+function FilterChip({
+  active,
+  onClick,
+  icon: Icon,
+  count,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon?: React.ComponentType<{ className?: string }>;
+  count?: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none px-3 text-[11px] font-medium transition-colors motion-reduce:transition-none",
+        active
+          ? "bg-brand-soft text-brand font-semibold"
+          : "bg-muted/50 text-muted-foreground hover:text-foreground active:bg-muted"
+      )}
+    >
+      {Icon && <Icon className="size-3.5 shrink-0" />}
+      {children}
+      {count !== undefined && count > 0 && (
+        <span
+          className={cn(
+            "font-mono text-[10px]",
+            active ? "text-brand/70" : "text-muted-foreground/70"
+          )}
+        >
+          {count}
+        </span>
+      )}
+    </button>
   );
 }

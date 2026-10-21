@@ -49,6 +49,7 @@ import { AIStatusModal } from "@/components/ai/ai-status-modal";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { MobileTabBar, MobileTab } from "@/components/layout/mobile-tab-bar";
 import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet";
+import { MobileStatusStrip } from "@/components/layout/mobile-status-strip";
 import { LayoutTour, hasSeenLayoutTour } from "@/components/onboarding/layout-tour";
 import { MobileAISheet } from "@/components/layout/mobile-ai-sheet";
 import { ExportSheet } from "@/components/layout/export-sheet";
@@ -588,6 +589,19 @@ export default function QuillPage() {
   // Accessory bar swaps in for the tab bar only while typing in the editor
   const showAccessoryBar = keyboardVisible && editorFocused;
 
+  // Keep the docked-chrome height in sync so toasts and sheets always float
+  // above it (phone tab bar / keyboard accessory bar / desktop status bar).
+  useEffect(() => {
+    const height = isZenMode
+      ? 0
+      : isMobileShell
+      ? showAccessoryBar
+        ? 48
+        : 56
+      : 28;
+    document.documentElement.style.setProperty("--bottom-bar-h", `${height}px`);
+  }, [isZenMode, isMobileShell, showAccessoryBar]);
+
   const wordCount = countWords(localContent);
 
   // Trigger celebration toast once when session writing goal is reached
@@ -819,6 +833,17 @@ export default function QuillPage() {
               onOpenMore={() => setIsMobileMoreOpen(true)}
             />
 
+            {/* Phone status strip: save state, word count and read time.
+                Hidden while the keyboard accessory bar is up (it carries the
+                live count itself) to keep the screen uncluttered. */}
+            {!isZenMode && !showAccessoryBar && (
+              <MobileStatusStrip
+                saveStatus={saveStatus}
+                wordCount={wordCount}
+                writingGoal={writingGoal}
+              />
+            )}
+
             {/* Editor/Preview Content */}
             <div className="flex-1 flex min-h-0" data-tour="canvas" {...editorSwipe.bind}>
               {isZenMode ? (
@@ -1012,6 +1037,8 @@ export default function QuillPage() {
           >
             {showAccessoryBar ? (
               <KeyboardAccessoryBar
+                wordCount={wordCount}
+                saveStatus={saveStatus}
                 onDismiss={() => (document.activeElement as HTMLElement | null)?.blur?.()}
               />
             ) : (

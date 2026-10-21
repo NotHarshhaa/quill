@@ -62,7 +62,7 @@ export function MobileHeader({
         <div
           role="group"
           aria-label="View mode"
-          className="flex shrink-0 items-center gap-0.5 bg-muted/40 p-0.5"
+          className="flex shrink-0 items-center gap-0.5 bg-muted/60 p-0.5"
         >
           <ViewToggleButton
             active={viewMode === "editor"}
@@ -131,7 +131,7 @@ function ViewToggleButton({
       title={label}
       className={cn(
         "flex h-11 w-11 items-center justify-center transition-colors motion-reduce:transition-none rounded-none",
-        active ? "bg-background text-foreground shadow-xs" : "text-muted-foreground"
+        active ? "bg-background text-foreground shadow-soft" : "text-muted-foreground"
       )}
     >
       <Icon className="size-icon" strokeWidth={1.75} />    </button>

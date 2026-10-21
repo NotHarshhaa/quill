@@ -241,7 +241,7 @@ export function BottomSheet({
               <span className="h-1 w-9 rounded-full bg-muted-foreground/30" />
             </div>
 
-            <div className="flex items-center justify-between gap-2 px-4 pb-3 border-b border-border/70">
+            <div className="flex items-center justify-between gap-2 px-4 pb-3 ds-hairline-b">
               <div className="flex min-w-0 items-center gap-2">
                 {icon}
                 <DialogPrimitive.Title className="truncate font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
@@ -281,7 +281,7 @@ export function BottomSheet({
           </div>
 
           {footer && (
-            <div className="shrink-0 border-t border-border/70 px-4 py-3">{footer}</div>
+            <div className="shrink-0 ds-hairline-t px-4 py-3">{footer}</div>
           )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
@@ -315,7 +315,7 @@ export function SheetRow({
       data-destructive={destructive ? "true" : undefined}
       className="flex min-h-[44px] w-full items-center gap-3 px-4 py-2.5 text-left font-sans text-xs text-foreground transition-colors hover:bg-muted/50 disabled:pointer-events-none disabled:opacity-40 motion-reduce:transition-none data-[destructive=true]:text-destructive data-[destructive=true]:hover:bg-destructive/10"
     >
-      {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />}
+      {Icon && <Icon className="size-icon shrink-0 text-muted-foreground" strokeWidth={1.75} />}
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate">{label}</span>
         {description && (

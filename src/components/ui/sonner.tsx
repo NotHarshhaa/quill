@@ -11,7 +11,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
-      offset={{ bottom: "calc(var(--safe-bottom, 0px) + 12px)" }}
+      offset={{
+        // Always float above whatever chrome is docked at the bottom:
+        // the phone tab bar / keyboard accessory bar, or the desktop
+        // status bar. `--bottom-bar-h` is kept in sync by the app shell.
+        bottom: "calc(var(--safe-bottom, 0px) + var(--bottom-bar-h, 0px) + 12px)",
+      }}
       icons={{
         success: (
           <CircleCheckIcon className="size-4" />
