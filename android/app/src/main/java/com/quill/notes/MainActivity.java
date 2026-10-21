@@ -264,7 +264,8 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !canRequestPackageInstalls()) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && !getPackageManager().canRequestPackageInstalls()) {
             reportUpdateProgress(0, "needs-permission");
             try {
                 Intent settings = new Intent(
