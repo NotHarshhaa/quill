@@ -5,7 +5,7 @@ import { Capacitor } from "@capacitor/core";
  * package.json at build time; the literal is only a development fallback.
  */
 export const CURRENT_APP_VERSION =
-  process.env.NEXT_PUBLIC_APP_VERSION || "1.7.0";
+  process.env.NEXT_PUBLIC_APP_VERSION || "1.8.0";
 export const GITHUB_REPO = "NotHarshhaa/quill";
 
 /**

@@ -128,7 +128,7 @@ Quill is packaged as a high-performance native Android application with an immer
 - **Zero Invasive Permissions**: Operates completely without prompting for Camera, Microphone, Location, or Storage permissions.
 
 ### 🔄 Releasing an update (so in-app updates work)
-1. Bump `version` in `package.json` — `android/app/build.gradle` derives `versionCode` from it (`1.7.0 → 10700`), and `next.config.ts` injects it as `NEXT_PUBLIC_APP_VERSION`.
+1. Bump `version` in `package.json` - `android/app/build.gradle` derives `versionCode` from it (`1.8.0 → 10800`), and `next.config.ts` injects it as `NEXT_PUBLIC_APP_VERSION`.
 2. `npm run build:apk` (compiles the web bundle and syncs Capacitor), then build the signed release APK.
 3. Publish the release on GitHub and attach the APK as an asset named `*.apk` — the updater downloads that asset directly and shows its size.
 4. The app checks at most once every 6 hours, never interrupts while you are typing, and honours *Remind me later* (24 h) and *Skip this version*.
