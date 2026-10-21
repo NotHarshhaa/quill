@@ -41,4 +41,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Haptic feedback for the mobile tab bar (Vibration API fallback) -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Required to install a downloaded release APK (in-app updates) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

@@ -18,6 +18,7 @@ import {
   CalendarDays,
   Tags,
   Keyboard,
+  ArrowDownToLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +59,7 @@ export interface MoreMenuProps {
   onOpenTagManager?: () => void;
   onOpenDailyNote?: () => void;
   onOpenShortcuts?: () => void;
+  onCheckForUpdates?: () => void;
 }
 
 const groupLabelClass =
@@ -93,6 +95,7 @@ export function MoreMenu({
   onOpenTagManager,
   onOpenDailyNote,
   onOpenShortcuts,
+  onCheckForUpdates,
 }: MoreMenuProps) {
   const close = () => onOpenChange(false);
   const run = (fn?: () => void) => () => {
@@ -189,6 +192,13 @@ export function MoreMenu({
         <MenuItem icon={BarChart3} label="Writing Analytics" onSelect={run(onOpenInsights)} />
         {onOpenShortcuts && (
           <MenuItem icon={Keyboard} label="Keyboard Shortcuts" onSelect={run(onOpenShortcuts)} />
+        )}
+        {onCheckForUpdates && (
+          <MenuItem
+            icon={ArrowDownToLine}
+            label="Check for Updates"
+            onSelect={run(onCheckForUpdates)}
+          />
         )}
 
         <DropdownMenuSub>

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Note } from "@/lib/storage/schema";
 import {
   Archive,
+  ArrowDownToLine,
   BarChart3,
   Bold,
   CalendarDays,
@@ -145,6 +146,8 @@ interface CommandPaletteProps {
   onOpenDailyNote?: () => void;
   /** Open the keyboard shortcut reference. */
   onOpenShortcuts?: () => void;
+  /** Open the Update Center (check / download / install a new release). */
+  onCheckForUpdates?: () => void;
   /** True while a markdown editor is mounted somewhere in the tree. */
   editorMounted?: boolean;
   canUndo?: boolean;
@@ -359,6 +362,7 @@ export function CommandPalette({
   onOpenTagManager,
   onOpenDailyNote,
   onOpenShortcuts,
+  onCheckForUpdates,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -830,6 +834,19 @@ export function CommandPalette({
       });
     }
 
+    if (onCheckForUpdates) {
+      list.push({
+        id: "set-check-updates",
+        kind: "command",
+        group: "settings",
+        title: "Check for Updates",
+        subtitle: "Download and install a newer Quill release",
+        keywords: "update upgrade version release install apk download",
+        icon: ArrowDownToLine,
+        run: onCheckForUpdates,
+      });
+    }
+
     if (onViewModeChange) {
       list.push({
         id: "nav-view-editor",
@@ -1029,6 +1046,7 @@ export function CommandPalette({
     onOpenShortcuts,
     onOpenDailyNote,
     onOpenTagManager,
+    onCheckForUpdates,
     onViewModeChange,
     onToggleZen,
     onToggleFullscreen,

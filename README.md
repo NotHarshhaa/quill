@@ -123,9 +123,17 @@ Quill is packaged as a high-performance native Android application with an immer
 ### 🌟 Native App Highlights
 - **Immersive Fullscreen Experience**: True sticky immersive fullscreen—no browser URL bar, no system action bar, and no unwanted chrome.
 - **Edge-to-Edge & Notch Support**: Smooth layout behind camera cutouts (`LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES`) with native safe-area insets.
-- **In-App Update Notifier**: Automatically detects newer GitHub Releases (`NotHarshhaa/quill`) and provides a blueprint update notification to install new versions with one tap *(only active inside the native app)*.
+- **In-App Update Center**: Detects newer GitHub Releases (`NotHarshhaa/quill`), shows the changelog and downloads + installs the new APK **inside the app** (native download with a progress bar, then the system installer). Also reachable manually from the Command Palette, the ⋯ menu and the phone More sheet as **Check for Updates**.
 - **100% Offline Sandbox**: All notes, images (via IndexedDB), and audio synthesizers run entirely locally on your device with no remote servers or cloud accounts.
 - **Zero Invasive Permissions**: Operates completely without prompting for Camera, Microphone, Location, or Storage permissions.
+
+### 🔄 Releasing an update (so in-app updates work)
+1. Bump `version` in `package.json` — `android/app/build.gradle` derives `versionCode` from it (`1.7.0 → 10700`), and `next.config.ts` injects it as `NEXT_PUBLIC_APP_VERSION`.
+2. `npm run build:apk` (compiles the web bundle and syncs Capacitor), then build the signed release APK.
+3. Publish the release on GitHub and attach the APK as an asset named `*.apk` — the updater downloads that asset directly and shows its size.
+4. The app checks at most once every 6 hours, never interrupts while you are typing, and honours *Remind me later* (24 h) and *Skip this version*.
+
+> The in-app installer needs the `REQUEST_INSTALL_PACKAGES` permission. On the first in-app update Android asks you to allow installs from Quill — the app opens that setting for you.
 
 ### 📥 Sideload Installation Guide
 1. Go to the [**Latest GitHub Releases**](https://github.com/NotHarshhaa/quill/releases/latest).

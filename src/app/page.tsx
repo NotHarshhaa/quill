@@ -32,6 +32,7 @@ import { TableOfContents } from "@/components/toc/table-of-contents";
 import { WritingInsightsModal } from "@/components/analytics/writing-insights-modal";
 import { WelcomeModal, SHOW_WELCOME_KEY } from "@/components/welcome/welcome-modal";
 import { AppUpdateNotifier } from "@/components/update/app-update-notifier";
+import { UpdateCenter } from "@/components/update/update-center";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AppSidebar, SidebarPanel } from "@/components/layout/app-sidebar";
 import { StatusBar } from "@/components/layout/status-bar";
@@ -147,6 +148,7 @@ export default function QuillPage() {
   const [isTasksOpen, setIsTasksOpen] = useState(false);
   const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [isUpdateCenterOpen, setIsUpdateCenterOpen] = useState(false);
   const [isAIStatusOpen, setIsAIStatusOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -942,6 +944,7 @@ export default function QuillPage() {
                   onOpenTagManager={() => setIsTagManagerOpen(true)}
                   onOpenDailyNote={handleOpenDailyNote}
                   onOpenShortcuts={() => setIsShortcutsOpen(true)}
+                  onCheckForUpdates={() => setIsUpdateCenterOpen(true)}
                 />
 
                 {/* Theme quick-toggle (hidden on phone widths — available in ⋯ More + Settings) */}
@@ -1233,6 +1236,7 @@ export default function QuillPage() {
           onOpenTagManager={() => setIsTagManagerOpen(true)}
           onOpenDailyNote={handleOpenDailyNote}
           onOpenShortcuts={() => setIsShortcutsOpen(true)}
+          onCheckForUpdates={() => setIsUpdateCenterOpen(true)}
           tags={allTags}
           onSelectTag={(tag) => {
             setSelectedTag(tag);
@@ -1361,6 +1365,7 @@ export default function QuillPage() {
           onOpenTagManager={() => setIsTagManagerOpen(true)}
           onOpenDailyNote={handleOpenDailyNote}
           onOpenShortcuts={() => setIsShortcutsOpen(true)}
+          onCheckForUpdates={() => setIsUpdateCenterOpen(true)}
           onOpenOutline={handleOpenOutline}
           onOpenHistory={() => setIsHistoryOpen(true)}
           onFindReplace={() => emitEditorCommand("find")}
@@ -1410,7 +1415,17 @@ export default function QuillPage() {
         />
 
         {/* In-App Update Notifier (Only active in native mobile app) */}
-        <AppUpdateNotifier />
+        <AppUpdateNotifier
+          paused={editorFocused || overlayDepth() > 0}
+          onOpenCenter={() => setIsUpdateCenterOpen(true)}
+        />
+
+        {/* Update Center — check, download and install a newer release */}
+        <UpdateCenter
+          open={isUpdateCenterOpen}
+          onOpenChange={setIsUpdateCenterOpen}
+          forceCheck
+        />
       </div>
     </ErrorBoundary>
   );

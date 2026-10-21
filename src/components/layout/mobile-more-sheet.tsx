@@ -26,6 +26,7 @@ import {
   CalendarDays,
   Tags,
   Keyboard,
+  ArrowDownToLine,
 } from "lucide-react";
 import { BottomSheet, SheetLabel, SheetRow } from "@/components/ui/bottom-sheet";
 import { AmbientSoundPlayer } from "@/components/audio/ambient-sound-player";
@@ -59,6 +60,7 @@ export interface MobileMoreSheetProps {
   onOpenTagManager?: () => void;
   onOpenDailyNote?: () => void;
   onOpenShortcuts?: () => void;
+  onCheckForUpdates?: () => void;
 }
 
 /**
@@ -91,6 +93,7 @@ export function MobileMoreSheet({
   onOpenTagManager,
   onOpenDailyNote,
   onOpenShortcuts,
+  onCheckForUpdates,
 }: MobileMoreSheetProps) {
   const { theme, setTheme } = useTheme();
   const [ambientExpanded, setAmbientExpanded] = useState(false);
@@ -166,6 +169,14 @@ export function MobileMoreSheet({
           label="Keyboard Shortcuts"
           description="Every shortcut in one list"
           onClick={run(onOpenShortcuts)}
+        />
+      )}
+      {onCheckForUpdates && (
+        <SheetRow
+          icon={ArrowDownToLine}
+          label="Check for Updates"
+          description="Download and install a newer release"
+          onClick={run(onCheckForUpdates)}
         />
       )}
       <button
