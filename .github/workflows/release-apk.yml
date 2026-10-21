@@ -18,12 +18,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: 'npm'
@@ -32,7 +32,7 @@ jobs:
         run: npm ci
 
       - name: Setup Java (JDK 21)
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -78,14 +78,14 @@ jobs:
         run: python3 .github/scripts/generate-release-notes.py RELEASE_NOTES.md
 
       - name: Upload APK to Workflow Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: quill-apk
           path: release-assets/*.apk
 
       - name: Upload APK to GitHub Release
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: release-assets/*.apk
           body_path: RELEASE_NOTES.md
