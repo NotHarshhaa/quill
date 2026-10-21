@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { MarkdownPreview } from "@/components/preview/markdown-preview";
 import { CommandPalette } from "@/components/command/command-palette";
@@ -50,6 +50,18 @@ import { MobileHeader } from "@/components/layout/mobile-header";
 import { MobileTabBar, MobileTab } from "@/components/layout/mobile-tab-bar";
 import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet";
 import { MobileStatusStrip } from "@/components/layout/mobile-status-strip";
+import { TasksPanel } from "@/components/tasks/tasks-panel";
+import { TagManager } from "@/components/tags/tag-manager";
+import { ShortcutsSheet } from "@/components/help/shortcuts-sheet";
+import { extractTags } from "@/lib/utils";
+import { setTaskCheckedInMarkdown } from "@/lib/tasks";
+import { replaceTagInContent, renameTagInList, mergeTagInList, dedupeAdjacentTags } from "@/lib/tagging";
+import {
+  DAILY_TAG,
+  dailyNoteContent,
+  formatDailyTitle,
+  isDailyNoteFor,
+} from "@/lib/dailyNote";
 import { LayoutTour, hasSeenLayoutTour } from "@/components/onboarding/layout-tour";
 import { MobileAISheet } from "@/components/layout/mobile-ai-sheet";
 import { ExportSheet } from "@/components/layout/export-sheet";
@@ -99,6 +111,7 @@ export default function QuillPage() {
     duplicateNote,
     navigateOrCreateWikiLink,
     updateNote,
+    updateNotes,
     togglePinNote,
     deleteNote,
     restoreFromTrash,
@@ -131,6 +144,9 @@ export default function QuillPage() {
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
+  const [isTasksOpen, setIsTasksOpen] = useState(false);
+  const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isAIStatusOpen, setIsAIStatusOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -274,6 +290,10 @@ export default function QuillPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeNoteId]);
 
+  // Latest daily-note handler, so the global shortcut can call it without
+  // re-binding the key listener on every render.
+  const dailyNoteRef = useRef<() => void>(() => {});
+
   // Enhanced keyboard shortcuts
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -291,6 +311,15 @@ export default function QuillPage() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n" && !e.shiftKey) {
         e.preventDefault();
         createNote();
+      }
+      // Daily note: Cmd+Shift+D
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === "d"
+      ) {
+        e.preventDefault();
+        dailyNoteRef.current();
       }
       // View Modes: Cmd+1/2/3
       if ((e.metaKey || e.ctrlKey) && e.key === "1") {
@@ -451,6 +480,108 @@ export default function QuillPage() {
       updateNote(activeNote.id, { content: updated });
     }
   };
+
+  // Toggle a checklist item inside any note (used by the cross-note task list)
+  const handleToggleNoteTask = (
+    noteId: string,
+    taskIndex: number,
+    checked: boolean
+  ) => {
+    const note = allRawNotes.find((n) => n.id === noteId);
+    if (!note) return;
+    const content = setTaskCheckedInMarkdown(note.content, taskIndex, checked);
+    if (content === note.content) return;
+    updateNote(noteId, { content });
+    // Keep the open editor in sync when the task lives in the active note
+    if (noteId === activeNote?.id) handleEditorChange(content);
+  };
+
+  // Open (or create) today's daily note
+  const handleOpenDailyNote = () => {
+    const title = formatDailyTitle();
+    const existing = allRawNotes.find((n) => isDailyNoteFor(n));
+    if (existing) {
+      handleSelectNote(existing.id);
+      if (isMobileViewport()) gotoMobileView("editor");
+      return;
+    }
+    const note = createNote({
+      title,
+      content: dailyNoteContent(title),
+      tags: [DAILY_TAG],
+    });
+    if (note && isMobileViewport()) gotoMobileView("editor");
+  };
+  dailyNoteRef.current = handleOpenDailyNote;
+
+  // Rename a tag everywhere: note bodies (#tag) and the cached tag lists
+  const handleRenameTag = (from: string, to: string) => {
+    const target = to.trim().replace(/^#/, "").toLowerCase();
+    if (!target || target === from) return;
+    const ids = allRawNotes
+      .filter((n) =>
+        [...(n.tags || []), ...extractTags(n.content)].some(
+          (t) => t.toLowerCase() === from.toLowerCase()
+        )
+      )
+      .map((n) => n.id);
+    if (ids.length === 0) return;
+    updateNotes(ids, (note) => {
+      const content = dedupeAdjacentTags(
+        replaceTagInContent(note.content, from, target)
+      );
+      return {
+        ...note,
+        content,
+        tags: renameTagInList(note.tags, from, target),
+        updatedAt: Date.now(),
+      };
+    });
+    toast.success(`Renamed #${from} to #${target} in ${ids.length} note${ids.length === 1 ? "" : "s"}`);
+  };
+
+  // Merge one tag into another across the whole vault
+  const handleMergeTag = (from: string, into: string) => {
+    if (!into || from === into) return;
+    const ids = allRawNotes
+      .filter((n) =>
+        [...(n.tags || []), ...extractTags(n.content)].some(
+          (t) => t.toLowerCase() === from.toLowerCase()
+        )
+      )
+      .map((n) => n.id);
+    if (ids.length === 0) return;
+    updateNotes(ids, (note) => {
+      const content = dedupeAdjacentTags(
+        replaceTagInContent(note.content, from, into)
+      );
+      return {
+        ...note,
+        content,
+        tags: mergeTagInList(note.tags, from, into),
+        updatedAt: Date.now(),
+      };
+    });
+    setSelectedTag((current) =>
+      current && current.toLowerCase() === from.toLowerCase() ? into : current
+    );
+    toast.success(`Merged #${from} into #${into}`);
+  };
+
+  // Tag inventory for the tag manager
+  const tagSummaries = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const note of allRawNotes) {
+      const set = new Set<string>([
+        ...(note.tags || []).map((t) => t.toLowerCase()),
+        ...extractTags(note.content),
+      ]);
+      for (const tag of set) counts.set(tag, (counts.get(tag) || 0) + 1);
+    }
+    return Array.from(counts, ([tag, count]) => ({ tag, count })).sort(
+      (a, b) => b.count - a.count || a.tag.localeCompare(b.tag)
+    );
+  }, [allRawNotes]);
 
   // Import markdown file(s)
   const handleImportMarkdownFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -807,6 +938,10 @@ export default function QuillPage() {
                   onOpenInsights={() => setIsInsightsOpen(true)}
                   onToggleTypewriter={() => emitEditorCommand("typewriter")}
                   typewriter={editorState.typewriter}
+                  onOpenTasks={() => setIsTasksOpen(true)}
+                  onOpenTagManager={() => setIsTagManagerOpen(true)}
+                  onOpenDailyNote={handleOpenDailyNote}
+                  onOpenShortcuts={() => setIsShortcutsOpen(true)}
                 />
 
                 {/* Theme quick-toggle (hidden on phone widths — available in ⋯ More + Settings) */}
@@ -1094,6 +1229,10 @@ export default function QuillPage() {
           }}
           writingGoal={writingGoal}
           onSelectPanel={openNotesPanel}
+          onOpenTasks={() => setIsTasksOpen(true)}
+          onOpenTagManager={() => setIsTagManagerOpen(true)}
+          onOpenDailyNote={handleOpenDailyNote}
+          onOpenShortcuts={() => setIsShortcutsOpen(true)}
           tags={allTags}
           onSelectTag={(tag) => {
             setSelectedTag(tag);
@@ -1218,6 +1357,10 @@ export default function QuillPage() {
           onOpenSettings={() => openNotesPanel("settings")}
           onOpenGraph={() => setIsGraphOpen(true)}
           onOpenInsights={() => setIsInsightsOpen(true)}
+          onOpenTasks={() => setIsTasksOpen(true)}
+          onOpenTagManager={() => setIsTagManagerOpen(true)}
+          onOpenDailyNote={handleOpenDailyNote}
+          onOpenShortcuts={() => setIsShortcutsOpen(true)}
           onOpenOutline={handleOpenOutline}
           onOpenHistory={() => setIsHistoryOpen(true)}
           onFindReplace={() => emitEditorCommand("find")}
@@ -1227,6 +1370,33 @@ export default function QuillPage() {
           fullscreen={isFullscreen}
           onToggleTypewriter={() => emitEditorCommand("typewriter")}
           typewriter={editorState.typewriter}
+        />
+
+        {/* Cross-note task list (phone bottom sheet · desktop right drawer) */}
+        <TasksPanel
+          open={isTasksOpen}
+          onOpenChange={setIsTasksOpen}
+          notes={allRawNotes}
+          onToggleTask={handleToggleNoteTask}
+          onOpenNote={(noteId) => {
+            handleSelectNote(noteId);
+            if (isMobileViewport()) gotoMobileView("editor");
+          }}
+        />
+
+        {/* Tag manager (rename / merge tags across the vault) */}
+        <TagManager
+          open={isTagManagerOpen}
+          onOpenChange={setIsTagManagerOpen}
+          tags={tagSummaries}
+          onRenameTag={handleRenameTag}
+          onMergeTag={handleMergeTag}
+        />
+
+        {/* Keyboard shortcut reference */}
+        <ShortcutsSheet
+          open={isShortcutsOpen}
+          onOpenChange={setIsShortcutsOpen}
         />
 
         {/* Export sheet (phone bottom sheet · desktop right drawer) */}

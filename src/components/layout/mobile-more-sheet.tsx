@@ -22,6 +22,10 @@ import {
   Moon,
   Laptop,
   MoreHorizontal,
+  ListTodo,
+  CalendarDays,
+  Tags,
+  Keyboard,
 } from "lucide-react";
 import { BottomSheet, SheetLabel, SheetRow } from "@/components/ui/bottom-sheet";
 import { AmbientSoundPlayer } from "@/components/audio/ambient-sound-player";
@@ -51,6 +55,10 @@ export interface MobileMoreSheetProps {
   fullscreen?: boolean;
   onToggleTypewriter: () => void;
   typewriter?: boolean;
+  onOpenTasks?: () => void;
+  onOpenTagManager?: () => void;
+  onOpenDailyNote?: () => void;
+  onOpenShortcuts?: () => void;
 }
 
 /**
@@ -79,6 +87,10 @@ export function MobileMoreSheet({
   fullscreen = false,
   onToggleTypewriter,
   typewriter = false,
+  onOpenTasks,
+  onOpenTagManager,
+  onOpenDailyNote,
+  onOpenShortcuts,
 }: MobileMoreSheetProps) {
   const { theme, setTheme } = useTheme();
   const [ambientExpanded, setAmbientExpanded] = useState(false);
@@ -122,8 +134,40 @@ export function MobileMoreSheet({
       <SheetRow icon={Settings} label="Settings" onClick={run(onOpenSettings)} />
 
       <SheetLabel>Tools</SheetLabel>
+      {onOpenTasks && (
+        <SheetRow
+          icon={ListTodo}
+          label="Open Tasks"
+          description="Every checklist item across your notes"
+          onClick={run(onOpenTasks)}
+        />
+      )}
+      {onOpenDailyNote && (
+        <SheetRow
+          icon={CalendarDays}
+          label="Today's Note"
+          description="Jump to (or start) today's daily note"
+          onClick={run(onOpenDailyNote)}
+        />
+      )}
+      {onOpenTagManager && (
+        <SheetRow
+          icon={Tags}
+          label="Manage Tags"
+          description="Rename or merge tags across every note"
+          onClick={run(onOpenTagManager)}
+        />
+      )}
       <SheetRow icon={Network} label="Knowledge Graph" onClick={run(onOpenGraph)} />
       <SheetRow icon={BarChart3} label="Writing Analytics" onClick={run(onOpenInsights)} />
+      {onOpenShortcuts && (
+        <SheetRow
+          icon={Keyboard}
+          label="Keyboard Shortcuts"
+          description="Every shortcut in one list"
+          onClick={run(onOpenShortcuts)}
+        />
+      )}
       <button
         type="button"
         onClick={() => {

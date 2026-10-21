@@ -14,6 +14,10 @@ import {
   Network,
   BarChart3,
   MoreHorizontal,
+  ListTodo,
+  CalendarDays,
+  Tags,
+  Keyboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,6 +54,10 @@ export interface MoreMenuProps {
   onOpenInsights?: () => void;
   onToggleTypewriter?: () => void;
   typewriter?: boolean;
+  onOpenTasks?: () => void;
+  onOpenTagManager?: () => void;
+  onOpenDailyNote?: () => void;
+  onOpenShortcuts?: () => void;
 }
 
 const groupLabelClass =
@@ -81,6 +89,10 @@ export function MoreMenu({
   onOpenInsights,
   onToggleTypewriter,
   typewriter = false,
+  onOpenTasks,
+  onOpenTagManager,
+  onOpenDailyNote,
+  onOpenShortcuts,
 }: MoreMenuProps) {
   const close = () => onOpenChange(false);
   const run = (fn?: () => void) => () => {
@@ -154,9 +166,30 @@ export function MoreMenu({
 
         <DropdownMenuSeparator className="border-border/50" />
 
+        <DropdownMenuLabel className={groupLabelClass}>Organise</DropdownMenuLabel>
+        {onOpenTasks && (
+          <MenuItem icon={ListTodo} label="Open Tasks" onSelect={run(onOpenTasks)} />
+        )}
+        {onOpenDailyNote && (
+          <MenuItem
+            icon={CalendarDays}
+            label="Today's Note"
+            hint="Ctrl+Shift+D"
+            onSelect={run(onOpenDailyNote)}
+          />
+        )}
+        {onOpenTagManager && (
+          <MenuItem icon={Tags} label="Manage Tags" onSelect={run(onOpenTagManager)} />
+        )}
+
+        <DropdownMenuSeparator className="border-border/50" />
+
         <DropdownMenuLabel className={groupLabelClass}>Tools</DropdownMenuLabel>
         <MenuItem icon={Network} label="Knowledge Graph" onSelect={run(onOpenGraph)} />
         <MenuItem icon={BarChart3} label="Writing Analytics" onSelect={run(onOpenInsights)} />
+        {onOpenShortcuts && (
+          <MenuItem icon={Keyboard} label="Keyboard Shortcuts" onSelect={run(onOpenShortcuts)} />
+        )}
 
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className={cn(itemClass, "flex")}>

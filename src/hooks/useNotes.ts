@@ -100,6 +100,23 @@ export function useNotes() {
     });
   }, []);
 
+  /**
+   * Update several notes in one pass (single storage write). Used by the tag
+   * manager, which has to rewrite every note that carries a tag.
+   */
+  const updateNotes = useCallback(
+    (ids: string[], updater: (note: Note) => Note) => {
+      if (ids.length === 0) return;
+      setNotes((prev) => {
+        const idSet = new Set(ids);
+        const updated = prev.map((note) => (idSet.has(note.id) ? updater(note) : note));
+        notesRepository.saveNotes(updated);
+        return updated;
+      });
+    },
+    []
+  );
+
   const togglePinNote = useCallback((id: string) => {
     setNotes((prev) => {
       const updated = prev.map((n) => (n.id === id ? { ...n, isPinned: !n.isPinned } : n));
@@ -317,6 +334,7 @@ export function useNotes() {
     duplicateNote,
     navigateOrCreateWikiLink,
     updateNote,
+    updateNotes,
     togglePinNote,
     deleteNote: moveToTrash,
     restoreFromTrash,

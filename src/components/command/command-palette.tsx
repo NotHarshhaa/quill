@@ -6,6 +6,7 @@ import {
   Archive,
   BarChart3,
   Bold,
+  CalendarDays,
   Clock,
   Columns2,
   Copy,
@@ -17,11 +18,13 @@ import {
   HelpCircle,
   History,
   Italic,
+  Keyboard,
   Laptop,
   LayoutTemplate,
   Link2,
   List,
   ListChecks,
+  ListTodo,
   ListTree,
   Maximize2,
   Moon,
@@ -44,6 +47,7 @@ import {
   Upload,
   Wand2,
   X,
+  Tags,
 } from "lucide-react";
 import { Corners } from "@/components/frame";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -133,6 +137,14 @@ interface CommandPaletteProps {
   onMoveActiveToTrash?: () => void;
   /** Runs editor-local commands (formatting, undo/redo) via the command bridge. */
   onEditorCommand?: (command: EditorCommand) => void;
+  /** Open the cross-note task list. */
+  onOpenTasks?: () => void;
+  /** Open the tag manager (rename / merge tags across the vault). */
+  onOpenTagManager?: () => void;
+  /** Open (or create) today's daily note. */
+  onOpenDailyNote?: () => void;
+  /** Open the keyboard shortcut reference. */
+  onOpenShortcuts?: () => void;
   /** True while a markdown editor is mounted somewhere in the tree. */
   editorMounted?: boolean;
   canUndo?: boolean;
@@ -343,6 +355,10 @@ export function CommandPalette({
   editorMounted = false,
   canUndo = false,
   canRedo = false,
+  onOpenTasks,
+  onOpenTagManager,
+  onOpenDailyNote,
+  onOpenShortcuts,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -761,6 +777,59 @@ export function CommandPalette({
       });
     }
 
+    if (onOpenTasks) {
+      list.push({
+        id: "nav-tasks",
+        kind: "command",
+        group: "navigation",
+        title: "Open Tasks",
+        subtitle: "Every checklist item across your notes",
+        keywords: "todo to-do checklist tasks checkboxes pending",
+        icon: ListTodo,
+        run: onOpenTasks,
+      });
+    }
+
+    if (onOpenShortcuts) {
+      list.push({
+        id: "nav-shortcuts",
+        kind: "command",
+        group: "navigation",
+        title: "Keyboard Shortcuts",
+        subtitle: "Every shortcut in one list",
+        keywords: "help keys hotkeys shortcuts reference",
+        icon: Keyboard,
+        run: onOpenShortcuts,
+      });
+    }
+
+    if (onOpenDailyNote) {
+      list.push({
+        id: "act-daily-note",
+        kind: "command",
+        group: "actions",
+        title: "Open Today's Note",
+        subtitle: "Jump to (or start) today's daily note",
+        keywords: "daily journal today diary date",
+        icon: CalendarDays,
+        shortcut: "Ctrl+Shift+D",
+        run: onOpenDailyNote,
+      });
+    }
+
+    if (onOpenTagManager) {
+      list.push({
+        id: "set-tag-manager",
+        kind: "command",
+        group: "settings",
+        title: "Manage Tags",
+        subtitle: "Rename or merge tags across every note",
+        keywords: "tags organise organize rename merge labels",
+        icon: Tags,
+        run: onOpenTagManager,
+      });
+    }
+
     if (onViewModeChange) {
       list.push({
         id: "nav-view-editor",
@@ -956,6 +1025,10 @@ export function CommandPalette({
     onOpenGraph,
     onOpenInsights,
     onOpenWelcome,
+    onOpenTasks,
+    onOpenShortcuts,
+    onOpenDailyNote,
+    onOpenTagManager,
     onViewModeChange,
     onToggleZen,
     onToggleFullscreen,
