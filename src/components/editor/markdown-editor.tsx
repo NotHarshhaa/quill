@@ -15,12 +15,18 @@ interface MarkdownEditorProps {
   content: string;
   onChange: (value: string) => void;
   borderRight?: boolean;
+  scrollRef?: React.Ref<HTMLDivElement>;
+  onScrollContainer?: (scrollTop: number, scrollRatio: number) => void;
+  onCursorChange?: (pos: { line: number; col: number }) => void;
 }
 
 export function MarkdownEditor({
   content,
   onChange,
   borderRight = true,
+  scrollRef,
+  onScrollContainer,
+  onCursorChange,
 }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -163,6 +169,7 @@ export function MarkdownEditor({
       setTimeout(() => {
         textareaRef.current?.focus();
         handleCursorScroll();
+        reportCursorPos();
       }, 0);
     }
   };
@@ -179,40 +186,16 @@ export function MarkdownEditor({
       setTimeout(() => {
         textareaRef.current?.focus();
         handleCursorScroll();
+        reportCursorPos();
       }, 0);
     }
-  };
-
-  // Keep the bridge callbacks pointing at the latest closures
-  handlersRef.current = {
-    undo: handleUndo,
-    redo: handleRedo,
-    openFind: () => setIsFindOpen(true),
-    toggleTypewriter: () => setIsTypewriter((prev) => !prev),
-    // Wrapped so the reference resolves after `insertSnippet` is declared below
-    insert: (before, after, placeholder) => insertSnippet(before, after, placeholder),
-  };
-
-  const handleCursorScroll = () => {
-    if (!isTypewriter || !textareaRef.current || !scrollContainerRef.current) return;
-    const textarea = textareaRef.current;
-    const container = scrollContainerRef.current;
-    const textBeforeCursor = textarea.value.substring(0, textarea.selectionStart);
-    const lineCount = textBeforeCursor.split("\n").length;
-    const approxLineHeight = 24;
-    const targetScroll = lineCount * approxLineHeight - container.clientHeight / 2;
-    container.scrollTo({
-      top: Math.max(0, targetScroll),
-      behavior: "smooth",
-    });
   };
 
   const insertSnippet = (before: string, after: string = "", placeholder: string = "") => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    // Read the live DOM value: `content` can be stale in async flows (e.g. image
-    // upload finishing after the user kept typing)
+    // Read the live DOM value: `content` can be stale in async flows
     const liveContent = textarea.value;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
@@ -234,7 +217,42 @@ export function MarkdownEditor({
         start + before.length + selectedText.length
       );
       handleCursorScroll();
+      reportCursorPos();
     }, 0);
+  };
+
+  // Keep the bridge callbacks pointing at the latest closures
+  handlersRef.current = {
+    undo: handleUndo,
+    redo: handleRedo,
+    openFind: () => setIsFindOpen(true),
+    toggleTypewriter: () => setIsTypewriter((prev) => !prev),
+    insert: (before, after, placeholder) => insertSnippet(before, after, placeholder),
+  };
+
+  const handleCursorScroll = () => {
+    if (!isTypewriter || !textareaRef.current || !scrollContainerRef.current) return;
+    const textarea = textareaRef.current;
+    const container = scrollContainerRef.current;
+    const textBeforeCursor = textarea.value.substring(0, textarea.selectionStart);
+    const lineCount = textBeforeCursor.split("\n").length;
+    const approxLineHeight = 24;
+    const targetScroll = lineCount * approxLineHeight - container.clientHeight / 2;
+    container.scrollTo({
+      top: Math.max(0, targetScroll),
+      behavior: "smooth",
+    });
+  };
+
+  const reportCursorPos = () => {
+    const textarea = textareaRef.current;
+    if (!textarea || !onCursorChange) return;
+    const pos = textarea.selectionStart;
+    const textBefore = textarea.value.substring(0, pos);
+    const lines = textBefore.split("\n");
+    const line = lines.length;
+    const col = lines[lines.length - 1].length + 1;
+    onCursorChange({ line, col });
   };
 
   // Detect `/` on current line to trigger slash command popup
@@ -295,6 +313,7 @@ export function MarkdownEditor({
       const newCursor = start + snippet.length;
       textarea.setSelectionRange(newCursor, newCursor);
       handleCursorScroll();
+      reportCursorPos();
     }, 0);
   };
 
@@ -389,10 +408,213 @@ export function MarkdownEditor({
       return;
     }
 
+    // Smart List Continuation & List Exit on Enter
+    if (e.key === "Enter" && !slashMenu.isOpen && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        if (start === end) {
+          const val = textarea.value;
+          const textBefore = val.substring(0, start);
+          const lastNewline = textBefore.lastIndexOf("\n");
+          const currentLine = textBefore.substring(lastNewline + 1);
+
+          // 1. Task item: "- [ ] " or "- [x] "
+          const taskMatch = currentLine.match(/^(\s*[-*+]\s+\[[ xX]?\]\s*)(.*)$/);
+          if (taskMatch) {
+            e.preventDefault();
+            const prefix = taskMatch[1];
+            const itemContent = taskMatch[2];
+            if (!itemContent.trim()) {
+              // Empty task line -> exit list by clearing the prefix
+              const lineStart = lastNewline + 1;
+              const newVal = val.substring(0, lineStart) + val.substring(start);
+              pushHistory(newVal, true);
+              setTimeout(() => {
+                textarea.setSelectionRange(lineStart, lineStart);
+                handleCursorScroll();
+                reportCursorPos();
+              }, 0);
+              return;
+            } else {
+              // Non-empty task line -> continue with unchecked task
+              const nextItem = "\n" + prefix.replace(/\[[xX]\]/, "[ ]");
+              insertSnippet(nextItem, "", "");
+              return;
+            }
+          }
+
+          // 2. Numbered list item: "1. "
+          const numMatch = currentLine.match(/^(\s*)(\d+)\.\s+(.*)$/);
+          if (numMatch) {
+            e.preventDefault();
+            const indent = numMatch[1];
+            const num = parseInt(numMatch[2], 10);
+            const itemContent = numMatch[3];
+            if (!itemContent.trim()) {
+              // Empty numbered line -> exit list
+              const lineStart = lastNewline + 1;
+              const newVal = val.substring(0, lineStart) + val.substring(start);
+              pushHistory(newVal, true);
+              setTimeout(() => {
+                textarea.setSelectionRange(lineStart, lineStart);
+                handleCursorScroll();
+                reportCursorPos();
+              }, 0);
+              return;
+            } else {
+              const nextItem = `\n${indent}${num + 1}. `;
+              insertSnippet(nextItem, "", "");
+              return;
+            }
+          }
+
+          // 3. Bullet list item: "- " or "* " or "+ "
+          const bulletMatch = currentLine.match(/^(\s*[-*+]\s+)(.*)$/);
+          if (bulletMatch) {
+            e.preventDefault();
+            const prefix = bulletMatch[1];
+            const itemContent = bulletMatch[2];
+            if (!itemContent.trim()) {
+              // Empty bullet line -> exit list
+              const lineStart = lastNewline + 1;
+              const newVal = val.substring(0, lineStart) + val.substring(start);
+              pushHistory(newVal, true);
+              setTimeout(() => {
+                textarea.setSelectionRange(lineStart, lineStart);
+                handleCursorScroll();
+                reportCursorPos();
+              }, 0);
+              return;
+            } else {
+              const nextItem = `\n${prefix}`;
+              insertSnippet(nextItem, "", "");
+              return;
+            }
+          }
+
+          // 4. Blockquote: "> "
+          const quoteMatch = currentLine.match(/^(\s*>\s+)(.*)$/);
+          if (quoteMatch) {
+            e.preventDefault();
+            const prefix = quoteMatch[1];
+            const quoteContent = quoteMatch[2];
+            if (!quoteContent.trim()) {
+              const lineStart = lastNewline + 1;
+              const newVal = val.substring(0, lineStart) + val.substring(start);
+              pushHistory(newVal, true);
+              setTimeout(() => {
+                textarea.setSelectionRange(lineStart, lineStart);
+                handleCursorScroll();
+                reportCursorPos();
+              }, 0);
+              return;
+            } else {
+              insertSnippet(`\n${prefix}`, "", "");
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    // Auto-pair wrapping when text is selected
+    const PAIRS: Record<string, string> = {
+      "(": ")",
+      "[": "]",
+      "{": "}",
+      '"': '"',
+      "'": "'",
+      "`": "`",
+      "*": "*",
+      "~": "~",
+    };
+
+    if (PAIRS[e.key] && !e.ctrlKey && !e.metaKey && !slashMenu.isOpen) {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value;
+        if (start !== end) {
+          e.preventDefault();
+          const open = e.key;
+          const close = PAIRS[e.key];
+          const selected = val.substring(start, end);
+          const newVal = val.substring(0, start) + open + selected + close + val.substring(end);
+          pushHistory(newVal, true);
+          setTimeout(() => {
+            textarea.setSelectionRange(start + 1, end + 1);
+            reportCursorPos();
+          }, 0);
+          return;
+        }
+      }
+    }
+
+    // Tab / Shift+Tab for indenting / unindenting
     if (e.key === "Tab" && !slashMenu.isOpen) {
       e.preventDefault();
-      insertSnippet("  ");
-      return;
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value;
+
+        if (e.shiftKey) {
+          // Unindent lines
+          const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+          const lineEnd = val.indexOf("\n", end);
+          const actualEnd = lineEnd === -1 ? val.length : lineEnd;
+          const block = val.substring(lineStart, actualEnd);
+          const unindented = block
+            .split("\n")
+            .map((line) => line.replace(/^ {1,2}/, ""))
+            .join("\n");
+          const newVal = val.substring(0, lineStart) + unindented + val.substring(actualEnd);
+          pushHistory(newVal, true);
+          setTimeout(() => {
+            textarea.setSelectionRange(
+              Math.max(lineStart, start - 2),
+              Math.max(lineStart, end - (block.length - unindented.length))
+            );
+            reportCursorPos();
+          }, 0);
+          return;
+        } else {
+          // If multiple lines selected, indent all; otherwise insert 2 spaces
+          if (start !== end && val.substring(start, end).includes("\n")) {
+            const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+            const lineEnd = val.indexOf("\n", end);
+            const actualEnd = lineEnd === -1 ? val.length : lineEnd;
+            const block = val.substring(lineStart, actualEnd);
+            const indented = block
+              .split("\n")
+              .map((line) => "  " + line)
+              .join("\n");
+            const newVal = val.substring(0, lineStart) + indented + val.substring(actualEnd);
+            pushHistory(newVal, true);
+            setTimeout(() => {
+              textarea.setSelectionRange(start + 2, end + (indented.length - block.length));
+              reportCursorPos();
+            }, 0);
+            return;
+          } else {
+            insertSnippet("  ");
+            return;
+          }
+        }
+      }
+    }
+  };
+
+  const handleContainerRef = (node: HTMLDivElement | null) => {
+    (scrollContainerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    if (typeof scrollRef === "function") {
+      scrollRef(node);
+    } else if (scrollRef && "current" in scrollRef) {
+      (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
     }
   };
 
@@ -418,7 +640,7 @@ export function MarkdownEditor({
         className="hidden"
       />
 
-      {/* Floating formatting toolbar: on mobile devices, hidden while keyboard is active to maximize writing space */}
+      {/* Floating formatting toolbar: on mobile devices, hidden while keyboard is active */}
       <div className={cn(keyboardVisible && "hidden md:block")}>
         <EditorToolbar
           canUndo={canUndo}
@@ -443,13 +665,20 @@ export function MarkdownEditor({
               textarea.focus();
             }
             textarea.setSelectionRange(start, end);
+            reportCursorPos();
           }
         }}
       />
 
       {/* Editor Textarea with Typewriter Scrolling Mode, Slash Commands & Image Drag/Paste */}
       <div
-        ref={scrollContainerRef}
+        ref={handleContainerRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const max = el.scrollHeight - el.clientHeight;
+          const ratio = max > 0 ? el.scrollTop / max : 0;
+          onScrollContainer?.(el.scrollTop, ratio);
+        }}
         className={cn(
           "flex-1 pt-3.5 px-3.5 pb-8 sm:p-6 overflow-y-auto relative",
           isTypewriter ? "pb-[50vh]" : keyboardVisible ? "pb-20 sm:pb-8" : ""
@@ -461,16 +690,20 @@ export function MarkdownEditor({
           onChange={(e) => {
             pushHistory(e.target.value, false);
             handleCursorScroll();
+            reportCursorPos();
             checkSlashCommand(e.target.value, e.target.selectionStart);
           }}
           onClick={(e) => {
             handleCursorScroll();
+            reportCursorPos();
             checkSlashCommand(content, (e.target as HTMLTextAreaElement).selectionStart);
           }}
           onKeyUp={(e) => {
             handleCursorScroll();
+            reportCursorPos();
             checkSlashCommand(content, (e.target as HTMLTextAreaElement).selectionStart);
           }}
+          onSelect={reportCursorPos}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           onDrop={handleDrop}

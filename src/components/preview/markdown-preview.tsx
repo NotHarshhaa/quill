@@ -12,6 +12,8 @@ interface MarkdownPreviewProps {
   onToggleTask?: (taskIndex: number) => void;
   onNavigateWikiLink?: (target: string) => void;
   backlinks?: { id: string; title: string }[];
+  scrollRef?: React.Ref<HTMLDivElement>;
+  onScrollPreview?: (scrollTop: number, scrollRatio: number) => void;
 }
 
 export function MarkdownPreview({
@@ -19,61 +21,72 @@ export function MarkdownPreview({
   onToggleTask,
   onNavigateWikiLink,
   backlinks = [],
+  scrollRef,
+  onScrollPreview,
 }: MarkdownPreviewProps) {
   const ast = useMarkdownPreview(content);
 
   return (
     <ErrorBoundary fallback={<div className="p-4 text-muted-foreground text-sm">Preview unavailable</div>}>
-    <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative font-sans select-text">
-      <Corners size="sm" offset="border" weight="thin" light />
+      <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative font-sans select-text">
+        <Corners size="sm" offset="border" weight="thin" light />
 
-      {/* Rendered Preview Content */}
-      <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        {!content.trim() ? (
-          <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/50">
-            <FileText className="size-8 mb-2 opacity-30" />
-            <p className="font-sans italic text-sm">Empty page. Type markdown to see live preview.</p>
-          </div>
-        ) : (
-          <div className="max-w-2xl mx-auto font-sans pb-[calc(var(--bottom-bar-h,56px)+3rem)] sm:pb-16">
-            {ast.map((block, idx) => (
-              <RenderBlock
-                key={idx}
-                block={block}
-                onToggleTask={onToggleTask}
-                onNavigateWikiLink={onNavigateWikiLink}
-              />
-            ))}
+        {/* Rendered Preview Content */}
+        <div
+          ref={scrollRef}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            const max = el.scrollHeight - el.clientHeight;
+            const ratio = max > 0 ? el.scrollTop / max : 0;
+            onScrollPreview?.(el.scrollTop, ratio);
+          }}
+          className="flex-1 p-4 sm:p-8 overflow-y-auto"
+        >
+          {!content.trim() ? (
+            <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/50">
+              <FileText className="size-8 mb-2 opacity-30" />
+              <p className="font-sans italic text-sm">Empty page. Type markdown to see live preview.</p>
+            </div>
+          ) : (
+            <div className="max-w-2xl mx-auto font-sans pb-[calc(var(--bottom-bar-h,56px)+3rem)] md:pb-12">
+              {ast.map((block, idx) => (
+                <RenderBlock
+                  key={idx}
+                  block={block}
+                  onToggleTask={onToggleTask}
+                  onNavigateWikiLink={onNavigateWikiLink}
+                />
+              ))}
 
-            {/* Linked Mentions / Backlinks Section */}
-            {backlinks.length > 0 && (
-              <div className="mt-14 pt-6 border-t border-border/60 relative font-sans">
-                <div className="flex items-center gap-1.5 mb-3 text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground select-none">
-                  <Link2 className="size-3.5 text-primary" />
-                  <span>Linked Mentions ({backlinks.length})</span>
+              {/* Linked Mentions / Backlinks Section */}
+              {backlinks.length > 0 && (
+                <div className="mt-14 pt-6 border-t border-border/60 relative font-sans">
+                  <div className="flex items-center gap-1.5 mb-3 text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground select-none">
+                    <Link2 className="size-3.5 text-primary" />
+                    <span>Linked Mentions ({backlinks.length})</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground/80 mb-3 font-sans">
+                    The following notes reference this document via <code className="text-foreground text-[11px]">[[{`...`}]]</code>:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {backlinks.map((link) => (
+                      <button
+                        key={link.id}
+                        onClick={() => onNavigateWikiLink?.(link.title)}
+                        className="relative text-xs px-2.5 py-1.5 bg-card/80 border border-border/80 hover:border-primary/60 text-foreground transition-all shadow-xs flex items-center gap-1.5 cursor-pointer rounded-none"
+                      >
+                        <Corners size="sm" offset="border" weight="thin" light />
+                        <FileText className="size-3 text-muted-foreground" />
+                        <span className="font-medium">{link.title}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground/80 mb-3 font-sans">
-                  The following notes reference this document via <code className="text-foreground text-[11px]">[[{`...`}]]</code>:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {backlinks.map((link) => (
-                    <button
-                      key={link.id}
-                      onClick={() => onNavigateWikiLink?.(link.title)}
-                      className="relative text-xs px-2.5 py-1.5 bg-card/80 border border-border/80 hover:border-primary/60 text-foreground transition-all shadow-xs flex items-center gap-1.5 cursor-pointer rounded-none"
-                    >
-                      <Corners size="sm" offset="border" weight="thin" light />
-                      <FileText className="size-3 text-muted-foreground" />
-                      <span className="font-medium">{link.title}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </ErrorBoundary>
   );
 }

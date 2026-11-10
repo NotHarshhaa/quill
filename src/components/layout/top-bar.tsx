@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -197,14 +198,15 @@ export function InlineEditableTitle({
     <button
       type="button"
       onClick={() => setEditing(true)}
-      title="Click to rename"
+      title="Click to rename note"
       className={cn(
         widthClass,
-        "truncate px-2 py-1 text-left text-sm font-medium text-foreground rounded-none hover:bg-muted/60 transition-colors",
+        "group flex items-center gap-1.5 truncate px-2 py-1 text-left text-sm font-medium text-foreground rounded-none hover:bg-muted/60 transition-colors cursor-pointer",
         className
       )}
     >
-      {value || "Untitled"}
+      <span className="truncate">{value || "Untitled"}</span>
+      <Pencil className="size-2.5 opacity-0 group-hover:opacity-50 text-muted-foreground shrink-0 transition-opacity" />
     </button>
   );
 }

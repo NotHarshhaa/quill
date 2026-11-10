@@ -22,6 +22,7 @@ import {
   PinOff,
   Sun,
   Moon,
+  ListTree,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -155,6 +156,16 @@ export default function QuillPage() {
   const [isDocPanelOpen, setIsDocPanelOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Desktop Split View & Synchronized Scrolling
+  const [splitRatio, setSplitRatio] = useState<number>(50);
+  const [isSplitResizing, setIsSplitResizing] = useState(false);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const [syncScroll, setSyncScroll] = useState<boolean>(true);
+  const isSyncingScrollRef = useRef<boolean>(false);
+  const editorScrollContainerRef = useRef<HTMLDivElement>(null);
+  const previewScrollContainerRef = useRef<HTMLDivElement>(null);
+  const [cursorPos, setCursorPos] = useState<{ line: number; col: number } | null>(null);
+
   // ----- Mobile shell (<768px / Android APK) -----
   const isMobileShell = useIsMobileShell();
   const keyboardInset = useKeyboardInset();
@@ -187,6 +198,17 @@ export default function QuillPage() {
         setViewMode("split");
         setSideVisible(true);
         setIsDocPanelOpen(true);
+      }
+
+      // Restore desktop split ratio and sync scroll preferences
+      const savedRatio = localStorage.getItem("quill.split.ratio");
+      if (savedRatio) {
+        const val = Number(savedRatio);
+        if (!isNaN(val) && val >= 20 && val <= 80) setSplitRatio(val);
+      }
+      const savedSync = localStorage.getItem("quill.sync_scroll");
+      if (savedSync !== null) {
+        setSyncScroll(savedSync === "true");
       }
 
       // Show welcome popup modal by default unless user opted out
@@ -687,6 +709,73 @@ export default function QuillPage() {
     }
   };
 
+  // Resizable Split Pane Drag Handlers
+  const handleSplitResizeStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsSplitResizing(true);
+  };
+
+  const handleSplitResizeMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isSplitResizing || !splitContainerRef.current) return;
+    const rect = splitContainerRef.current.getBoundingClientRect();
+    const rawRatio = ((e.clientX - rect.left) / rect.width) * 100;
+    const clamped = Math.min(80, Math.max(20, Math.round(rawRatio)));
+    setSplitRatio(clamped);
+  };
+
+  const handleSplitResizeEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isSplitResizing) return;
+    setIsSplitResizing(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    localStorage.setItem("quill.split.ratio", String(splitRatio));
+  };
+
+  const resetSplitRatio = () => {
+    setSplitRatio(50);
+    localStorage.setItem("quill.split.ratio", "50");
+    toast.info("Split view reset to 50/50");
+  };
+
+  // Synchronized Scrolling Handlers
+  const toggleSyncScroll = () => {
+    setSyncScroll((prev) => {
+      const next = !prev;
+      localStorage.setItem("quill.sync_scroll", String(next));
+      toast.info(next ? "Synchronized scrolling enabled" : "Synchronized scrolling disabled");
+      return next;
+    });
+  };
+
+  const handleEditorScroll = (scrollTop: number, scrollRatio: number) => {
+    if (!syncScroll || isSyncingScrollRef.current) return;
+    const preview = previewScrollContainerRef.current;
+    if (!preview) return;
+    const maxScroll = preview.scrollHeight - preview.clientHeight;
+    if (maxScroll <= 0) return;
+    isSyncingScrollRef.current = true;
+    preview.scrollTop = scrollRatio * maxScroll;
+    requestAnimationFrame(() => {
+      isSyncingScrollRef.current = false;
+    });
+  };
+
+  const handlePreviewScroll = (scrollTop: number, scrollRatio: number) => {
+    if (!syncScroll || isSyncingScrollRef.current) return;
+    const editor = editorScrollContainerRef.current;
+    if (!editor) return;
+    const maxScroll = editor.scrollHeight - editor.clientHeight;
+    if (maxScroll <= 0) return;
+    isSyncingScrollRef.current = true;
+    editor.scrollTop = scrollRatio * maxScroll;
+    requestAnimationFrame(() => {
+      isSyncingScrollRef.current = false;
+    });
+  };
+
   // Inline rename from the top bar — renames the note only, never the body
   const handleRenameNote = (title: string) => {
     if (!activeNote) return;
@@ -944,6 +1033,17 @@ export default function QuillPage() {
                   disabled={!activeNote}
                 />
 
+                {/* Document Inspector & Outline (Desktop >=1024px) */}
+                <TopBarButton
+                  label={isDocPanelOpen ? "Close document inspector" : "Document inspector & outline"}
+                  shortcut="Ctrl+Shift+O"
+                  onClick={handleOpenOutline}
+                  active={isDocPanelOpen}
+                  className="hidden lg:inline-flex"
+                >
+                  <TopBarGlyph icon={ListTree} />
+                </TopBarButton>
+
                 {/* Command palette */}
                 <TopBarButton
                   label="Command palette"
@@ -1118,53 +1218,126 @@ export default function QuillPage() {
               ) : (
                 /* Normal Mode - Editor/Preview Panes */
                 <>
-                  {/* Editor Pane */}
-                  <div
-                    className={cn(
-                      "editor-pane h-full min-w-0 flex flex-col touch-pan-y",
-                      viewMode === "editor"
-                        ? "flex-1"
-                        : viewMode === "split"
-                        ? "flex-1 border-r border-border/70"
-                        : "hidden"
-                    )}
-                  >
-                    {viewMode === "editor" ? (
-                      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-background">
-                        <div className="w-full max-w-3xl h-full">
-                          <MarkdownEditor
-                            content={localContent}
-                            onChange={handleEditorChange}
-                            borderRight={false}
-                          />
+                  {viewMode === "split" ? (
+                    <div
+                      ref={splitContainerRef}
+                      className={cn(
+                        "flex-1 flex h-full min-w-0 relative overflow-hidden",
+                        isSplitResizing && "select-none"
+                      )}
+                    >
+                      {/* Editor Pane (Left Split) */}
+                      <div
+                        className="editor-pane h-full min-w-0 flex flex-col touch-pan-y"
+                        style={{
+                          flexBasis: `${splitRatio}%`,
+                          flexGrow: 0,
+                          flexShrink: 0,
+                          pointerEvents: isSplitResizing ? "none" : "auto",
+                        }}
+                      >
+                        <MarkdownEditor
+                          content={localContent}
+                          onChange={handleEditorChange}
+                          borderRight={false}
+                          scrollRef={editorScrollContainerRef}
+                          onScrollContainer={handleEditorScroll}
+                          onCursorChange={setCursorPos}
+                        />
+                      </div>
+
+                      {/* Resizable Draggable Gutter / Divider (Desktop) */}
+                      <div
+                        role="separator"
+                        aria-orientation="vertical"
+                        aria-label="Resize editor and preview split"
+                        aria-valuenow={splitRatio}
+                        tabIndex={0}
+                        onPointerDown={handleSplitResizeStart}
+                        onPointerMove={handleSplitResizeMove}
+                        onPointerUp={handleSplitResizeEnd}
+                        onLostPointerCapture={() => setIsSplitResizing(false)}
+                        onDoubleClick={resetSplitRatio}
+                        className={cn(
+                          "relative z-20 hidden md:flex items-center justify-center w-2 -mx-1 cursor-col-resize select-none touch-none shrink-0 group transition-colors",
+                          isSplitResizing ? "bg-primary/25" : "hover:bg-muted/70"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-0.5 h-full transition-colors",
+                            isSplitResizing ? "bg-primary" : "bg-border/80 group-hover:bg-primary/60"
+                          )}
+                        />
+                        <div
+                          className={cn(
+                            "absolute top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 py-1 px-0.5 rounded-none bg-card border border-border shadow-xs opacity-0 group-hover:opacity-100 transition-opacity",
+                            isSplitResizing && "opacity-100"
+                          )}
+                        >
+                          <div className="size-0.5 rounded-full bg-muted-foreground" />
+                          <div className="size-0.5 rounded-full bg-muted-foreground" />
+                          <div className="size-0.5 rounded-full bg-muted-foreground" />
                         </div>
                       </div>
-                    ) : (
-                      <MarkdownEditor
-                        content={localContent}
-                        onChange={handleEditorChange}
-                      />
-                    )}
-                  </div>
 
-                  {/* Preview Pane */}
-                  <div
-                    className={cn(
-                      "preview-pane h-full min-w-0 overflow-y-auto pb-[calc(var(--bottom-bar-h,56px)+var(--safe-bottom,0px))]",
-                      viewMode === "preview"
-                        ? "flex-1"
-                        : viewMode === "split"
-                        ? "flex-1"
-                        : "hidden"
-                    )}
-                  >
-                    <MarkdownPreview
-                      content={localContent}
-                      onToggleTask={handleToggleTask}
-                      onNavigateWikiLink={navigateOrCreateWikiLink}
-                      backlinks={backlinks}
-                    />
-                  </div>
+                      {/* Preview Pane (Right Split) */}
+                      <div
+                        className="preview-pane h-full min-w-0 flex flex-col overflow-hidden"
+                        style={{
+                          flexBasis: `${100 - splitRatio}%`,
+                          flexGrow: 1,
+                          flexShrink: 1,
+                          pointerEvents: isSplitResizing ? "none" : "auto",
+                        }}
+                      >
+                        <MarkdownPreview
+                          content={localContent}
+                          onToggleTask={handleToggleTask}
+                          onNavigateWikiLink={navigateOrCreateWikiLink}
+                          backlinks={backlinks}
+                          scrollRef={previewScrollContainerRef}
+                          onScrollPreview={handlePreviewScroll}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Editor Pane (Write Mode) */}
+                      <div
+                        className={cn(
+                          "editor-pane h-full min-w-0 flex flex-col touch-pan-y",
+                          viewMode === "editor" ? "flex-1" : "hidden"
+                        )}
+                      >
+                        <div className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-background">
+                          <div className="w-full max-w-3xl h-full">
+                            <MarkdownEditor
+                              content={localContent}
+                              onChange={handleEditorChange}
+                              borderRight={false}
+                              onCursorChange={setCursorPos}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Preview Pane (Preview Mode) */}
+                      <div
+                        className={cn(
+                          "preview-pane h-full min-w-0 flex flex-col overflow-hidden",
+                          viewMode === "preview" ? "flex-1" : "hidden"
+                        )}
+                      >
+                        <MarkdownPreview
+                          content={localContent}
+                          onToggleTask={handleToggleTask}
+                          onNavigateWikiLink={navigateOrCreateWikiLink}
+                          backlinks={backlinks}
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {/* Document Panel (desktop): outline, backlinks, stats, history */}
                   {isDocPanelOpen && (
@@ -1188,11 +1361,23 @@ export default function QuillPage() {
         <StatusBar
           saveStatus={saveStatus}
           wordCount={wordCount}
+          charCount={localContent.length}
+          lineCount={localContent ? localContent.split("\n").length : 0}
+          cursorPos={cursorPos}
           activeNoteTitle={activeNote?.title}
           tags={activeNote?.tags}
           writingGoal={writingGoal}
           selectedTag={selectedTag}
           onSelectTag={setSelectedTag}
+          onOpenTagManager={() => setIsTagManagerOpen(true)}
+          isDocPanelOpen={isDocPanelOpen}
+          onToggleDocPanel={handleOpenOutline}
+          onOpenGraph={() => setIsGraphOpen(true)}
+          onOpenInsights={() => setIsInsightsOpen(true)}
+          onOpenShortcuts={() => setIsShortcutsOpen(true)}
+          syncScroll={syncScroll}
+          onToggleSyncScroll={toggleSyncScroll}
+          isSplitView={viewMode === "split"}
         />
 
         {/* Phone bottom bar — swaps to the keyboard accessory while typing */}

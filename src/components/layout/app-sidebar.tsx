@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Note } from "@/lib/storage/schema";
 import { cn, formatDate } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,6 +31,7 @@ import {
   Laptop,
   PanelLeftClose,
   PanelLeftOpen,
+  ArrowUpDown,
 } from "lucide-react";
 import {
   Tooltip,
@@ -55,6 +56,12 @@ import { hapticTap } from "@/lib/ui/haptics";
 import { NoteActionsSheet } from "./note-actions-sheet";
 
 export type SidebarPanel = "all" | "favorites" | "trash" | "settings";
+export type NoteSortOption =
+  | "updated_desc"
+  | "updated_asc"
+  | "created_desc"
+  | "title_asc"
+  | "title_desc";
 
 const SIDEBAR_MIN_WIDTH = 220;
 const SIDEBAR_MAX_WIDTH = 480;
@@ -437,13 +444,18 @@ export function AppSidebar({
   const [actionsNote, setActionsNote] = useState<Note | null>(null);
   /** Tag strip: collapsed hides tags beyond the first 6 behind "+N more". */
   const [allTagsExpanded, setAllTagsExpanded] = useState(false);
+  const [sortOption, setSortOption] = useState<NoteSortOption>("updated_desc");
   const { theme, setTheme } = useTheme();
 
-  // Restore persisted width
+  // Restore persisted width and sort
   useEffect(() => {
     const stored = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY));
     if (Number.isFinite(stored) && stored > 0) {
       setWidth(clampSidebarWidth(stored));
+    }
+    const storedSort = localStorage.getItem("quill.sidebar.sort");
+    if (storedSort) {
+      setSortOption(storedSort as NoteSortOption);
     }
   }, []);
 
@@ -495,7 +507,30 @@ export function AppSidebar({
     return matchesSearch && matchesTag;
   };
 
-  const allNotes = activePanel === "all" ? notes.filter(matchesQueryAndTag) : [];
+  const sortedAllNotes = useMemo(() => {
+    if (activePanel !== "all") return [];
+    const filtered = notes.filter(matchesQueryAndTag);
+    return [...filtered].sort((a, b) => {
+      if (a.isPinned !== b.isPinned && sortOption !== "title_asc" && sortOption !== "title_desc") {
+        return a.isPinned ? -1 : 1;
+      }
+      switch (sortOption) {
+        case "updated_asc":
+          return a.updatedAt - b.updatedAt;
+        case "created_desc":
+          return (b.createdAt || b.updatedAt) - (a.createdAt || a.updatedAt);
+        case "title_asc":
+          return (a.title || "Untitled").localeCompare(b.title || "Untitled");
+        case "title_desc":
+          return (b.title || "Untitled").localeCompare(a.title || "Untitled");
+        case "updated_desc":
+        default:
+          return b.updatedAt - a.updatedAt;
+      }
+    });
+  }, [activePanel, notes, query, selectedTag, sortOption]);
+
+  const allNotes = sortedAllNotes;
   const favoriteNotes =
     activePanel === "favorites" ? notes.filter((n) => n.isPinned && matchesQueryAndTag(n)) : [];
   const filteredTrashNotes =
@@ -902,10 +937,10 @@ export function AppSidebar({
           </div>
           )}
 
-          {/* Search bar (Available in All, Favorites, and Trash) */}
+          {/* Search bar & Sort dropdown */}
           {activePanel !== "settings" && (
-            <div className="px-2.5 pt-2 pb-1.5 shrink-0">
-              <div className="relative">
+            <div className="px-2.5 pt-2 pb-1.5 shrink-0 flex items-center gap-1.5">
+              <div className="relative flex-1 min-w-0">
                 <Corners size="sm" weight="thin" light />
                 <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground/60" />
                 <Input
@@ -931,6 +966,95 @@ export function AppSidebar({
                   </button>
                 )}
               </div>
+
+              {/* Sort Menu (Desktop) */}
+              {!mobilePage && activePanel !== "trash" && (
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label="Sort notes"
+                          className="size-9 rounded-none text-muted-foreground hover:text-foreground shrink-0 border border-transparent hover:border-border/60"
+                        >
+                          <ArrowUpDown className="size-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs font-sans">
+                      Sort Notes
+                    </TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-48 font-sans text-xs rounded-none border border-border/80 bg-card shadow-soft-md p-1"
+                  >
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSortOption("updated_desc");
+                        localStorage.setItem("quill.sidebar.sort", "updated_desc");
+                      }}
+                      className="gap-2 cursor-pointer font-sans"
+                    >
+                      {sortOption === "updated_desc" && <Check className="size-3.5 text-primary" />}
+                      <span className={cn(sortOption === "updated_desc" && "font-semibold text-primary")}>
+                        Recently Updated
+                      </span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSortOption("updated_asc");
+                        localStorage.setItem("quill.sidebar.sort", "updated_asc");
+                      }}
+                      className="gap-2 cursor-pointer font-sans"
+                    >
+                      {sortOption === "updated_asc" && <Check className="size-3.5 text-primary" />}
+                      <span className={cn(sortOption === "updated_asc" && "font-semibold text-primary")}>
+                        Oldest Updated
+                      </span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSortOption("created_desc");
+                        localStorage.setItem("quill.sidebar.sort", "created_desc");
+                      }}
+                      className="gap-2 cursor-pointer font-sans"
+                    >
+                      {sortOption === "created_desc" && <Check className="size-3.5 text-primary" />}
+                      <span className={cn(sortOption === "created_desc" && "font-semibold text-primary")}>
+                        Recently Created
+                      </span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-border/50" />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSortOption("title_asc");
+                        localStorage.setItem("quill.sidebar.sort", "title_asc");
+                      }}
+                      className="gap-2 cursor-pointer font-sans"
+                    >
+                      {sortOption === "title_asc" && <Check className="size-3.5 text-primary" />}
+                      <span className={cn(sortOption === "title_asc" && "font-semibold text-primary")}>
+                        Title (A → Z)
+                      </span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSortOption("title_desc");
+                        localStorage.setItem("quill.sidebar.sort", "title_desc");
+                      }}
+                      className="gap-2 cursor-pointer font-sans"
+                    >
+                      {sortOption === "title_desc" && <Check className="size-3.5 text-primary" />}
+                      <span className={cn(sortOption === "title_desc" && "font-semibold text-primary")}>
+                        Title (Z → A)
+                      </span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           )}
 
@@ -1044,8 +1168,7 @@ export function AppSidebar({
             {activePanel === "all" && (
               <div className="p-2.5 space-y-2.5 w-full min-w-0">
                 {(() => {
-                  const grouped = groupNotesByDate(allNotes);
-                  if (grouped.length === 0) {
+                  if (allNotes.length === 0) {
                     return (
                       <div className="py-12 text-center text-xs text-muted-foreground px-4 font-sans">
                         <FileText className="size-7 mx-auto mb-2 opacity-30" />
@@ -1074,14 +1197,51 @@ export function AppSidebar({
                       </div>
                     );
                   }
-                  return grouped.map((group) => (
-                    <div key={group.label} className="space-y-1 w-full min-w-0">
+
+                  if (sortOption === "updated_desc") {
+                    const grouped = groupNotesByDate(allNotes);
+                    return grouped.map((group) => (
+                      <div key={group.label} className="space-y-1 w-full min-w-0">
+                        <div className="px-1 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground/70 flex items-center justify-between">
+                          <span>{group.label}</span>
+                          <span className="text-[9px] font-normal opacity-60">({group.notes.length})</span>
+                        </div>
+                        <div className="space-y-1.5 w-full min-w-0">
+                          {group.notes.map((note) => (
+                            <NoteRow
+                              key={note.id}
+                              note={note}
+                              isActive={note.id === activeNoteId}
+                              onSelect={handleNoteClick}
+                              onTogglePin={onTogglePin}
+                              onDuplicate={handleDuplicate}
+                              onDelete={handleMoveToTrash}
+                              onRequestActions={setActionsNote}
+                              onSelectTag={onSelectTag}
+                              selectedTag={selectedTag}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ));
+                  }
+
+                  const sortLabelMap: Record<NoteSortOption, string> = {
+                    updated_desc: "Recently Updated",
+                    updated_asc: "Oldest Updated First",
+                    created_desc: "Recently Created First",
+                    title_asc: "Alphabetical (A → Z)",
+                    title_desc: "Alphabetical (Z → A)",
+                  };
+
+                  return (
+                    <div className="space-y-1 w-full min-w-0">
                       <div className="px-1 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground/70 flex items-center justify-between">
-                        <span>{group.label}</span>
-                        <span className="text-[9px] font-normal opacity-60">({group.notes.length})</span>
+                        <span>{sortLabelMap[sortOption]}</span>
+                        <span className="text-[9px] font-normal opacity-60">({allNotes.length})</span>
                       </div>
                       <div className="space-y-1.5 w-full min-w-0">
-                        {group.notes.map((note) => (
+                        {allNotes.map((note) => (
                           <NoteRow
                             key={note.id}
                             note={note}
@@ -1097,7 +1257,7 @@ export function AppSidebar({
                         ))}
                       </div>
                     </div>
-                  ));
+                  );
                 })()}
               </div>
             )}
