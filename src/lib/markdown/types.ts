@@ -6,7 +6,8 @@ export type InlineNode =
   | { type: "code"; value: string }
   | { type: "link"; href: string; children: InlineNode[] }
   | { type: "wikilink"; target: string; label: string }
-  | { type: "image"; alt: string; src: string; caption?: string };
+  | { type: "image"; alt: string; src: string; caption?: string }
+  | { type: "math"; value: string };
 
 export type TableAlignment = "left" | "center" | "right" | "default";
 

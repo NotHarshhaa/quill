@@ -19,6 +19,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { countWords } from "@/lib/utils";
 
+const TAG_PALETTE = [
+  "#3b82f6", // blue
+  "#10b981", // emerald
+  "#8b5cf6", // purple
+  "#ec4899", // pink
+  "#06b6d4", // cyan
+  "#f97316", // orange
+  "#14b8a6", // teal
+  "#eab308", // yellow
+];
+
+function getTagColor(tag?: string): string {
+  if (!tag) return "rgba(130, 130, 130, 0.85)";
+  let hash = 0;
+  for (let i = 0; i < tag.length; i++) hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+  return TAG_PALETTE[Math.abs(hash) % TAG_PALETTE.length];
+}
+
 interface KnowledgeGraphModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -291,13 +309,15 @@ export function KnowledgeGraphModal({
 
         // Fill color
         if (n.isCurrent) {
-          ctx.fillStyle = "#d97706"; // warm primary amber
+          ctx.fillStyle = "#f59e0b"; // warm primary amber
         } else if (matchesSearch || matchesTag) {
           ctx.fillStyle = "#10b981"; // emerald match
         } else if (isHovered) {
-          ctx.fillStyle = "#b45309";
+          ctx.fillStyle = "#fbbf24";
+        } else if (n.tags && n.tags.length > 0) {
+          ctx.fillStyle = getTagColor(n.tags[0]);
         } else {
-          ctx.fillStyle = "rgba(100, 100, 100, 0.85)";
+          ctx.fillStyle = "rgba(130, 130, 130, 0.85)";
         }
         ctx.fill();
 

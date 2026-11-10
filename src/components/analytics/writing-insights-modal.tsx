@@ -11,6 +11,8 @@ import {
   GraduationCap,
   Sparkles,
   BookOpen,
+  TrendingUp,
+  Tag,
 } from "lucide-react";
 import { Note } from "@/lib/storage/schema";
 import { Corners } from "@/components/frame";
@@ -127,6 +129,25 @@ export function WritingInsightsModal({
     };
   }, [notes]);
 
+  // 4. 14-Day Velocity Trend
+  const velocityData = useMemo(() => {
+    const recent = heatmapDays.slice(-14);
+    const maxWords = Math.max(...recent.map((d) => d.wordsWritten), 100);
+    return { recent, maxWords };
+  }, [heatmapDays]);
+
+  // 5. Top Tags Breakdown
+  const topTags = useMemo(() => {
+    const map = new Map<string, number>();
+    notes.forEach((n) => {
+      n.tags?.forEach((t) => map.set(t, (map.get(t) || 0) + 1));
+    });
+    return Array.from(map.entries())
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [notes]);
+
   const getHeatmapColor = (words: number) => {
     if (words === 0) return "bg-muted/40 border border-border/30";
     if (words < 150) return "bg-amber-600/30 border border-amber-600/40";
@@ -175,6 +196,43 @@ export function WritingInsightsModal({
                   ? `${hoveredDay.date}: ${hoveredDay.wordsWritten} words`
                   : "Hover date for details"}
               </span>
+            </div>
+
+            {/* 14-Day Velocity Trend Chart */}
+            <div className="mb-3 p-3 bg-muted/20 border border-border/70">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-mono text-[11px] font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <TrendingUp className="size-3.5 text-primary" />
+                  14-Day Writing Velocity
+                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  Peak: {velocityData.maxWords} words/day
+                </span>
+              </div>
+              <div className="h-20 flex items-end gap-1.5 w-full pt-2">
+                {velocityData.recent.map((d, i) => {
+                  const hPct = Math.max(8, Math.round((d.wordsWritten / velocityData.maxWords) * 100));
+                  return (
+                    <div
+                      key={i}
+                      className="flex-1 flex flex-col items-center gap-1 group cursor-pointer"
+                      title={`${d.date}: ${d.wordsWritten} words`}
+                    >
+                      <div className="w-full bg-muted/40 h-14 flex items-end">
+                        <div
+                          style={{ height: `${hPct}%` }}
+                          className={`w-full transition-all ${
+                            d.wordsWritten > 0 ? "bg-primary group-hover:bg-primary/80" : "bg-transparent"
+                          }`}
+                        />
+                      </div>
+                      <span className="font-mono text-[8.5px] text-muted-foreground/60 truncate max-w-full">
+                        {d.date.slice(5)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Heatmap Grid */}
@@ -248,20 +306,47 @@ export function WritingInsightsModal({
               </div>
             </div>
 
-            {/* Readability Score Bar */}
-            <div className="mt-3 p-3 bg-muted/20 border border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <div className="flex items-center gap-1.5 font-mono text-xs font-semibold text-foreground">
-                  <GraduationCap className="size-4 text-primary" />
-                  <span>Flesch Reading Ease: {stats.fleschScore} / 100</span>
+            {/* Readability Score Bar & Visual Gauge */}
+            <div className="mt-3 p-3 bg-muted/20 border border-border/60 flex flex-col gap-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-1.5 font-mono text-xs font-semibold text-foreground">
+                    <GraduationCap className="size-4 text-primary" />
+                    <span>Flesch Reading Ease: {stats.fleschScore} / 100</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Classification: <span className="text-foreground font-medium">{stats.readingLevel}</span>
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  Classification: <span className="text-foreground font-medium">{stats.readingLevel}</span>
+                <Badge variant="outline" className="font-mono text-xs self-start sm:self-auto rounded-none">
+                  {stats.lexicalDiversity}% Lexical Variety
+                </Badge>
+              </div>
+
+              {/* Visual Scale Meter */}
+              <div className="space-y-1">
+                <div className="h-2 w-full bg-muted flex rounded-none overflow-hidden">
+                  <div className="w-[30%] bg-rose-500/80" title="Academic (<30)" />
+                  <div className="w-[20%] bg-amber-500/80" title="College (30-50)" />
+                  <div className="w-[10%] bg-blue-500/80" title="High School (50-60)" />
+                  <div className="w-[20%] bg-emerald-500/80" title="Standard (60-80)" />
+                  <div className="w-[20%] bg-teal-400" title="Conversational (80-100)" />
+                </div>
+                <div className="relative w-full h-2">
+                  <div
+                    style={{ left: `${Math.min(100, Math.max(0, stats.fleschScore))}%` }}
+                    className="absolute -top-1 size-3 bg-foreground border border-background shadow-xs -translate-x-1/2 rotate-45"
+                    title={`Current Score: ${stats.fleschScore}`}
+                  />
+                </div>
+                <div className="flex justify-between text-[9px] font-mono text-muted-foreground/60 pt-0.5">
+                  <span>Academic</span>
+                  <span>College</span>
+                  <span>High School</span>
+                  <span>Standard</span>
+                  <span>Conversational</span>
                 </div>
               </div>
-              <Badge variant="outline" className="font-mono text-xs self-start sm:self-auto rounded-none">
-                {stats.lexicalDiversity}% Lexical Variety
-              </Badge>
             </div>
           </div>
 
@@ -290,6 +375,32 @@ export function WritingInsightsModal({
                 <div className="text-[10px] font-mono text-muted-foreground uppercase">Unique Tags</div>
               </div>
             </div>
+
+            {/* Top Tags Breakdown */}
+            {topTags.length > 0 && (
+              <div className="mt-3 p-3 bg-muted/20 border border-border/60">
+                <div className="font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <Tag className="size-3 text-primary" />
+                  <span>Top Knowledge Domains</span>
+                </div>
+                <div className="space-y-1.5">
+                  {topTags.map((t) => {
+                    const pct = Math.round((t.count / Math.max(notes.length, 1)) * 100);
+                    return (
+                      <div key={t.tag} className="flex items-center gap-2 text-xs font-mono">
+                        <span className="w-24 truncate text-foreground font-medium">#{t.tag}</span>
+                        <div className="flex-1 h-2 bg-muted/60 overflow-hidden">
+                          <div style={{ width: `${pct}%` }} className="h-full bg-primary" />
+                        </div>
+                        <span className="text-muted-foreground text-[10px] w-14 text-right">
+                          {t.count} ({pct}%)
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

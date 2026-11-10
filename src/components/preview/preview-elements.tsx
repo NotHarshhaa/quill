@@ -4,6 +4,10 @@ import { Corners } from "@/components/frame";
 import { Info, Lightbulb, AlertTriangle, ShieldAlert, Flame } from "lucide-react";
 import { mediaRepository } from "@/lib/storage/mediaRepository";
 import { sanitizeUrl } from "@/lib/utils";
+import { DiagramRenderer } from "@/components/visualization/diagram-renderer";
+import { ChartRenderer } from "@/components/visualization/chart-renderer";
+import { MathBlockRenderer, InlineMathRenderer } from "@/components/visualization/math-renderer";
+import { CodeBlockRenderer } from "@/components/visualization/code-block-renderer";
 
 function ImagePreview({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
   const [resolvedSrc, setResolvedSrc] = useState<string>(src.startsWith("quill-media://") ? "" : src);
@@ -162,6 +166,8 @@ export function RenderInline({
       );
     case "image":
       return <ImagePreview src={node.src} alt={node.alt} caption={node.caption} />;
+    case "math":
+      return <InlineMathRenderer latex={node.value} />;
   }
 }
 
@@ -354,19 +360,19 @@ export function RenderBlock({
       );
     }
 
-    case "code_block":
-      return (
-        <div className="my-4 rounded border border-border bg-muted/60 p-4 font-mono text-xs overflow-x-auto">
-          {block.language && (
-            <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider mb-2">
-              {block.language}
-            </div>
-          )}
-          <pre className="text-foreground leading-relaxed">
-            <code>{block.code}</code>
-          </pre>
-        </div>
-      );
+    case "code_block": {
+      const lang = (block.language || "").toLowerCase().trim();
+      if (lang === "mermaid") {
+        return <DiagramRenderer code={block.code} />;
+      }
+      if (lang === "chart") {
+        return <ChartRenderer code={block.code} />;
+      }
+      if (lang === "math" || lang === "latex") {
+        return <MathBlockRenderer code={block.code} />;
+      }
+      return <CodeBlockRenderer language={block.language} code={block.code} />;
+    }
 
     case "list": {
       const ListTag = block.ordered ? "ol" : "ul";

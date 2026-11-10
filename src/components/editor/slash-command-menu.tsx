@@ -19,6 +19,11 @@ import {
   Link2,
   Strikethrough,
   Image as ImageIcon,
+  Network,
+  Activity,
+  GitCommit,
+  PieChart,
+  Calculator,
 } from "lucide-react";
 import { Corners } from "@/components/frame";
 
@@ -133,6 +138,41 @@ export function SlashCommandMenu({
       description: "Fenced code block with syntax tag",
       icon: Code,
       snippet: "```typescript\n// Write code here\n```\n",
+    },
+    {
+      id: "flowchart",
+      title: "Mermaid Flowchart",
+      description: "Directed visual diagram with nodes & arrows",
+      icon: Network,
+      snippet: "```mermaid\ngraph TD\n  Start[Start Idea] --> Process(Drafting)\n  Process --> Decision{Ready?}\n  Decision -->|Yes| Finish[(Published)]\n  Decision -->|No| Process\n```\n",
+    },
+    {
+      id: "sequence",
+      title: "Sequence Diagram",
+      description: "Actor interactions and message lifelines",
+      icon: GitCommit,
+      snippet: "```mermaid\nsequenceDiagram\n  User->>Editor: Type thoughts\n  Editor->>Storage: Auto-save note\n  Storage-->>Editor: Confirmed\n  Editor-->>User: Live tactile preview\n```\n",
+    },
+    {
+      id: "mindmap",
+      title: "Mind Map",
+      description: "Hierarchical radial idea brainstorm",
+      icon: Network,
+      snippet: "```mermaid\nmindmap\n  root((Project Core))\n    Architecture\n      Local-First\n      Zero-Telemetry\n    Design\n      Tactile Typography\n      Visual Diagrams\n```\n",
+    },
+    {
+      id: "chart",
+      title: "Interactive Data Chart",
+      description: "Bar, line, or donut data metric chart",
+      icon: Activity,
+      snippet: "```chart\ntype: bar\ntitle: Monthly Productivity\nlabels: Mon, Tue, Wed, Thu, Fri, Sat, Sun\ndata: 45, 62, 54, 85, 70, 92, 110\nunit: words\ncolor: amber\n```\n",
+    },
+    {
+      id: "math",
+      title: "Math / LaTeX Formula",
+      description: "Mathematical equation with Greek symbols",
+      icon: Calculator,
+      snippet: "```math\nE = mc^2 \\quad \\text{and} \\quad \\int_0^\\infty e^{-x} dx = 1\n```\n",
     },
     {
       id: "quote",

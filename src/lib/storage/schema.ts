@@ -69,6 +69,37 @@ Everything you type is rendered *live* into tactile warm paper typography with z
 
 ---
 
+## 📊 Visual Frameworks & Diagrams
+
+Quill includes built-in interactive visualization engines for diagrams, charts, and equations:
+
+### Interactive Mermaid Flowchart
+\`\`\`mermaid
+graph TD
+  Idea[💡 Idea or Thought] --> Draft(📝 Write in Quill)
+  Draft --> Review{Ready to Publish?}
+  Review -->|Polish| Draft
+  Review -->|Yes| Vault[(📚 Knowledge Vault)]
+\`\`\`
+
+### Data Chart Visualization
+\`\`\`chart
+type: bar
+title: Focus Sprint Velocity
+labels: Mon, Tue, Wed, Thu, Fri, Sat, Sun
+data: 45, 62, 54, 85, 70, 92, 110
+unit: words
+color: amber
+\`\`\`
+
+### Mathematical Typography
+\`\`\`math
+f(x) = \\frac{1}{\\sigma \\sqrt{2\\pi}} e^{-\\frac{1}{2}\\left(\\frac{x - \\mu}{\\sigma}\\right)^2}
+\`\`\`
+Type inline formulas like $E = mc^2$ or $\\sqrt{a^2 + b^2} = c$ anywhere in text.
+
+---
+
 ## 💡 Pro Tips & Syntax Examples
 
 ### Bi-directional Wiki-Links

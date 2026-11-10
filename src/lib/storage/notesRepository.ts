@@ -30,7 +30,7 @@ export const notesRepository = {
           const isWelcomeLegacy =
             n?.id === "welcome-note" &&
             typeof n?.content === "string" &&
-            !n.content.includes("Feature Architecture Ledger");
+            !n.content.includes("Visual Frameworks & Diagrams");
 
           return {
             id: n?.id || `note-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,

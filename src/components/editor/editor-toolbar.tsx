@@ -21,6 +21,9 @@ import {
   Strikethrough,
   Minus,
   Image as ImageIcon,
+  Network,
+  Activity,
+  Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -221,6 +224,45 @@ export function EditorToolbar({
               >
                 <Code className="size-3.5 text-muted-foreground" />
                 <span>Code block</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className={dropdownItem}
+                onClick={() =>
+                  onInsert(
+                    "```mermaid\ngraph TD\n  Start[Start] --> Process(Step 1)\n  Process --> Finish[(Done)]\n```\n",
+                    "",
+                    ""
+                  )
+                }
+              >
+                <Network className="size-3.5 text-muted-foreground" />
+                <span>Mermaid diagram</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className={dropdownItem}
+                onClick={() =>
+                  onInsert(
+                    "```chart\ntype: bar\ntitle: Output\nlabels: Mon, Tue, Wed, Thu, Fri\ndata: 12, 19, 24, 15, 30\nunit: items\n```\n",
+                    "",
+                    ""
+                  )
+                }
+              >
+                <Activity className="size-3.5 text-muted-foreground" />
+                <span>Data chart</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className={dropdownItem}
+                onClick={() =>
+                  onInsert(
+                    "```math\nf(x) = \\int_{-\\infty}^\\infty e^{-x^2} dx = \\sqrt{\\pi}\n```\n",
+                    "",
+                    ""
+                  )
+                }
+              >
+                <Calculator className="size-3.5 text-muted-foreground" />
+                <span>Math formula</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 className={dropdownItem}

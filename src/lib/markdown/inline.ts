@@ -8,6 +8,19 @@ export function parseInline(text: string): InlineNode[] {
   const length = text.length;
 
   while (index < length) {
+    // 0. Inline math: $formula$ (ignoring simple prices like $10)
+    if (text[index] === "$" && (index === 0 || text[index - 1] === " " || text[index - 1] === "(")) {
+      const closing = text.indexOf("$", index + 1);
+      if (closing !== -1 && closing > index + 1) {
+        const candidate = text.slice(index + 1, closing);
+        if (!/^\s*\d+(?:\.\d+)?\s*$/.test(candidate) && !candidate.includes("\n")) {
+          nodes.push({ type: "math", value: candidate });
+          index = closing + 1;
+          continue;
+        }
+      }
+    }
+
     // 1. Inline code: `code`
     if (text[index] === "`") {
       const closing = text.indexOf("`", index + 1);
