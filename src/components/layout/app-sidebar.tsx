@@ -335,7 +335,7 @@ function NoteRow({
                   onSelectTag?.(selectedTag === tag ? null : tag);
                 }}
                 className={cn(
-                  "text-[9.5px] font-mono px-1.5 py-0.2 rounded-none transition-colors truncate max-w-[80px]",
+                  "text-[9.5px] font-mono px-1.5 py-0.2 rounded-none transition-colors truncate max-w-[130px] sm:max-w-[100px]",
                   selectedTag === tag
                     ? "bg-brand-soft text-brand font-semibold"
                     : "bg-muted/40 text-muted-foreground hover:text-foreground"
@@ -1372,33 +1372,35 @@ export function AppSidebar({
             )}
           </ScrollArea>
 
-          {/* Footer: single Settings utility entry (Graph/Insights/Ambient now live in the More menu + Command Palette) */}
-          <div className="px-2 shrink-0 bg-background/50 font-sans select-none ds-hairline-t">
-            <div className="h-10 flex items-center justify-end">
-              {/* Settings Button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => onSelectPanel(activePanel === "settings" ? "all" : "settings")}
-                    aria-label="Library Settings"
-                    className={cn(
-                      "size-7 rounded-none transition-colors",
-                      activePanel === "settings"
-                        ? "text-primary bg-muted/80"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Settings className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="font-sans text-xs">
-                  {activePanel === "settings" ? "Back to Notes" : "Settings & Data"}
-                </TooltipContent>
-              </Tooltip>
+          {/* Footer: single Settings utility entry (desktop only; mobile gets settings in More sheet) */}
+          {!mobilePage && (
+            <div className="px-2 shrink-0 bg-background/50 font-sans select-none ds-hairline-t">
+              <div className="h-10 flex items-center justify-end">
+                {/* Settings Button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => onSelectPanel(activePanel === "settings" ? "all" : "settings")}
+                      aria-label="Library Settings"
+                      className={cn(
+                        "size-7 rounded-none transition-colors",
+                        activePanel === "settings"
+                          ? "text-primary bg-muted/80"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Settings className="size-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="font-sans text-xs">
+                    {activePanel === "settings" ? "Back to Notes" : "Settings & Data"}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

@@ -240,8 +240,18 @@ export default function QuillPage() {
       const target = e.target as HTMLElement | null;
       setEditorFocused(!!target && target.tagName === "TEXTAREA");
     };
+    const onFocusOut = (e: FocusEvent) => {
+      const related = e.relatedTarget as HTMLElement | null;
+      if (!related || related.tagName !== "TEXTAREA") {
+        setEditorFocused(false);
+      }
+    };
     document.addEventListener("focusin", onFocusIn);
-    return () => document.removeEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+    };
   }, []);
 
   // Keep the shell's mobile view and the desktop sidebar flag in sync
@@ -387,6 +397,12 @@ export default function QuillPage() {
           if (isAIStatusOpen) return setIsAIStatusOpen(false);
           if (isMoreOpen) return setIsMoreOpen(false);
           if (isWelcomeOpen) return setIsWelcomeOpen(false);
+          if (isTourOpen) return setIsTourOpen(false);
+          if (isTasksOpen) return setIsTasksOpen(false);
+          if (isTagManagerOpen) return setIsTagManagerOpen(false);
+          if (isShortcutsOpen) return setIsShortcutsOpen(false);
+          if (isUpdateCenterOpen) return setIsUpdateCenterOpen(false);
+          if (isDocPanelOpen) return setIsDocPanelOpen(false);
           if (isInsightsOpen) return setIsInsightsOpen(false);
           if (isTocOpen) return setIsTocOpen(false);
           if (isGraphOpen) return setIsGraphOpen(false);
@@ -420,6 +436,12 @@ export default function QuillPage() {
     isAIStatusOpen,
     isMoreOpen,
     isWelcomeOpen,
+    isTourOpen,
+    isTasksOpen,
+    isTagManagerOpen,
+    isShortcutsOpen,
+    isUpdateCenterOpen,
+    isDocPanelOpen,
     isInsightsOpen,
     isTocOpen,
     isGraphOpen,
@@ -697,6 +719,7 @@ export default function QuillPage() {
 
   const handleMobileNewNote = () => {
     createNote();
+    setViewMode("editor");
     gotoMobileView("editor");
   };
 
@@ -719,8 +742,16 @@ export default function QuillPage() {
     ? "notes"
     : "editor";
 
-  // Accessory bar swaps in for the tab bar only while typing in the editor
-  const showAccessoryBar = keyboardVisible && editorFocused;
+  // Accessory bar swaps in for the tab bar only while actively typing in the editor
+  const showAccessoryBar =
+    isMobileShell &&
+    keyboardVisible &&
+    editorFocused &&
+    mobileView === "editor" &&
+    viewMode === "editor" &&
+    !isMobileMoreOpen &&
+    !isMobileAIOpen &&
+    !isCommandPaletteOpen;
 
   // Keep the docked-chrome height in sync so toasts and sheets always float
   // above it (phone tab bar / keyboard accessory bar / desktop status bar).
@@ -1119,7 +1150,7 @@ export default function QuillPage() {
                   {/* Preview Pane */}
                   <div
                     className={cn(
-                      "preview-pane h-full min-w-0 overflow-y-auto",
+                      "preview-pane h-full min-w-0 overflow-y-auto pb-[calc(var(--bottom-bar-h,56px)+var(--safe-bottom,0px))]",
                       viewMode === "preview"
                         ? "flex-1"
                         : viewMode === "split"

@@ -119,7 +119,7 @@ export function MobileMoreSheet({
         ) : undefined
       }
       snapPoints={["half", "full"]}
-      initialSnap="half"
+      initialSnap="full"
       bodyClassName="px-1"
     >
       <SheetRow icon={SearchIcon} label="Search Notes" onClick={run(onOpenSearch)} />

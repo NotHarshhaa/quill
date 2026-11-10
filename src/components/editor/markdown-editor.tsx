@@ -8,6 +8,7 @@ import { FindReplaceBar } from "./find-replace-bar";
 import { EditorToolbar } from "./editor-toolbar";
 import { subscribeEditorCommands, setEditorState } from "@/lib/editor/editorCommands";
 import { mediaRepository } from "@/lib/storage/mediaRepository";
+import { useKeyboardInset } from "@/hooks/useKeyboardInset";
 import { toast } from "sonner";
 
 interface MarkdownEditorProps {
@@ -27,6 +28,8 @@ export function MarkdownEditor({
 
   const [isTypewriter, setIsTypewriter] = useState(false);
   const [isFindOpen, setIsFindOpen] = useState(false);
+  const keyboardInset = useKeyboardInset();
+  const keyboardVisible = keyboardInset > 0;
 
   // Slash Command State
   const [slashMenu, setSlashMenu] = useState<{
@@ -415,15 +418,17 @@ export function MarkdownEditor({
         className="hidden"
       />
 
-      {/* Floating formatting toolbar */}
-      <EditorToolbar
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        onInsert={insertSnippet}
-        onInsertImage={() => imageInputRef.current?.click()}
-      />
+      {/* Floating formatting toolbar: on mobile devices, hidden while keyboard is active to maximize writing space */}
+      <div className={cn(keyboardVisible && "hidden md:block")}>
+        <EditorToolbar
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onInsert={insertSnippet}
+          onInsertImage={() => imageInputRef.current?.click()}
+        />
+      </div>
 
       {/* Find & Replace Bar Dock */}
       <FindReplaceBar
@@ -445,9 +450,10 @@ export function MarkdownEditor({
       {/* Editor Textarea with Typewriter Scrolling Mode, Slash Commands & Image Drag/Paste */}
       <div
         ref={scrollContainerRef}
-        className={`flex-1 pt-3.5 px-3.5 pb-8 sm:p-6 overflow-y-auto relative ${
-          isTypewriter ? "pb-[50vh]" : ""
-        }`}
+        className={cn(
+          "flex-1 pt-3.5 px-3.5 pb-8 sm:p-6 overflow-y-auto relative",
+          isTypewriter ? "pb-[50vh]" : keyboardVisible ? "pb-20 sm:pb-8" : ""
+        )}
       >
         <textarea
           ref={textareaRef}

@@ -32,10 +32,10 @@ export function MarkdownPreview({
         {!content.trim() ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/50">
             <FileText className="size-8 mb-2 opacity-30" />
-            <p className="font-sans italic text-sm">Empty page. Type markdown on the left to see live preview.</p>
+            <p className="font-sans italic text-sm">Empty page. Type markdown to see live preview.</p>
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto font-sans pb-12">
+          <div className="max-w-2xl mx-auto font-sans pb-[calc(var(--bottom-bar-h,56px)+3rem)] sm:pb-16">
             {ast.map((block, idx) => (
               <RenderBlock
                 key={idx}

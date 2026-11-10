@@ -172,7 +172,7 @@ export function WelcomeModal({
         <div className="relative flex-1 min-h-0 p-3.5 sm:p-5 md:p-6 overflow-y-auto overflow-x-hidden flex flex-col [scrollbar-width:thin] [scrollbar-color:oklch(var(--muted-foreground)/0.25)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/25 hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 [&::-webkit-scrollbar-track]:bg-transparent">
           {/* SLIDE 0: Welcome & Philosophy */}
           {currentSlide === 0 && (
-            <div className="flex-1 flex flex-col items-center text-center animate-in fade-in duration-200 my-auto">
+            <div className="flex-1 flex flex-col items-center text-center animate-in fade-in duration-200 py-1 sm:my-auto">
               {/* Central Emblem */}
               <div className="relative mb-2.5 sm:mb-3 flex items-center justify-center">
                 <div className="relative size-12 sm:size-14 md:size-16 bg-muted/40 border border-border flex items-center justify-center shadow-sm">
@@ -276,7 +276,7 @@ export function WelcomeModal({
 
           {/* SLIDE 1: Fluid Writing & Keyboard Ergonomics */}
           {currentSlide === 1 && (
-            <div className="flex-1 flex flex-col text-left animate-in fade-in duration-200 my-auto">
+            <div className="flex-1 flex flex-col text-left animate-in fade-in duration-200 py-1 sm:my-auto">
               <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3">
                 <div className="size-8 sm:size-9 md:size-10 bg-muted/40 border border-border flex items-center justify-center shrink-0">
                   <Command className="size-4 sm:size-5 text-amber-700 dark:text-amber-500" />
@@ -358,7 +358,7 @@ export function WelcomeModal({
 
           {/* SLIDE 2: Interlinked Thought Network */}
           {currentSlide === 2 && (
-            <div className="flex-1 flex flex-col text-left animate-in fade-in duration-200 my-auto">
+            <div className="flex-1 flex flex-col text-left animate-in fade-in duration-200 py-1 sm:my-auto">
               <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3">
                 <div className="size-8 sm:size-9 md:size-10 bg-muted/40 border border-border flex items-center justify-center shrink-0">
                   <Network className="size-4 sm:size-5 text-amber-700 dark:text-amber-500" />
@@ -439,7 +439,7 @@ export function WelcomeModal({
 
           {/* SLIDE 3: Atmosphere & Sensory Focus */}
           {currentSlide === 3 && (
-            <div className="flex-1 flex flex-col text-left animate-in fade-in duration-200 my-auto">
+            <div className="flex-1 flex flex-col text-left animate-in fade-in duration-200 py-1 sm:my-auto">
               <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3">
                 <div className="size-8 sm:size-9 md:size-10 bg-muted/40 border border-border flex items-center justify-center shrink-0">
                   <Headphones className="size-4 sm:size-5 text-amber-700 dark:text-amber-500" />
@@ -520,7 +520,7 @@ export function WelcomeModal({
 
           {/* SLIDE 4: Launchpad / Quick Start */}
           {currentSlide === 4 && (
-            <div className="flex-1 flex flex-col text-left animate-in fade-in duration-200 my-auto">
+            <div className="flex-1 flex flex-col text-left animate-in fade-in duration-200 py-1 sm:my-auto">
               <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3">
                 <div className="size-8 sm:size-9 md:size-10 bg-muted/40 border border-border flex items-center justify-center shrink-0">
                   <Sparkles className="size-4 sm:size-5 text-amber-700 dark:text-amber-500" />

@@ -64,12 +64,12 @@ export function MobileTabBar({ active, onNavigate, onNewNote, className }: Mobil
           type="button"
           onClick={create}
           aria-label="New note"
-          className="absolute -top-3.5 left-1/2 -translate-x-1/2 flex size-12 items-center justify-center bg-brand text-brand-foreground shadow-lg ring-4 ring-background rounded-none transition-transform motion-reduce:transition-none active:scale-95"
+          className="absolute -top-2.5 left-1/2 -translate-x-1/2 flex size-11 items-center justify-center bg-brand text-brand-foreground shadow-sm ring-2 ring-background rounded-none transition-transform motion-reduce:transition-none active:scale-95"
         >
           <Corners size="sm" weight="thin" light />
           <Plus className="size-icon-lg" strokeWidth={1.75} />
         </button>
-        <span className="absolute inset-x-0 bottom-1.5 text-center text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+        <span className="absolute inset-x-0 bottom-1 text-center text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
           New
         </span>
       </div>
